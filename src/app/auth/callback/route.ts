@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
@@ -31,19 +31,26 @@ export async function GET(request: Request) {
     );
   }
 
+  const redirectTarget = `${origin}${next}`;
+
+  /** Must exist before exchangeCodeForSession so setAll can attach Set-Cookie to this response. */
+  const response = NextResponse.redirect(redirectTarget);
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+        setAll(cookiesToSet, headers) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+          Object.entries(headers).forEach(([key, value]) => {
+            response.headers.set(key, value);
+          });
         },
       },
     },
@@ -56,7 +63,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const res = NextResponse.redirect(`${origin}${next}`);
-  res.cookies.delete("oxecute_pw_reset_intent");
-  return res;
+  response.cookies.delete("oxecute_pw_reset_intent");
+  return response;
 }
