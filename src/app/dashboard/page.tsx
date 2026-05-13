@@ -173,6 +173,13 @@ function DashboardMain() {
           ))}
         </div>
 
+        {entries[0]?.tier === "upload_unverified" && (
+          <p className="text-sm text-[var(--t2)] border border-[var(--bdr)] rounded-lg p-3 bg-[var(--sur)]">
+            File upload is on your record as unverified. Add a Verified Proof URL from the dashboard
+            within 30 days for full Signal weight.
+          </p>
+        )}
+
         {entries[0]?.tier === "signup_execution" && (
           <p className="text-sm text-[var(--t2)] border border-[var(--bdr)] rounded-lg p-3 bg-[var(--sur)]">
             Signing up was your Day 1 record. Submit your first verified proof today to build from here.
@@ -251,6 +258,7 @@ function DashboardMain() {
               let cls = "bg-[var(--sur2)] opacity-20";
               if (ent?.tier === "verified_proof") cls = "bg-[rgba(1,2,97,0.75)]";
               if (ent?.tier === "declaration_pending") cls = "bg-[rgba(124,58,237,0.75)]";
+              if (ent?.tier === "upload_unverified") cls = "bg-[rgba(99,102,241,0.72)]";
               if (ent?.tier === "signup_execution") cls = "bg-[rgba(34,197,94,0.4)]";
               return (
                 <button

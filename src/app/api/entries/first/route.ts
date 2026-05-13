@@ -11,7 +11,7 @@ import { sendEmail } from "@/lib/email/send";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-const declarationUploadPaths = z.array(z.string().min(1).max(512)).max(3).optional();
+const uploadPathList = z.array(z.string().min(1).max(512)).min(1).max(3);
 
 const jsonSchema = z.discriminatedUnion("path", [
   z.object({
@@ -26,10 +26,15 @@ const jsonSchema = z.discriminatedUnion("path", [
       z.string().min(30).max(140),
     ),
     category: z.enum(["product", "distribution", "ops"]),
-    upload_paths: declarationUploadPaths,
   }),
   z.object({
-    path: z.literal("signup"),
+    path: z.literal("upload"),
+    context_text: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() : v),
+      z.string().min(30).max(140),
+    ),
+    category: z.enum(["product", "distribution", "ops"]),
+    upload_paths: uploadPathList,
   }),
 ]);
 
@@ -76,21 +81,27 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const hint =
-      first?.path.join(".") === "declaration_text"
-        ? "Declaration must be 30-140 characters (after trimming spaces)."
+      first?.path.join(".") === "declaration_text" || first?.path.join(".") === "context_text"
+        ? "Use 30–140 characters (after trimming spaces)."
         : first?.path.join(".") === "url"
           ? "Enter a valid proof URL (https://…)."
           : (first?.message ?? "Check your entry and try again.");
     return NextResponse.json({ error: hint }, { status: 400 });
   }
 
-  let firstDeclUploadPaths: string[] | null = null;
-  if (parsed.data.path === "declaration") {
+  let firstProofUploadPaths: string[] | null = null;
+  if (parsed.data.path === "upload") {
     try {
-      firstDeclUploadPaths = assertValidUploadPathsForUser(
+      firstProofUploadPaths = assertValidUploadPathsForUser(
         parsed.data.upload_paths,
         user.id,
       );
+      if (!firstProofUploadPaths?.length) {
+        return NextResponse.json(
+          { error: "At least one uploaded file is required." },
+          { status: 400 },
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Invalid attachments";
       return NextResponse.json({ error: msg }, { status: 400 });
@@ -107,24 +118,7 @@ export async function POST(request: Request) {
   let validation_hash: string;
   const createdAtIso = new Date().toISOString();
 
-  if (parsed.data.path === "signup") {
-    tier = "signup_execution";
-    source_type = "signup";
-    declaration_text =
-      "Signed up and activated Conexa. Record starts here.";
-    validation_hash = await sha256Hex("signup" + createdAtIso);
-    await admin.from("entries").insert({
-      user_id: user.id,
-      entry_number: 1,
-      day_number: dayNum,
-      category: "product",
-      source_type,
-      tier,
-      declaration_text,
-      validation_hash,
-      execution_day: true,
-    });
-  } else if (parsed.data.path === "declaration") {
+  if (parsed.data.path === "declaration") {
     tier = "declaration_pending";
     source_type = "declaration";
     category = parsed.data.category;
@@ -138,7 +132,27 @@ export async function POST(request: Request) {
       source_type,
       tier,
       declaration_text,
-      upload_paths: firstDeclUploadPaths,
+      validation_hash,
+      execution_day: true,
+    });
+  } else if (parsed.data.path === "upload") {
+    tier = "upload_unverified";
+    source_type = "file_upload";
+    category = parsed.data.category;
+    declaration_text = parsed.data.context_text;
+    validation_hash = await sha256Hex(
+      (firstProofUploadPaths ?? []).join("|") + declaration_text + createdAtIso,
+    );
+    await admin.from("entries").insert({
+      user_id: user.id,
+      entry_number: 1,
+      day_number: dayNum,
+      category,
+      source_type,
+      tier,
+      declaration_text,
+      context_sentence: parsed.data.context_text,
+      upload_paths: firstProofUploadPaths,
       validation_hash,
       execution_day: true,
     });

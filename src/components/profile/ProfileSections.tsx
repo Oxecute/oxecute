@@ -107,6 +107,7 @@ export function ExecutionGrid({
           let bg = "bg-black/5 dark:bg-white/5";
           if (ent?.tier === "verified_proof") bg = "bg-[rgba(1,2,97,0.75)]";
           if (ent?.tier === "declaration_pending") bg = "bg-[rgba(124,58,237,0.75)]";
+          if (ent?.tier === "upload_unverified") bg = "bg-[rgba(99,102,241,0.72)]";
           if (ent?.tier === "signup_execution") bg = "bg-[rgba(34,197,94,0.4)]";
           const interactive = Boolean(onDayClick && ent);
           return (
@@ -135,6 +136,9 @@ export function ExecutionGrid({
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-[rgba(124,58,237,0.75)]" /> Declaration
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-[rgba(99,102,241,0.72)]" /> File upload
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-[rgba(34,197,94,0.4)]" /> Signup / Day 1

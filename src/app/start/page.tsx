@@ -3,8 +3,8 @@
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
 import {
-  ENTRY_UPLOAD_ACCEPT,
-  uploadEntryDeclarationFiles,
+  FIRST_PROOF_ACCEPT,
+  uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -146,14 +146,15 @@ export default function StartPage() {
   /** Same as synthesis: `true` means section is collapsed. */
   const [actCollapsed, setActCollapsed] = useState<Record<number, boolean>>({});
 
-  const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "signup">(
+  const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "upload">(
     "verified",
   );
   const [proofUrl, setProofUrl] = useState("");
   const [decl, setDecl] = useState("");
-  const [declFiles, setDeclFiles] = useState<File[]>([]);
+  const [uploadContext, setUploadContext] = useState("");
+  const [uploadProofFiles, setUploadProofFiles] = useState<File[]>([]);
   const [workCat, setWorkCat] = useState<"product" | "distribution" | "ops">("product");
-  const declFileInputRef = useRef<HTMLInputElement>(null);
+  const uploadProofInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -825,9 +826,29 @@ export default function StartPage() {
         return;
       }
     }
+    if (firstPath === "upload") {
+      const t = uploadContext.trim();
+      if (t.length < 30 || t.length > 140) {
+        setBusy(false);
+        setErr(
+          `Context must be 30-140 characters after trimming (you have ${t.length}).`,
+        );
+        return;
+      }
+      if (uploadProofFiles.length < 1) {
+        setBusy(false);
+        setErr("Choose at least one file to upload.");
+        return;
+      }
+    }
     let body: Record<string, unknown>;
-    if (firstPath === "signup") body = { path: "signup" };
-    else if (firstPath === "declaration") {
+    if (firstPath === "declaration") {
+      body = {
+        path: "declaration",
+        declaration_text: decl.trim(),
+        category: workCat,
+      };
+    } else if (firstPath === "upload") {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -836,32 +857,31 @@ export default function StartPage() {
         setErr("Your session expired. Sign in again.");
         return;
       }
-      let upload_paths: string[] | undefined;
-      if (declFiles.length > 0) {
-        try {
-          upload_paths = await uploadEntryDeclarationFiles(
-            supabase,
-            session.user.id,
-            declFiles,
-            "first",
-          );
-        } catch (e) {
-          setBusy(false);
-          setErr(
-            e instanceof Error
-              ? e.message
-              : "Could not upload files. Run the entry-uploads storage migration in Supabase, then try again.",
-          );
-          return;
-        }
+      let upload_paths: string[];
+      try {
+        upload_paths = await uploadFirstProofFiles(
+          supabase,
+          session.user.id,
+          uploadProofFiles,
+        );
+      } catch (e) {
+        setBusy(false);
+        setErr(
+          e instanceof Error
+            ? e.message
+            : "Could not upload files. Run the entry-uploads storage migration (10MB limit) in Supabase, then try again.",
+        );
+        return;
       }
       body = {
-        path: "declaration",
-        declaration_text: decl.trim(),
+        path: "upload",
+        context_text: uploadContext.trim(),
         category: workCat,
-        ...(upload_paths?.length ? { upload_paths } : {}),
+        upload_paths,
       };
-    } else body = { path: "verified", url: proofUrl.trim(), category: workCat };
+    } else {
+      body = { path: "verified", url: proofUrl.trim(), category: workCat };
+    }
 
     const res = await fetch("/api/entries/first", {
       method: "POST",
@@ -1320,122 +1340,260 @@ export default function StartPage() {
       )}
 
       {step === 8 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">First Entry</h1>
-          <div className="space-y-2">
+        <div className="space-y-5 glass-card rounded-2xl p-6">
+          <header className="space-y-1">
+            <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]">
+              First entry
+            </p>
+            <h1 className="text-xl font-bold text-[var(--fw)]">Submit your first proof.</h1>
+            <p className="text-sm text-[var(--ca)]">
+              Your record starts the moment you submit. Choose your path.
+            </p>
+          </header>
+
+          <div className="space-y-3">
             <button
               type="button"
-              className={`w-full text-left p-3 rounded-lg border ${firstPath === "verified" ? "border-[var(--ac)]" : "border-white/10"}`}
               onClick={() => {
                 setFirstPath("verified");
-                setDeclFiles([]);
+                setUploadProofFiles([]);
+                setUploadContext("");
               }}
+              className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                firstPath === "verified"
+                  ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                  : "border-white/10 bg-black/20 hover:border-white/20"
+              }`}
             >
-              Verified Proof
+              <div className="flex gap-3">
+                <span className="mt-0.5 text-[var(--ac)]" aria-hidden>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20 6 9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>
+                  <span className="block font-semibold text-[var(--fw)]">Verified Proof</span>
+                  <span className="mt-1 block text-xs text-[var(--ca)] leading-snug">
+                    External URL · HEAD request validates immediately · Full Signal Score weight
+                  </span>
+                </span>
+              </div>
             </button>
+
             <button
               type="button"
-              className={`w-full text-left p-3 rounded-lg border ${firstPath === "declaration" ? "border-[var(--ac)]" : "border-white/10"}`}
-              onClick={() => setFirstPath("declaration")}
-            >
-              Declaration
-            </button>
-            <button
-              type="button"
-              className={`w-full text-left p-3 rounded-lg border ${firstPath === "signup" ? "border-[var(--ac)]" : "border-white/10"}`}
               onClick={() => {
-                setFirstPath("signup");
-                setDeclFiles([]);
+                setFirstPath("declaration");
+                setUploadProofFiles([]);
+                setUploadContext("");
               }}
+              className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                firstPath === "declaration"
+                  ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                  : "border-white/10 bg-black/20 hover:border-white/20"
+              }`}
             >
-              Nothing to submit (Path B)
+              <div className="flex gap-3">
+                <span className="mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full border-2 border-[var(--ac)]" aria-hidden />
+                <span>
+                  <span className="block font-semibold text-[var(--fw)]">Declaration</span>
+                  <span className="mt-1 block text-xs text-[var(--ca)] leading-snug">
+                    Stated intent · 30–140 chars · Upgrade within 30 days
+                  </span>
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFirstPath("upload");
+                setProofUrl("");
+                setDecl("");
+              }}
+              className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                firstPath === "upload"
+                  ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                  : "border-white/10 bg-black/20 hover:border-white/20"
+              }`}
+            >
+              <div className="flex gap-3">
+                <span className="mt-0.5 text-[var(--ac)]" aria-hidden>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="3" fill="currentColor" />
+                  </svg>
+                </span>
+                <span>
+                  <span className="block font-semibold text-[var(--fw)]">Upload</span>
+                  <span className="mt-1 block text-xs text-[var(--ca)] leading-snug">
+                    File upload · PDF, DOCX, PNG, PPTX, XLSX · Max 10MB each · Up to 3 files
+                  </span>
+                </span>
+              </div>
             </button>
           </div>
+
           {firstPath === "verified" && (
-            <input
-              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
-              placeholder="https://…"
-              value={proofUrl}
-              onChange={(e) => setProofUrl(e.target.value)}
-            />
-          )}
-          {firstPath === "declaration" && (
-            <>
-              <textarea
-                className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
-                  decl.trim().length > 0 && decl.trim().length < 30
-                    ? "border-amber-500/50"
-                    : "border-white/10"
-                }`}
-                placeholder="One or two tight sentences: what you shipped or what you're committing to today (30-140 characters)."
-                maxLength={140}
-                value={decl}
-                onChange={(e) => setDecl(e.target.value)}
-              />
-              <p
-                className={`text-xs ${
-                  decl.trim().length > 0 && decl.trim().length < 30
-                    ? "text-amber-300"
-                    : "text-[var(--ca)]"
-                }`}
-              >
-                {decl.trim().length}/140 · minimum 30 characters
-              </p>
-              <span className="block text-xs font-medium text-[var(--fw)]">
-                Attach proof (optional)
-              </span>
-              <p className="text-xs text-[var(--ca)]">
-                Up to 3 files · 5MB each · JPG, PNG, WebP, GIF, or PDF
-              </p>
+            <div className="space-y-3">
               <input
-                ref={declFileInputRef}
-                id="decl-first-files"
+                className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
+                placeholder="https://…"
+                value={proofUrl}
+                onChange={(e) => setProofUrl(e.target.value)}
+              />
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300 whitespace-nowrap">
+                  ◆ Verified proof · Live
+                </span>
+                <p className="text-xs text-[var(--ca)]">Highest Signal weight when the URL validates.</p>
+              </div>
+            </div>
+          )}
+
+          {firstPath === "declaration" && (
+            <div className="space-y-3">
+              <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[var(--ca)] leading-relaxed">
+                What are you building today? What will prove it&apos;s done? · 30–140 chars
+              </label>
+              <div className="relative">
+                <textarea
+                  className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[var(--fw)] placeholder:text-[var(--ca)]/60 ${
+                    decl.trim().length > 0 && decl.trim().length < 30
+                      ? "border-amber-500/50"
+                      : "border-white/10"
+                  }`}
+                  placeholder="Be specific."
+                  maxLength={140}
+                  value={decl}
+                  onChange={(e) => setDecl(e.target.value)}
+                />
+                <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[var(--t3)]">
+                  {decl.length}/140
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/35 bg-amber-950/40 px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 whitespace-nowrap">
+                  ◦ Declaration · Pending
+                </span>
+                <p className="text-xs text-[var(--ca)]">
+                  Upgrade within 30 days with a Verified Proof URL.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {firstPath === "upload" && (
+            <div className="space-y-3">
+              <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[var(--ca)]">
+                Upload file
+              </span>
+              <input
+                ref={uploadProofInputRef}
                 type="file"
                 multiple
-                accept={ENTRY_UPLOAD_ACCEPT}
-                className="sr-only"
+                accept={FIRST_PROOF_ACCEPT}
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[var(--fw)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[var(--mi)] file:text-xs file:font-semibold"
                 onChange={(e) => {
                   const files = e.target.files
                     ? Array.from(e.target.files).slice(0, 3)
                     : [];
-                  setDeclFiles(files);
+                  setUploadProofFiles(files);
                 }}
               />
-              <button
-                type="button"
-                onClick={() => declFileInputRef.current?.click()}
-                className="w-full rounded-lg border border-dashed border-white/25 bg-black/25 px-4 py-3 text-sm font-medium text-[var(--fw)] hover:border-[var(--ac)]/60 hover:bg-black/35"
-              >
-                {declFiles.length > 0
-                  ? `Replace files (${declFiles.length} selected)`
-                  : "Choose files"}
-              </button>
-              {declFiles.length > 0 ? (
+              {uploadProofFiles.length > 0 ? (
                 <ul className="text-xs text-[var(--ca)] space-y-1 list-disc list-inside">
-                  {declFiles.map((f, i) => (
+                  {uploadProofFiles.map((f, i) => (
                     <li key={`${f.name}-${i}`}>
                       {f.name} ({Math.round(f.size / 1024)} KB)
                     </li>
                   ))}
                 </ul>
               ) : null}
-            </>
+
+              <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[var(--ca)] leading-relaxed">
+                What was made? · 30–140 chars required
+              </label>
+              <div className="relative">
+                <textarea
+                  className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[var(--fw)] placeholder:text-[var(--ca)]/60 ${
+                    uploadContext.trim().length > 0 && uploadContext.trim().length < 30
+                      ? "border-amber-500/50"
+                      : "border-white/10"
+                  }`}
+                  placeholder="Context sentence…"
+                  maxLength={140}
+                  value={uploadContext}
+                  onChange={(e) => setUploadContext(e.target.value)}
+                />
+                <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[var(--t3)]">
+                  {uploadContext.length}/140
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-500/35 bg-violet-950/35 px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-200 whitespace-nowrap">
+                  ◆ Submission · Unverified
+                </span>
+                <p className="text-xs text-[var(--ca)]">
+                  Link a Verified Proof within 30 days for full Signal weight.
+                </p>
+              </div>
+            </div>
           )}
-          <label className="block text-sm font-medium text-[var(--fw)]">
-            What kind of work is this entry?
-            <select
-              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
-              value={workCat}
-              onChange={(e) => setWorkCat(e.target.value as typeof workCat)}
-            >
-              <option value="product">Product</option>
-              <option value="distribution">Distribution</option>
-              <option value="ops">Ops</option>
-            </select>
-          </label>
-          {err && <p className="text-[var(--orange)] text-sm">{err}</p>}
-          <button disabled={busy} onClick={submitFirst} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
-            Lock entry →
+
+          <div className="space-y-2">
+            <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ca)]">
+              Work type
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["product", "Product"] as const,
+                  ["distribution", "Distribution"] as const,
+                  ["ops", "Ops"] as const,
+                ]
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setWorkCat(id)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
+                    workCat === id
+                      ? "border-blue-400/50 bg-blue-950/80 text-white"
+                      : "border-white/20 text-[var(--ca)] hover:border-[var(--ac)]/45"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {err ? <p className="text-[var(--orange)] text-sm">{err}</p> : null}
+
+          <button
+            type="button"
+            disabled={
+              busy ||
+              (firstPath === "verified" && proofUrl.trim().length < 8) ||
+              (firstPath === "declaration" &&
+                (decl.trim().length < 30 || decl.trim().length > 140)) ||
+              (firstPath === "upload" &&
+                (uploadProofFiles.length < 1 ||
+                  uploadContext.trim().length < 30 ||
+                  uploadContext.trim().length > 140))
+            }
+            onClick={() => void submitFirst()}
+            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3.5 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Lock Entry → Start My Record
           </button>
         </div>
       )}
