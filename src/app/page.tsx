@@ -1,8 +1,10 @@
+import { HomeAuthEffects } from "@/components/auth/HomeAuthEffects";
 import Link from "next/link";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[var(--mi)] text-[var(--fw)] flex flex-col items-center justify-center px-6 text-center">
+      <HomeAuthEffects />
       <p
         className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-6"
         style={{ color: "rgba(222, 244, 8, 0.6)" }}

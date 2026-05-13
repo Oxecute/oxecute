@@ -32,6 +32,28 @@ function baseResponse(request: NextRequest, rewriteTo: URL | null) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  /** Supabase Site URL is often `/`; OAuth may return there with ?code= instead of /auth/callback. */
+  if (pathname === "/") {
+    const sp = request.nextUrl.searchParams;
+    if (sp.has("code")) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = "/auth/callback";
+      return NextResponse.redirect(dest);
+    }
+    const err = sp.get("error");
+    if (
+      err != null &&
+      (sp.has("state") ||
+        sp.has("error_description") ||
+        err === "access_denied")
+    ) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = "/auth/callback";
+      return NextResponse.redirect(dest);
+    }
+  }
+
   const segments = pathname.split("/").filter(Boolean);
   const rewriteTo =
     segments.length === 1 && !ROOT_APP_SEGMENTS.has(segments[0]!.toLowerCase())
