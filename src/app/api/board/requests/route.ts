@@ -54,7 +54,9 @@ export async function GET() {
     const sid = r.submitter_user_id as string | null;
     const sub = sid ? submitterMap[sid] : null;
     const submitterLabel =
-      !sid || !sub ? "Oxecute Team" : `Day ${sub.execution_count} · @${sub.username}`;
+      !sid || !sub
+        ? "North River Labs"
+        : `Day ${sub.execution_count} · @${sub.username}`;
     return {
       ...r,
       submitter_label: submitterLabel,

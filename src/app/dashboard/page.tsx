@@ -11,6 +11,7 @@ import {
   ENTRY_UPLOAD_ACCEPT,
   uploadEntryDeclarationFiles,
 } from "@/lib/entry-uploads";
+import { formatCountdown, getUtcWindowRemainingParts } from "@/components/app/utc-countdown";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -83,6 +84,16 @@ function DashboardMain() {
   const [dayDetail, setDayDetail] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [declFiles, setDeclFiles] = useState<File[]>([]);
+  const [conexaTab, setConexaTab] = useState<string>("reality_check");
+  const [countdownTick, setCountdownTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setCountdownTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  void countdownTick;
+
+  const windowCountdown = formatCountdown(getUtcWindowRemainingParts());
 
   const loadEntries = useCallback(async () => {
     const {
@@ -100,6 +111,21 @@ function DashboardMain() {
 
   const report = user.conexa_day1_report as Record<string, unknown> | null;
   const tabs = (report?.tabs as Record<string, string>) ?? {};
+
+  const CONEXA_TAB_ORDER: { key: string; label: string }[] = [
+    { key: "reality_check", label: "Reality Check" },
+    { key: "blindspot", label: "Blindspot" },
+    { key: "shipping_vs_noise", label: "Shipping vs. Noise" },
+    { key: "next_move", label: "Next Move" },
+    { key: "integrity_forecast", label: "Integrity Forecast" },
+    { key: "executive_synthesis", label: "Executive Synthesis" },
+  ];
+
+  const visibleConexaTabs = CONEXA_TAB_ORDER.filter((t) => Boolean(tabs[t.key]));
+  const activeConexaKey =
+    visibleConexaTabs.some((t) => t.key === conexaTab) && tabs[conexaTab]
+      ? conexaTab
+      : visibleConexaTabs[0]?.key ?? "reality_check";
   const today = utcTodayISO();
   const lastSub = user.last_submission_date as string | null | undefined;
   const gapWarn =
@@ -122,26 +148,67 @@ function DashboardMain() {
   }
   const totalCat = byCat.product + byCat.distribution + byCat.ops || 1;
 
+  const execCount = Number(user.execution_count ?? 0);
+  const day21Reached = Boolean(user.day21_reached);
+  const beganDate =
+    user.created_at != null
+      ? new Date(user.created_at).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : entries.length > 0
+        ? new Date(
+            Math.min(
+              ...entries.map((e) => new Date(String(e.created_at ?? 0)).getTime()),
+            ),
+          ).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })
+        : null;
+
+  const gridLegend = (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--t3)] mt-3">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="w-3 h-3 rounded-sm bg-[rgba(1,2,97,0.85)]" /> Verified Proof
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-[var(--purple)]" /> Declaration
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-[var(--orange)]" /> Upload
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-[var(--red)]" /> Break
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="w-3 h-3 rounded-sm border border-[var(--bdr)] bg-[var(--sur2)]" /> Future
+      </span>
+    </div>
+  );
+
   return (
     <>
-      <section className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Founder Operating Record</h1>
-          <p className="text-sm text-[var(--t2)] mt-1">
-            Close the window before 23:59:59 UTC. Every verified proof compounds your signal.
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-[var(--bdr)] p-4 bg-[var(--sur)]">
-            <p className="text-xs text-[var(--t3)]">Days executed</p>
-            <p className="text-3xl font-bold">{String(user.execution_count)}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--bdr)] p-4 bg-[var(--sur)]">
-            <p className="text-xs text-[var(--t3)]">Submissions / breaks</p>
-            <p className="text-3xl font-bold">
-              {entries.length} · {String(user.break_count)}
+      <section className="space-y-8 pb-28 md:pb-24">
+        <div className="flex flex-wrap items-start justify-between gap-3 gap-y-2">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--t1)]">Founder Operating Record</h1>
+            <p className="text-sm text-[var(--t2)] mt-1">
+              Day {Math.max(1, execCount)} · Record Tier · Free
             </p>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] px-3 py-1.5 text-[var(--t2)] text-xs">
+              Today
+            </span>
+            <a
+              href={`/${user.username}`}
+              className="text-[var(--p)] text-xs font-medium underline-offset-2 hover:underline whitespace-nowrap"
+            >
+              Public profile
+            </a>
           </div>
         </div>
 
@@ -151,26 +218,78 @@ function DashboardMain() {
           </p>
         ) : null}
 
-        <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4">
-          <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide mb-3">
-            Work mix (all submissions)
-          </p>
-          {(["product", "distribution", "ops"] as const).map((k) => (
-            <div key={k} className="mb-2 last:mb-0">
-              <div className="flex justify-between text-xs text-[var(--t2)] mb-1">
-                <span className="capitalize">{k}</span>
-                <span>
-                  {byCat[k]} · {Math.round((byCat[k] / totalCat) * 100)}%
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-[var(--sur2)] overflow-hidden">
-                <div
-                  className="h-full bg-[var(--p)] rounded-full transition-all"
-                  style={{ width: `${(byCat[k] / totalCat) * 100}%` }}
-                />
-              </div>
+        <div className="grid grid-cols-4 gap-2 sm:gap-2.5 min-w-0">
+          <div className="rounded-lg sm:rounded-xl border border-[var(--bdr)] p-2.5 sm:p-3 bg-[var(--sur)] min-w-0">
+            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
+              Days executed
+            </p>
+            <div className="flex items-baseline gap-1 mt-0.5 sm:mt-1">
+              <p className="text-xl sm:text-2xl font-bold tabular-nums leading-none">{String(execCount)}</p>
+              <span className="text-[var(--green)] text-xs shrink-0" aria-hidden>
+                ↗
+              </span>
             </div>
-          ))}
+            <p className="text-[10px] sm:text-[11px] text-[var(--t2)] mt-1 leading-tight">
+              {execCount} of 30 days
+            </p>
+          </div>
+          <div className="rounded-lg sm:rounded-xl border border-[var(--bdr)] p-2.5 sm:p-3 bg-[var(--sur)] min-w-0">
+            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
+              Total submissions
+            </p>
+            <p className="text-xl sm:text-2xl font-bold tabular-nums mt-0.5 sm:mt-1 leading-none">{entries.length}</p>
+            <p className="text-[10px] sm:text-[11px] text-[var(--t2)] mt-1 leading-tight tabular-nums">
+              {String(user.break_count ?? 0)} breaks
+            </p>
+          </div>
+          <div
+            className={`rounded-lg sm:rounded-xl border p-2.5 sm:p-3 min-w-0 ${
+              day21Reached
+                ? "border-[var(--bdr)] bg-[var(--sur)]"
+                : "border-[var(--bdr)] bg-[var(--sur2)]/80"
+            }`}
+          >
+            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
+              Directive completion
+            </p>
+            {day21Reached ? (
+              <p className="text-sm font-semibold text-[var(--t1)] mt-1.5">Unlocked</p>
+            ) : (
+              <div className="flex items-center gap-1.5 mt-1.5 text-[var(--t2)]">
+                <svg className="shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <rect x="5" y="11" width="14" height="10" rx="2" />
+                  <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
+                </svg>
+                <span className="text-[10px] sm:text-[11px] leading-snug">Unlocks Day 21</span>
+              </div>
+            )}
+          </div>
+          <div
+            className={`rounded-lg sm:rounded-xl border p-2.5 sm:p-3 min-w-0 ${
+              day21Reached
+                ? "border-[var(--bdr)] bg-[var(--sur)]"
+                : "border-[var(--p)]/20 bg-[var(--p)] text-[var(--fw)]"
+            }`}
+          >
+            <p
+              className={`text-[9px] sm:text-[10px] uppercase tracking-wider leading-tight ${
+                day21Reached ? "text-[var(--t3)]" : "text-[var(--ca)]/90"
+              }`}
+            >
+              Signal score
+            </p>
+            {day21Reached ? (
+              <p className="text-sm font-semibold mt-1.5 text-[var(--t1)]">Live</p>
+            ) : (
+              <div className="flex items-center gap-1.5 mt-1.5 opacity-95">
+                <svg className="shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <rect x="5" y="11" width="14" height="10" rx="2" />
+                  <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
+                </svg>
+                <span className="text-[10px] sm:text-[11px] leading-snug">Unlocks Day 21</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {entries[0]?.tier === "upload_unverified" && (
@@ -186,109 +305,188 @@ function DashboardMain() {
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 items-center">
-          <button
-            type="button"
-            onClick={() => {
-              setSubmitError(null);
-              setDeclFiles([]);
-              setModalOpen(true);
-            }}
-            className="rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold px-6 py-2"
-          >
-            + Submit today&apos;s entry →
-          </button>
-          <a
-            href={`/${user.username}`}
-            className="text-sm text-[var(--p)] underline-offset-2 hover:underline"
-          >
-            View public profile
-          </a>
-        </div>
-
-        {recent.length > 0 && (
-          <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4">
-            <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide mb-3">
-              Recent submissions
-            </p>
-            <ul className="space-y-2 text-sm">
-              {recent.map((e) => (
-                <li
-                  key={String(e.id)}
-                  className="border-b border-[var(--bdr)]/60 pb-2 last:border-0 last:pb-0"
-                >
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 justify-between">
-                    <span className="text-[var(--t2)]">
-                      Day {String(e.day_number)} · {String(e.category)} ·{" "}
-                      {String(e.tier).replace(/_/g, " ")}
-                    </span>
-                    <span className="text-[var(--t3)] text-xs tabular-nums">
-                      {new Date(String(e.created_at)).toLocaleString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-[var(--t1)] text-sm mt-1 leading-snug">
-                    {submissionBrief(
-                      e as {
-                        tier?: string | null;
-                        url?: string | null;
-                        declaration_text?: string | null;
-                      },
-                    )}
-                  </p>
-                </li>
-              ))}
-            </ul>
+        <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <p className="font-semibold text-[var(--t1)]">30-Day Execution Grid</p>
+              {beganDate ? (
+                <p className="text-xs text-[var(--t2)] mt-0.5">Began: {beganDate}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[var(--t2)] tabular-nums">Total: {entries.length}</span>
+              <span className="text-[var(--t3)]">·</span>
+              <span className="text-[var(--t2)] tabular-nums">Breaks: {String(user.break_count ?? 0)}</span>
+              <span className="rounded-full bg-[var(--green)]/15 text-[var(--green)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                FOR visible
+              </span>
+            </div>
           </div>
-        )}
-
-        <div>
-          <p className="text-xs text-[var(--t3)] mb-2">30-day heatmap · tap a day</p>
-          <div className="grid grid-cols-10 gap-1">
+          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
             {Array.from({ length: 30 }).map((_, i) => {
               const day = i + 1;
               const ent = entries.find((e) => Number(e.day_number) === day) as Record<
                 string,
                 string
               > | undefined;
-              let cls = "bg-[var(--sur2)] opacity-20";
-              if (ent?.tier === "verified_proof") cls = "bg-[rgba(1,2,97,0.75)]";
-              if (ent?.tier === "declaration_pending") cls = "bg-[rgba(124,58,237,0.75)]";
-              if (ent?.tier === "upload_unverified") cls = "bg-[rgba(99,102,241,0.72)]";
-              if (ent?.tier === "signup_execution") cls = "bg-[rgba(34,197,94,0.4)]";
+              let cls = "border border-[var(--bdr)] bg-[var(--sur2)]";
+              if (ent?.tier === "verified_proof") cls = "bg-[rgba(1,2,97,0.85)] border border-transparent";
+              if (ent?.tier === "signup_execution") cls = "bg-[rgba(1,2,97,0.85)] border border-transparent";
+              if (ent?.tier === "declaration_pending") cls = "bg-[var(--purple)] border-transparent";
+              if (ent?.tier === "upload_unverified") cls = "bg-[var(--orange)]/90 border-transparent";
               return (
                 <button
                   type="button"
                   key={day}
-                  className={`aspect-square rounded ${cls} ${ent ? "cursor-pointer hover:ring-2 ring-[var(--ac)]" : "cursor-default"}`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-md ${cls} ${ent ? "cursor-pointer hover:ring-2 ring-[var(--ac)] ring-offset-1 ring-offset-[var(--sur)]" : "cursor-default opacity-60"}`}
                   title={`Day ${day}`}
                   onClick={() => (ent ? setDayDetail(ent as unknown as Record<string, unknown>) : undefined)}
                 />
               );
             })}
           </div>
+          {gridLegend}
         </div>
 
-        {report && (
-          <div className="rounded-xl border border-[var(--bdr)] p-4 bg-[var(--sur)] text-sm space-y-2">
-            <p className="font-semibold">Conexa · Day 1 report</p>
-            <p className="text-[var(--t2)]">{String(report.personal_insight ?? "")}</p>
-            {Object.entries(tabs).map(([k, v]) => (
-              <details key={k} className="border-t border-[var(--bdr)] pt-2">
-                <summary className="cursor-pointer">{k}</summary>
-                <p className="text-[var(--t2)] mt-2">{v}</p>
-              </details>
+        <div className="grid md:grid-cols-2 gap-4 items-stretch">
+          <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5 flex flex-col min-h-[200px]">
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide">
+                Recent submissions
+              </p>
+            </div>
+            {recent.length > 0 ? (
+              <ul className="space-y-3 text-sm flex-1">
+                {recent.map((e, idx) => (
+                  <li
+                    key={String(e.id)}
+                    className="border-b border-[var(--bdr)]/60 pb-3 last:border-0 last:pb-0"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[var(--t1)] font-medium leading-snug">
+                          Day {String(e.day_number)}{" "}
+                          <span className="font-normal text-[var(--t2)]">
+                            {submissionBrief(
+                              e as {
+                                tier?: string | null;
+                                url?: string | null;
+                                declaration_text?: string | null;
+                              },
+                            )}
+                          </span>
+                        </p>
+                        <span className="inline-flex mt-1.5 rounded-md bg-[var(--p)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fw)]">
+                          {String(e.category)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {idx === 0 ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--red)] whitespace-nowrap">
+                            Locked · Immutable
+                          </span>
+                        ) : null}
+                        <span className="text-[var(--t3)] text-[11px] tabular-nums">
+                          {new Date(String(e.created_at)).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-[var(--t3)]">No submissions yet.</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5">
+            <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide mb-4">Artifact breakdown</p>
+            {(["product", "distribution", "ops"] as const).map((k) => (
+              <div key={k} className="mb-3 last:mb-0">
+                <div className="flex justify-between text-xs text-[var(--t2)] mb-1">
+                  <span className="capitalize font-medium">{k}</span>
+                  <span className="tabular-nums">{Math.round((byCat[k] / totalCat) * 100)}%</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-[var(--sur2)] overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--p)] rounded-full transition-all"
+                    style={{ width: `${(byCat[k] / totalCat) * 100}%` }}
+                  />
+                </div>
+              </div>
             ))}
           </div>
-        )}
+        </div>
+
+        {report && visibleConexaTabs.length > 0 ? (
+          <div className="rounded-xl border border-[var(--bdr)] p-4 sm:p-5 bg-[var(--sur)] text-sm space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className="font-semibold text-[var(--t1)]">
+                Conexa Intelligence · {visibleConexaTabs.length} tabs active from Day 1
+              </p>
+              <span className="text-[10px] uppercase tracking-wide text-[var(--purple)] font-medium">
+                Day 21 unlocks 5 more
+              </span>
+            </div>
+            <p className="text-[var(--t2)] text-xs leading-relaxed">{String(report.personal_insight ?? "")}</p>
+            <div className="flex flex-wrap gap-2 border-b border-[var(--bdr)] pb-3">
+              {visibleConexaTabs.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setConexaTab(key)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                    activeConexaKey === key
+                      ? "border-[var(--p)] text-[var(--p)] bg-[var(--sur2)]"
+                      : "border-[var(--bdr)] text-[var(--t2)] hover:border-[var(--p)]/40"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-lg bg-[var(--sur2)] border border-[var(--bdr)] p-4">
+              <p className="font-semibold text-[var(--t1)] mb-2">
+                {CONEXA_TAB_ORDER.find((t) => t.key === activeConexaKey)?.label ?? ""}
+              </p>
+              <p className="text-[var(--t2)] leading-relaxed whitespace-pre-wrap">
+                {String(tabs[activeConexaKey] ?? "")}
+              </p>
+            </div>
+          </div>
+        ) : null}
       </section>
 
+      <button
+        type="button"
+        onClick={() => setChatOpen(true)}
+        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--p)] text-[var(--fw)] px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(max(0px,(100vw-1320px)/2)+240px)] lg:left-[calc(max(0px,(100vw-1320px)/2)+248px)] md:bottom-6"
+      >
+        <span className="text-[var(--ac)] text-[8px] leading-none" aria-hidden>
+          ●
+        </span>
+        CONEXA · Ask
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setSubmitError(null);
+          setDeclFiles([]);
+          setModalOpen(true);
+        }}
+        className="fixed z-50 pointer-events-auto right-4 inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--ac)] text-[var(--mi)] px-3 py-2 text-[10px] sm:text-[11px] font-bold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:right-[calc(100vw-max(0px,(100vw-1320px)/2)-min(1320px,100vw)+320px)] lg:right-[calc(100vw-max(0px,(100vw-1320px)/2)-min(1320px,100vw)+328px)] md:bottom-6"
+      >
+        <span>+ Submit Entry</span>
+        <span className="tabular-nums text-[9px] font-semibold opacity-90">{windowCountdown}</span>
+      </button>
+
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-20">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-[100]">
           <div className="bg-[var(--sur)] rounded-2xl max-w-lg w-full p-6 space-y-4 text-[var(--t1)]">
             <div>
               <h2 className="text-lg font-semibold">
@@ -481,7 +679,7 @@ function DashboardMain() {
       )}
 
       {dayDetail && (
-        <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
@@ -517,16 +715,8 @@ function DashboardMain() {
         </div>
       )}
 
-      <button
-        type="button"
-        className="fixed bottom-6 left-6 w-12 h-12 rounded-full bg-[var(--p)] text-[var(--fw)] shadow-lg z-10"
-        onClick={() => setChatOpen(true)}
-      >
-        ◎
-      </button>
-
       {chatOpen && (
-        <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
@@ -575,7 +765,6 @@ export default function DashboardPage() {
 
   return (
     <AuthenticatedShell
-      showRightRail
       refreshKey={gateKey}
       fullscreenBlock={(u) =>
         Boolean(u.day21_reached) && !u.day21_unlocked ? (

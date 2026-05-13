@@ -161,7 +161,7 @@ function ProfileSettingsMain() {
 
 export default function ProfileSettingsPage() {
   return (
-    <AuthenticatedShell breadcrumb="Dashboards / My Profile" showRightRail>
+    <AuthenticatedShell breadcrumb="Dashboards / My Profile">
       <ProfileSettingsMain />
     </AuthenticatedShell>
   );

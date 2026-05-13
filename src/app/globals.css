@@ -64,6 +64,12 @@ select {
  */
 [data-onboarding-surface="true"] {
   color-scheme: dark;
+  background-color: #000000;
+}
+
+[data-onboarding-surface="true"] .glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 [data-onboarding-surface="true"] input:not([type="checkbox"]):not([type="radio"]),
@@ -76,6 +82,17 @@ select {
 [data-onboarding-surface="true"] select option {
   background-color: var(--mi);
   color: var(--fw);
+}
+
+/* Scroll areas: keep overflow scroll without showing a track (WebKit + Firefox). */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .text-balance {

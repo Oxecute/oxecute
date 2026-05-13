@@ -121,6 +121,7 @@ export default function StartPage() {
   const [contextTooShort, setContextTooShort] = useState(false);
 
   const [calI, setCalI] = useState(0);
+  const [calReveal, setCalReveal] = useState(true);
   const [cal, setCal] = useState({
     q1: "",
     q2: "",
@@ -207,7 +208,7 @@ export default function StartPage() {
       );
 
       const desc = String(u.startup_description ?? "");
-      if (desc.length < 80) {
+      if (desc.trim().length < 15) {
         setStep(3);
         return;
       }
@@ -231,6 +232,7 @@ export default function StartPage() {
             const j = await syn.json();
             const stmts: string[] = j.statements ?? [];
             setSynthesis(stmts);
+            setSynthCollapsed({ 1: true, 2: true, 3: true, 4: true });
             let i = 0;
             const iv = setInterval(() => {
               i += 1;
@@ -597,10 +599,12 @@ export default function StartPage() {
 
   function trySaveContext() {
     const len = description.trim().length;
-    if (len < 80) {
+    if (len < 15 || len > 50) {
       setContextTooShort(true);
       window.alert(
-        `Your description needs at least 80 characters (you have ${len}). Add more detail about what you're building and who it's for.`,
+        len > 50
+          ? `Keep this to 50 characters max (you have ${len}). One tight line on what you are building.`
+          : `Add at least 15 characters (you have ${len}). What are you building, in one line?`,
       );
       return;
     }
@@ -623,11 +627,13 @@ export default function StartPage() {
     }
     setStep(4);
     setCalI(0);
+    setCalReveal(true);
   }
 
   async function saveCalibrationAndNext() {
     if (calI < 4) {
       setCalI(calI + 1);
+      setCalReveal(false);
       return;
     }
     setBusy(true);
@@ -662,6 +668,7 @@ export default function StartPage() {
       }
       while (stmts.length < 5) stmts.push("");
       setSynthesis(stmts.slice(0, 5));
+      setSynthCollapsed({ 1: true, 2: true, 3: true, 4: true });
       let i = 0;
       const iv = setInterval(() => {
         i += 1;
@@ -707,6 +714,7 @@ export default function StartPage() {
       }),
     });
     setCalI(0);
+    setCalReveal(true);
     setStep(4);
     setSynthesis([]);
     setSynthShown(0);
@@ -751,6 +759,7 @@ export default function StartPage() {
       });
     }
     setCalI(0);
+    setCalReveal(true);
     setStep(4);
     setSynthesis([]);
     setSynthShown(0);
@@ -928,7 +937,7 @@ export default function StartPage() {
     return (
       <main
         data-onboarding-surface="true"
-        className="min-h-screen bg-[var(--mi)] flex items-center justify-center text-[var(--fw)]"
+        className="min-h-screen bg-black flex items-center justify-center text-[var(--fw)]"
       >
         Loading…
       </main>
@@ -938,7 +947,7 @@ export default function StartPage() {
   return (
     <main
       data-onboarding-surface="true"
-      className="min-h-screen bg-[var(--mi)] text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
+      className="min-h-screen bg-black text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
     >
       <div className="mb-6 flex justify-between text-sm text-[var(--ca)]">
         <Link href="/" className="hover:text-[var(--ac)]">
@@ -1070,39 +1079,46 @@ export default function StartPage() {
           </label>
           <textarea
             className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
-              description.trim().length > 0 && description.trim().length < 80
+              description.trim().length > 0 &&
+              (description.trim().length < 15 || description.trim().length > 50)
                 ? "border-amber-500/50"
                 : "border-white/10"
             }`}
-            placeholder="What are you building and who is it for? (min 80 chars)"
+            placeholder="What are you building? One line, max 50 characters."
+            maxLength={50}
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
-              if (e.target.value.trim().length >= 80) setContextTooShort(false);
+              if (
+                e.target.value.trim().length >= 15 &&
+                e.target.value.trim().length <= 50
+              ) {
+                setContextTooShort(false);
+              }
             }}
           />
           {contextTooShort ? (
             <p className="text-sm rounded-lg border border-amber-500/40 bg-amber-500/15 text-amber-100 px-3 py-2" role="alert">
-              Needs at least 80 characters before you can continue. Add a bit more about the problem, who it&apos;s for, and what you&apos;re shipping.
+              Use 15–50 characters: a single clear line on what you are building (no essay).
             </p>
           ) : null}
           <p
             className={`text-xs ${
-              description.trim().length > 0 && description.trim().length < 80
+              description.trim().length > 0 &&
+              (description.trim().length < 15 || description.trim().length > 50)
                 ? "text-amber-300"
                 : "text-[var(--ca)]"
             }`}
           >
-            {description.length}/600
-            {description.trim().length < 80 ? (
-              <span className="block mt-1 text-[var(--ca)]">
-                {Math.max(0, 80 - description.trim().length)} more needed (minimum 80).
-              </span>
-            ) : null}
+            {description.length}/50 · 15 character minimum
           </p>
           <button
             type="button"
-            disabled={busy}
+            disabled={
+              busy ||
+              description.trim().length < 15 ||
+              description.trim().length > 50
+            }
             onClick={trySaveContext}
             className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3 disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -1114,59 +1130,79 @@ export default function StartPage() {
       {step === 4 && (
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <h1 className="text-xl font-bold">CoNexa Calibration</h1>
-          <div className="flex gap-2 justify-center" aria-hidden>
-            {CALIBRATION_STEPS.map((_, i) => (
-              <span
-                key={i}
-                className={`h-2 w-2 rounded-full border ${
-                  i === calI
-                    ? "bg-[var(--ac)] border-[var(--ac)]"
-                    : i < calI
-                      ? "bg-[var(--p)] border-[var(--p)]"
-                      : "border-[var(--t3)] bg-transparent"
-                }`}
-              />
-            ))}
-          </div>
-          {(() => {
-            const meta = CALIBRATION_STEPS[calI];
-            const field = CAL_FIELDS[calI];
-            const value = cal[field];
-            return (
-              <>
-                <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]/80">
-                  {meta.tag}
-                </p>
-                <p className="text-base font-semibold text-[var(--fw)] leading-snug">
-                  {meta.question}
-                </p>
-                <textarea
-                  className="w-full min-h-[120px] rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--t3)]"
-                  placeholder={meta.placeholder}
-                  maxLength={meta.maxLen}
-                  value={value}
-                  onChange={(e) =>
-                    setCal({ ...cal, [field]: e.target.value })
-                  }
-                />
-                <p className="text-xs text-[var(--t3)]">
-                  {value.length}/{meta.maxLen}
-                  {calI <= 2 ? " · '0' or 'none' is fine if that's accurate" : null}
-                </p>
-              </>
-            );
-          })()}
-          <button
-            onClick={saveCalibrationAndNext}
-            disabled={
-              busy ||
-              (calI === 0 && cal.q1.trim().length < 1) ||
-              (calI === 4 && cal.q5.trim().length < 1)
-            }
-            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3"
-          >
-            {calI === 4 ? "Complete CoNexa calibration →" : "Next question →"}
-          </button>
+          <p className="text-xs text-[var(--ca)]">
+            Question {calI + 1} of {CALIBRATION_STEPS.length}
+          </p>
+          {!calReveal ? (
+            <div className="rounded-xl border border-white/15 bg-black/25 px-4 py-8 text-center space-y-3">
+              <p className="text-sm text-[var(--ca)]">
+                Next calibration question is hidden until you&apos;re ready.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCalReveal(true)}
+                className="rounded-full border border-[var(--ac)]/60 text-[var(--ac)] font-semibold px-6 py-2.5 text-sm hover:bg-[var(--ac)]/10"
+              >
+                Show question
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2 justify-center" aria-hidden>
+                {CALIBRATION_STEPS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-2 w-2 rounded-full border ${
+                      i === calI
+                        ? "bg-[var(--ac)] border-[var(--ac)]"
+                        : i < calI
+                          ? "bg-[var(--p)] border-[var(--p)]"
+                          : "border-[var(--t3)] bg-transparent"
+                    }`}
+                  />
+                ))}
+              </div>
+              {(() => {
+                const meta = CALIBRATION_STEPS[calI];
+                const field = CAL_FIELDS[calI];
+                const value = cal[field];
+                return (
+                  <>
+                    <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]/80">
+                      {meta.tag}
+                    </p>
+                    <p className="text-base font-semibold text-[var(--fw)] leading-snug">
+                      {meta.question}
+                    </p>
+                    <textarea
+                      className="w-full min-h-[120px] rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--t3)]"
+                      placeholder={meta.placeholder}
+                      maxLength={meta.maxLen}
+                      value={value}
+                      onChange={(e) =>
+                        setCal({ ...cal, [field]: e.target.value })
+                      }
+                    />
+                    <p className="text-xs text-[var(--t3)]">
+                      {value.length}/{meta.maxLen}
+                      {calI <= 2 ? " · '0' or 'none' is fine if that's accurate" : null}
+                    </p>
+                  </>
+                );
+              })()}
+              <button
+                onClick={saveCalibrationAndNext}
+                disabled={
+                  busy ||
+                  (calI === 0 && cal.q1.trim().length < 1) ||
+                  (calI === 4 && cal.q5.trim().length < 1)
+                }
+                className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3"
+              >
+                {calI === 4 ? "Complete CoNexa calibration →" : "Next question →"}
+              </button>
+            </>
+          )}
         </div>
       )}
 

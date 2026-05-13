@@ -2,11 +2,12 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { AppShell, type AppShellUser } from "./AppShell";
-import { RightRail } from "./RightRail";
+import { DashboardRightRail } from "./DashboardRightRail";
 
+export const InboxUnreadContext = createContext<number>(0);
 export const ShellUserContext = createContext<AppShellUser | null>(null);
 
 /** Re-run `/api/me` after mutations (e.g. entry submit) so `last_submission_date` stays in sync. */
@@ -18,6 +19,10 @@ export function useShellUser(): AppShellUser {
   return u;
 }
 
+export function useInboxUnread(): number {
+  return useContext(InboxUnreadContext);
+}
+
 export function useShellUserRefresh(): () => void {
   const fn = useContext(ShellUserRefreshContext);
   if (!fn) throw new Error("useShellUserRefresh must be used inside AuthenticatedShell");
@@ -27,16 +32,14 @@ export function useShellUserRefresh(): () => void {
 export function AuthenticatedShell({
   children,
   breadcrumb = "Dashboards / Founder Operating Record",
-  showRightRail = false,
   refreshKey = 0,
   /** When set, replaces the whole shell (e.g. Day 21 full-screen gate). */
   fullscreenBlock,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   breadcrumb?: string;
-  showRightRail?: boolean;
   refreshKey?: number;
-  fullscreenBlock?: (user: AppShellUser) => React.ReactNode | null;
+  fullscreenBlock?: (user: AppShellUser) => ReactNode | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -79,24 +82,29 @@ export function AuthenticatedShell({
   const block = fullscreenBlock?.(user);
   if (block) {
     return (
-      <ShellUserRefreshContext.Provider value={refreshShellUser}>
-        <ShellUserContext.Provider value={user}>{block}</ShellUserContext.Provider>
-      </ShellUserRefreshContext.Provider>
+      <InboxUnreadContext.Provider value={inboxUnread}>
+        <ShellUserRefreshContext.Provider value={refreshShellUser}>
+          <ShellUserContext.Provider value={user}>{block}</ShellUserContext.Provider>
+        </ShellUserRefreshContext.Provider>
+      </InboxUnreadContext.Provider>
     );
   }
 
   return (
-    <ShellUserRefreshContext.Provider value={refreshShellUser}>
-      <ShellUserContext.Provider value={user}>
-        <AppShell
-          user={user}
-          breadcrumb={breadcrumb}
-          unreadCount={inboxUnread}
-          rightRail={showRightRail ? <RightRail user={user} /> : undefined}
-        >
-          {children}
-        </AppShell>
-      </ShellUserContext.Provider>
-    </ShellUserRefreshContext.Provider>
+    <InboxUnreadContext.Provider value={inboxUnread}>
+      <ShellUserRefreshContext.Provider value={refreshShellUser}>
+        <ShellUserContext.Provider value={user}>
+          <AppShell
+            user={user}
+            breadcrumb={breadcrumb}
+            unreadCount={inboxUnread}
+            summaryPanel={<DashboardRightRail variant="notifications" />}
+            inlineRightRail={<DashboardRightRail />}
+          >
+            {children}
+          </AppShell>
+        </ShellUserContext.Provider>
+      </ShellUserRefreshContext.Provider>
+    </InboxUnreadContext.Provider>
   );
 }

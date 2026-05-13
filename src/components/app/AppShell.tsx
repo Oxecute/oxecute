@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DashboardNav, type MeUser } from "./DashboardNav";
 import { formatCountdown, getUtcWindowRemainingParts } from "./utc-countdown";
@@ -21,21 +21,62 @@ export function AppShell({
   user,
   breadcrumb = "Dashboards / Founder Operating Record",
   children,
-  rightRail,
+  summaryPanel,
+  inlineRightRail,
   unreadCount = 0,
 }: {
   user: AppShellUser;
   breadcrumb?: string;
   children: React.ReactNode;
-  rightRail?: React.ReactNode;
+  summaryPanel?: React.ReactNode;
+  inlineRightRail?: React.ReactNode;
   unreadCount?: number;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [mobileNav, setMobileNav] = useState(false);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [hoverSummary, setHoverSummary] = useState(false);
+  const [pinnedSummary, setPinnedSummary] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const summaryWrapRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const flyoutRef = useRef<HTMLElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tick, setTick] = useState(0);
+  const [flyoutRightPx, setFlyoutRightPx] = useState(12);
+
+  const syncFlyoutToBell = useCallback(() => {
+    const btn = bellRef.current;
+    if (!btn || typeof window === "undefined") return;
+    const r = btn.getBoundingClientRect();
+    setFlyoutRightPx(Math.max(8, Math.round(window.innerWidth - r.right)));
+  }, []);
+
+  useEffect(() => {
+    syncFlyoutToBell();
+    window.addEventListener("resize", syncFlyoutToBell);
+    return () => window.removeEventListener("resize", syncFlyoutToBell);
+  }, [syncFlyoutToBell]);
+
+  const cancelHoverClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const openSummaryHover = useCallback(() => {
+    cancelHoverClose();
+    syncFlyoutToBell();
+    setHoverSummary(true);
+  }, [cancelHoverClose, syncFlyoutToBell]);
+
+  const scheduleCloseHover = useCallback(() => {
+    cancelHoverClose();
+    closeTimerRef.current = setTimeout(() => setHoverSummary(false), 340);
+  }, [cancelHoverClose]);
 
   useEffect(() => {
     const t = setInterval(() => setTick((x) => x + 1), 1000);
@@ -54,6 +95,18 @@ export function AppShell({
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [accountOpen]);
+
+  useEffect(() => {
+    if (!pinnedSummary) return;
+    function onDoc(e: MouseEvent) {
+      const t = e.target as Node;
+      if (summaryWrapRef.current?.contains(t)) return;
+      if (flyoutRef.current?.contains(t)) return;
+      setPinnedSummary(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [pinnedSummary]);
 
   const clock = new Date().toISOString().slice(11, 19);
   const win = formatCountdown(getUtcWindowRemainingParts());
@@ -74,6 +127,8 @@ export function AppShell({
         : exec >= 25
           ? "bg-[var(--t2)]"
           : "bg-[var(--t3)]";
+
+  const desktopFlyoutOpen = hoverSummary || pinnedSummary;
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
@@ -100,19 +155,45 @@ export function AppShell({
         <span className="lg:ml-0 ml-auto text-xs text-[var(--t2)] tabular-nums">
           {clock} UTC
         </span>
-        <Link
-          href="/inbox"
-          className="relative p-2 rounded-lg hover:bg-[var(--sur2)] text-[var(--t2)]"
-          aria-label="Inbox"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
-          </svg>
-          {unreadCount > 0 ? (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--red)]" />
-          ) : null}
-        </Link>
-        <div className="relative shrink-0" ref={accountRef}>
+        {summaryPanel ? (
+          <div ref={summaryWrapRef} className="relative z-40 shrink-0">
+            <button
+              ref={bellRef}
+              type="button"
+              className="relative p-2 rounded-lg hover:bg-[var(--sur2)] text-[var(--t2)]"
+              aria-label="Open journey summary (right sidebar)"
+              aria-expanded={desktopFlyoutOpen}
+              aria-controls="summary-flyout"
+              onMouseEnter={openSummaryHover}
+              onMouseLeave={scheduleCloseHover}
+              onClick={() => {
+                if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+                  setMobileSummaryOpen(true);
+                  return;
+                }
+                syncFlyoutToBell();
+                setPinnedSummary((p) => !p);
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden
+              >
+                <path
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0h6z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        ) : null}
+        <div className="relative z-30 shrink-0" ref={accountRef}>
           <button
             type="button"
             className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[var(--fw)] ${avatarBg} focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ac)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sur)]`}
@@ -154,6 +235,23 @@ export function AppShell({
         </div>
       </header>
 
+      {summaryPanel ? (
+        <aside
+          ref={flyoutRef}
+          id="summary-flyout"
+          style={{ right: flyoutRightPx }}
+          className={`hidden md:block fixed top-12 z-[45] w-[min(272px,calc(100vw-0.75rem))] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden scrollbar-none shadow-[-12px_0_24px_rgba(1,2,97,0.07)] border-l border-y border-[var(--bdr)] md:rounded-l-2xl bg-[var(--sur)] p-3 pb-6 transition-opacity duration-150 ease-out ${
+            desktopFlyoutOpen
+              ? "opacity-100 visible pointer-events-auto"
+              : "opacity-0 invisible pointer-events-none"
+          }`}
+          onMouseEnter={openSummaryHover}
+          onMouseLeave={scheduleCloseHover}
+        >
+          {summaryPanel}
+        </aside>
+      ) : null}
+
       {mobileNav ? (
         <div className="fixed inset-0 z-40 md:hidden">
           <button
@@ -164,7 +262,11 @@ export function AppShell({
           />
           <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[var(--sur)] border-r border-[var(--bdr)] p-4 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto min-h-0">
-              <DashboardNav user={user} onNavigate={() => setMobileNav(false)} />
+              <DashboardNav
+                user={user}
+                inboxUnread={unreadCount}
+                onNavigate={() => setMobileNav(false)}
+              />
             </div>
             <div className="shrink-0 pt-3 mt-3 border-t border-[var(--bdr)] space-y-1">
               <Link
@@ -191,24 +293,35 @@ export function AppShell({
         </div>
       ) : null}
 
+      {summaryPanel && mobileSummaryOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            aria-label="Close summary"
+            onClick={() => setMobileSummaryOpen(false)}
+          />
+          <aside className="absolute right-0 top-0 bottom-0 w-[min(300px,92vw)] overflow-y-auto overflow-x-hidden scrollbar-none border-l border-[var(--bdr)] bg-[var(--sur)] shadow-xl p-3">
+            {summaryPanel}
+          </aside>
+        </div>
+      ) : null}
+
       <div
-        className={`mx-auto px-4 py-6 md:py-8 ${
-          rightRail
-            ? "max-w-[1280px] grid md:grid-cols-[200px_1fr_236px] gap-6 lg:gap-8"
-            : "max-w-5xl grid md:grid-cols-[200px_1fr] gap-6 lg:gap-8"
+        className={`mx-auto px-4 py-6 md:py-8 grid gap-6 lg:gap-8 ${
+          inlineRightRail
+            ? "max-w-[1320px] md:grid-cols-[200px_1fr_minmax(252px,280px)]"
+            : "max-w-5xl md:grid-cols-[200px_1fr]"
         }`}
       >
         <aside className="hidden md:block space-y-2">
-          <DashboardNav user={user} />
+          <DashboardNav user={user} inboxUnread={unreadCount} />
         </aside>
         <div className="min-w-0">{children}</div>
-        {rightRail ? (
-          <>
-            <aside className="hidden md:block min-w-[236px] max-w-[236px]">{rightRail}</aside>
-            <div className="md:hidden col-span-full border-t border-[var(--bdr)] pt-6">
-              {rightRail}
-            </div>
-          </>
+        {inlineRightRail ? (
+          <aside className="hidden md:block min-w-0 border-l border-[var(--bdr)] pl-4 lg:pl-5 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
+            {inlineRightRail}
+          </aside>
         ) : null}
       </div>
     </div>

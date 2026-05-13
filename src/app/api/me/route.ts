@@ -8,7 +8,7 @@ const patchSchema = z
   .object({
     stage: z.string().optional(),
     mrr: z.string().optional(),
-    startup_description: z.string().min(80).max(600).optional(),
+    startup_description: z.string().min(15).max(50).optional(),
     cal_q1_shipped: z.string().max(250).optional(),
     cal_q2_customers: z.string().max(250).optional(),
     cal_q3_didnt_work: z.string().max(250).optional(),

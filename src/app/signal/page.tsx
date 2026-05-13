@@ -1,5 +1,4 @@
 import { AuthenticatedShell } from "@/components/app/AuthenticatedShell";
-import { WaitlistBlock } from "@/components/app/WaitlistBlock";
 
 export default function LockedSignalPage() {
   return (
@@ -18,7 +17,6 @@ export default function LockedSignalPage() {
         <p className="text-sm font-medium text-[var(--t1)]">
           Progress: keep executing - you&apos;ll see the exact count on your dashboard.
         </p>
-        <WaitlistBlock featureSlug="signal_score" title="Get notified when Signal leaves beta" />
       </main>
     </AuthenticatedShell>
   );
