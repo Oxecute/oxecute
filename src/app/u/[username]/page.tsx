@@ -7,26 +7,6 @@ import {
 } from "@/components/profile/ProfileSections";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-
-const RESERVED = new Set([
-  "api",
-  "auth",
-  "dashboard",
-  "login",
-  "start",
-  "board",
-  "inbox",
-  "tools",
-  "settings",
-  "signal",
-  "directive",
-  "community",
-  "coaches",
-  "angels",
-  "_next",
-  "favicon.ico",
-]);
 
 export async function generateMetadata(props: {
   params: Promise<{ username: string }>;
@@ -41,7 +21,6 @@ export default async function PublicProfilePage(props: {
   params: Promise<{ username: string }>;
 }) {
   const { username } = await props.params;
-  if (RESERVED.has(username.toLowerCase())) notFound();
 
   const admin = createServiceRoleClient();
   const { data: user } = await admin

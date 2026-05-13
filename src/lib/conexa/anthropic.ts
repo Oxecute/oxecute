@@ -60,7 +60,7 @@ export async function conexaSynthesis(userMessage: string, signal?: AbortSignal)
   return callAnthropic({
     system: SYNTHESIS_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
-    max_tokens: 600,
+    max_tokens: 1200,
     signal,
   });
 }

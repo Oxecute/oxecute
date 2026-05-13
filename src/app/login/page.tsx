@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const ae = p.get("auth_error");
+    if (!ae) return;
+    setError(decodeURIComponent(ae.replace(/\+/g, " ")));
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -89,6 +97,11 @@ export default function LoginPage() {
           >
             {loading ? "…" : "Sign in"}
           </button>
+          <p className="text-sm text-center">
+            <Link href="/auth/forgot-password" className="text-[var(--ac)] underline">
+              Forgot password?
+            </Link>
+          </p>
         </form>
         <div className="relative flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />

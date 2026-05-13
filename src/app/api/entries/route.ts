@@ -5,6 +5,7 @@ import { detectReferralRewards } from "@/lib/referral-rewards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
+import { assertValidUploadPathsForUser } from "@/lib/entry-uploads";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -19,6 +20,8 @@ async function urlNotDuplicateExcept(
   return !data?.length;
 }
 
+const declarationUploadPaths = z.array(z.string().min(1).max(512)).max(3).optional();
+
 const postSchema = z.discriminatedUnion("path", [
   z.object({
     path: z.literal("verified"),
@@ -32,6 +35,7 @@ const postSchema = z.discriminatedUnion("path", [
       z.string().min(30).max(140),
     ),
     category: z.enum(["product", "distribution", "ops"]),
+    upload_paths: declarationUploadPaths,
   }),
 ]);
 
@@ -70,6 +74,19 @@ export async function POST(request: Request) {
         ? "Declaration must be 30–140 characters (after trimming spaces)."
         : (first?.message ?? "Invalid input");
     return NextResponse.json({ error: hint }, { status: 400 });
+  }
+
+  let declarationUploadPathsResolved: string[] | null = null;
+  if (parsed.data.path === "declaration") {
+    try {
+      declarationUploadPathsResolved = assertValidUploadPathsForUser(
+        parsed.data.upload_paths,
+        user.id,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Invalid attachments";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
   }
 
   const today = utcTodayISO();
@@ -131,6 +148,7 @@ export async function POST(request: Request) {
           tier,
           declaration_text,
           url: null,
+          upload_paths: declarationUploadPathsResolved,
           validation_hash: hash,
           url_resolved_status: null,
           url_content_type: null,
@@ -158,6 +176,7 @@ export async function POST(request: Request) {
           tier,
           url,
           declaration_text: null,
+          upload_paths: null,
           validation_hash: hash,
           url_resolved_status: check.httpStatus,
           url_content_type: check.contentType ?? null,
@@ -195,6 +214,7 @@ export async function POST(request: Request) {
       source_type,
       tier,
       declaration_text,
+      upload_paths: declarationUploadPathsResolved,
       validation_hash: hash,
       execution_day: true,
     });

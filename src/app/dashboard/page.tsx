@@ -7,6 +7,10 @@ import {
 } from "@/components/app/AuthenticatedShell";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
+import {
+  ENTRY_UPLOAD_ACCEPT,
+  uploadEntryDeclarationFiles,
+} from "@/lib/entry-uploads";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -78,6 +82,7 @@ function DashboardMain() {
   const [cat, setCat] = useState<"product" | "distribution" | "ops">("product");
   const [dayDetail, setDayDetail] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [declFiles, setDeclFiles] = useState<File[]>([]);
 
   const loadEntries = useCallback(async () => {
     const {
@@ -179,6 +184,7 @@ function DashboardMain() {
             type="button"
             onClick={() => {
               setSubmitError(null);
+              setDeclFiles([]);
               setModalOpen(true);
             }}
             className="rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold px-6 py-2"
@@ -292,6 +298,7 @@ function DashboardMain() {
                 className={tab === "verified" ? "font-bold text-[var(--p)]" : "text-[var(--t2)]"}
                 onClick={() => {
                   setTab("verified");
+                  setDeclFiles([]);
                   setSubmitError(null);
                 }}
               >
@@ -338,6 +345,31 @@ function DashboardMain() {
                 >
                   {decl.trim().length} / 30-140 characters
                 </p>
+                <label className="block text-xs text-[var(--t2)]">
+                  Attach proof (optional) — up to 3 files, 5MB each (JPG, PNG, WebP, GIF, PDF)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept={ENTRY_UPLOAD_ACCEPT}
+                  className={`${FORM_FIELD} file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--p)] file:px-3 file:py-2 file:text-[var(--fw)] file:text-xs`}
+                  onChange={(e) => {
+                    const files = e.target.files
+                      ? Array.from(e.target.files).slice(0, 3)
+                      : [];
+                    setDeclFiles(files);
+                    setSubmitError(null);
+                  }}
+                />
+                {declFiles.length > 0 ? (
+                  <ul className="text-xs text-[var(--t3)] space-y-1 list-disc list-inside">
+                    {declFiles.map((f, i) => (
+                      <li key={`${f.name}-${i}`}>
+                        {f.name} ({Math.round(f.size / 1024)} KB)
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </>
             )}
             <select
@@ -365,10 +397,42 @@ function DashboardMain() {
                 (decl.trim().length < 30 || decl.trim().length > 140)
               }
               onClick={async () => {
-                const body =
-                  tab === "verified"
-                    ? { path: "verified", url: proofUrl.trim(), category: cat }
-                    : { path: "declaration", declaration_text: decl.trim(), category: cat };
+                let body: Record<string, unknown>;
+                if (tab === "verified") {
+                  body = { path: "verified", url: proofUrl.trim(), category: cat };
+                } else {
+                  const {
+                    data: { session },
+                  } = await supabase.auth.getSession();
+                  if (!session?.user) {
+                    setSubmitError("Your session expired. Sign in again.");
+                    return;
+                  }
+                  let upload_paths: string[] | undefined;
+                  if (declFiles.length > 0) {
+                    try {
+                      upload_paths = await uploadEntryDeclarationFiles(
+                        supabase,
+                        session.user.id,
+                        declFiles,
+                        "dash",
+                      );
+                    } catch (e) {
+                      setSubmitError(
+                        e instanceof Error
+                          ? e.message
+                          : "Upload failed. Ensure the entry-uploads bucket exists in Supabase.",
+                      );
+                      return;
+                    }
+                  }
+                  body = {
+                    path: "declaration",
+                    declaration_text: decl.trim(),
+                    category: cat,
+                    ...(upload_paths?.length ? { upload_paths } : {}),
+                  };
+                }
                 const res = await fetch("/api/entries", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -386,6 +450,7 @@ function DashboardMain() {
                 setModalOpen(false);
                 setProofUrl("");
                 setDecl("");
+                setDeclFiles([]);
                 refreshShellUser();
                 void loadEntries();
               }}
@@ -398,6 +463,7 @@ function DashboardMain() {
               onClick={() => {
                 setModalOpen(false);
                 setSubmitError(null);
+                setDeclFiles([]);
               }}
             >
               Cancel
@@ -430,6 +496,11 @@ function DashboardMain() {
             ) : null}
             {dayDetail.declaration_text ? (
               <p className="text-[var(--t2)]">{String(dayDetail.declaration_text)}</p>
+            ) : null}
+            {Array.isArray(dayDetail.upload_paths) && (dayDetail.upload_paths as string[]).length > 0 ? (
+              <p className="text-[var(--t2)] text-xs">
+                Attachments: {(dayDetail.upload_paths as string[]).length} file(s) on record (private storage).
+              </p>
             ) : null}
             <button type="button" className="mt-4 text-[var(--t3)]" onClick={() => setDayDetail(null)}>
               Close

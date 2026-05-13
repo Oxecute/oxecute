@@ -2,9 +2,13 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
+import {
+  ENTRY_UPLOAD_ACCEPT,
+  uploadEntryDeclarationFiles,
+} from "@/lib/entry-uploads";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const FOUND_US = [
   "Reddit",
@@ -22,7 +26,7 @@ const CALIBRATION_STEPS = [
     question: "What have you already built or shipped?",
     placeholder:
       "A landing page, an MVP, a first feature, a prototype - anything that exists and can be seen or used.",
-    maxLen: 100,
+    maxLen: 250,
   },
   {
     tag: "CUSTOMERS",
@@ -30,28 +34,28 @@ const CALIBRATION_STEPS = [
       "Have you spoken to any potential customers? What did you learn?",
     placeholder:
       "How many conversations, what they said, what surprised you, what they are actually paying for today.",
-    maxLen: 100,
+    maxLen: 250,
   },
   {
     tag: "ELIMINATED",
     question: "What have you already tried that did not work?",
     placeholder:
       "Channels, features, pricing, messaging - anything you tested and abandoned, and why.",
-    maxLen: 100,
+    maxLen: 250,
   },
   {
     tag: "TRACTION",
     question: "Do you have any early traction?",
     placeholder:
       "Users, revenue, waitlist, LOIs, pilots - anything. Numbers only. Zero is a valid answer.",
-    maxLen: 500,
+    maxLen: 250,
   },
   {
     tag: "30-DAY UNKNOWN",
     question:
       "What is the one thing you need to figure out in the next 30 days to know this is worth continuing?",
     placeholder: "The single most important unknown right now.",
-    maxLen: 500,
+    maxLen: 250,
   },
 ] as const;
 
@@ -127,6 +131,9 @@ export default function StartPage() {
 
   const [synthesis, setSynthesis] = useState<string[]>([]);
   const [synthShown, setSynthShown] = useState(0);
+  /** Collapsed synthesis cards are `false`; open when `true` or unset. */
+  const [synthCollapsed, setSynthCollapsed] = useState<Record<number, boolean>>({});
+  const [synthLoading, setSynthLoading] = useState(false);
 
   const [blocker, setBlocker] = useState("");
   const [avoid, setAvoid] = useState<string[]>([]);
@@ -136,13 +143,17 @@ export default function StartPage() {
     personal_insight: string;
   } | null>(null);
   const [actShown, setActShown] = useState(0);
+  /** Same as synthesis: `true` means section is collapsed. */
+  const [actCollapsed, setActCollapsed] = useState<Record<number, boolean>>({});
 
   const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "signup">(
     "verified",
   );
   const [proofUrl, setProofUrl] = useState("");
   const [decl, setDecl] = useState("");
+  const [declFiles, setDeclFiles] = useState<File[]>([]);
   const [workCat, setWorkCat] = useState<"product" | "distribution" | "ops">("product");
+  const declFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -619,30 +630,56 @@ export default function StartPage() {
       return;
     }
     setBusy(true);
-    await fetch("/api/me", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cal_q1_shipped: cal.q1,
-        cal_q2_customers: cal.q2,
-        cal_q3_didnt_work: cal.q3,
-        cal_q4_traction: cal.q4,
-        cal_q5_unknown: cal.q5,
-      }),
-    });
-    setBusy(false);
     setStep(5);
+    setSynthLoading(true);
     setSynthShown(0);
-    const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
-    const j = await syn.json();
-    const stmts: string[] = j.statements ?? [];
-    setSynthesis(stmts);
-    let i = 0;
+    setSynthesis([]);
+    setSynthCollapsed({});
+    try {
+      await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cal_q1_shipped: cal.q1,
+          cal_q2_customers: cal.q2,
+          cal_q3_didnt_work: cal.q3,
+          cal_q4_traction: cal.q4,
+          cal_q5_unknown: cal.q5,
+        }),
+      });
+      const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
+      const j = await syn.json();
+      let stmts: string[] = j.statements ?? [];
+      if (!Array.isArray(stmts) || stmts.filter(Boolean).length < 1) {
+        stmts = [
+          "We couldn’t load full synthesis.",
+          "Your answers are saved — tap “Edit my answers” or refresh.",
+          "",
+          "",
+          "",
+        ];
+      }
+      while (stmts.length < 5) stmts.push("");
+      setSynthesis(stmts.slice(0, 5));
+      let i = 0;
       const iv = setInterval(() => {
-      i += 1;
-      setSynthShown(Math.min(i, stmts.length));
-      if (i >= stmts.length) clearInterval(iv);
-    }, 300);
+        i += 1;
+        setSynthShown(Math.min(i, stmts.length));
+        if (i >= stmts.length) clearInterval(iv);
+      }, 220);
+    } catch {
+      setSynthesis([
+        "We couldn’t generate synthesis just now.",
+        "Your answers are saved — use “Edit my answers” or refresh.",
+        "",
+        "",
+        "",
+      ]);
+      setSynthShown(5);
+    } finally {
+      setSynthLoading(false);
+      setBusy(false);
+    }
   }
 
   async function confirmSynthesis() {
@@ -775,11 +812,56 @@ export default function StartPage() {
   async function submitFirst() {
     setBusy(true);
     setErr(null);
+    if (firstPath === "declaration") {
+      const t = decl.trim();
+      if (t.length < 30 || t.length > 140) {
+        setBusy(false);
+        setErr(
+          `Declaration must be 30-140 characters after trimming (you have ${t.length}).`,
+        );
+        window.alert(
+          `Your declaration needs at least 30 characters (maximum 140). You currently have ${t.length}. Add one or two clear sentences about what you shipped or what you are committing to.`,
+        );
+        return;
+      }
+    }
     let body: Record<string, unknown>;
     if (firstPath === "signup") body = { path: "signup" };
-    else if (firstPath === "declaration")
-      body = { path: "declaration", declaration_text: decl, category: workCat };
-    else body = { path: "verified", url: proofUrl, category: workCat };
+    else if (firstPath === "declaration") {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setBusy(false);
+        setErr("Your session expired. Sign in again.");
+        return;
+      }
+      let upload_paths: string[] | undefined;
+      if (declFiles.length > 0) {
+        try {
+          upload_paths = await uploadEntryDeclarationFiles(
+            supabase,
+            session.user.id,
+            declFiles,
+            "first",
+          );
+        } catch (e) {
+          setBusy(false);
+          setErr(
+            e instanceof Error
+              ? e.message
+              : "Could not upload files. Run the entry-uploads storage migration in Supabase, then try again.",
+          );
+          return;
+        }
+      }
+      body = {
+        path: "declaration",
+        declaration_text: decl.trim(),
+        category: workCat,
+        ...(upload_paths?.length ? { upload_paths } : {}),
+      };
+    } else body = { path: "verified", url: proofUrl.trim(), category: workCat };
 
     const res = await fetch("/api/entries/first", {
       method: "POST",
@@ -927,6 +1009,14 @@ export default function StartPage() {
           )}
           <p className="text-sm text-center text-[var(--ca)]">
             Already have an account? <Link href="/login" className="text-[var(--ac)] underline">Sign in</Link>
+            {!hasAuthSession ? (
+              <>
+                {" · "}
+                <Link href="/auth/forgot-password" className="text-[var(--ac)] underline">
+                  Forgot password
+                </Link>
+              </>
+            ) : null}
           </p>
         </div>
       )}
@@ -934,16 +1024,30 @@ export default function StartPage() {
       {step === 3 && (
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <h1 className="text-xl font-bold">Context</h1>
-          <select className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" value={stage} onChange={(e) => setStage(e.target.value)}>
-            {["Idea", "Building", "Launched", "Scaling"].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <select className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" value={mrr} onChange={(e) => setMrr(e.target.value)}>
-            {["Pre-revenue", "$1-500", "$500-2K", "$2K-10K", "$10K+"].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-[var(--fw)]">
+            Where is your startup right now?
+            <select
+              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
+              value={stage}
+              onChange={(e) => setStage(e.target.value)}
+            >
+              {["Idea", "Building", "Launched", "Scaling"].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-[var(--fw)]">
+            Monthly revenue (MRR)?
+            <select
+              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
+              value={mrr}
+              onChange={(e) => setMrr(e.target.value)}
+            >
+              {["Pre-revenue", "$1-500", "$500-2K", "$2K-10K", "$10K+"].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
           <textarea
             className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
               description.trim().length > 0 && description.trim().length < 80
@@ -1027,9 +1131,7 @@ export default function StartPage() {
                 />
                 <p className="text-xs text-[var(--t3)]">
                   {value.length}/{meta.maxLen}
-                  {calI >= 1 && calI <= 3
-                    ? " · '0' or 'none' is fine if that's accurate"
-                    : null}
+                  {calI <= 2 ? " · '0' or 'none' is fine if that's accurate" : null}
                 </p>
               </>
             );
@@ -1051,14 +1153,51 @@ export default function StartPage() {
       {step === 5 && (
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <h1 className="text-xl font-bold">Synthesis</h1>
-          <div className="space-y-3">
-            {synthesis.slice(0, synthShown).map((s, i) => (
-              <p key={i} className="text-sm border border-white/10 rounded-lg p-3 bg-black/20">
-                {s}
+          {synthLoading ? (
+            <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-8 text-center space-y-3">
+              <div className="flex justify-center">
+                <span className="inline-block h-8 w-8 rounded-full border-2 border-[var(--ac)] border-t-transparent animate-spin" />
+              </div>
+              <p className="text-sm text-[var(--ca)]">
+                Generating your synthesis from your calibration answers… This usually takes a few seconds.
               </p>
-            ))}
-          </div>
-          <button disabled={synthShown < 5} onClick={() => void confirmSynthesis()} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {synthesis.slice(0, synthShown).map((s, i) => {
+                const collapsed = synthCollapsed[i] === true;
+                return (
+                  <div key={i} className="border border-white/10 rounded-lg bg-black/20 overflow-hidden">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-semibold text-[var(--fw)] hover:bg-white/5"
+                      onClick={() =>
+                        setSynthCollapsed((prev) => ({
+                          ...prev,
+                          [i]: !collapsed,
+                        }))
+                      }
+                    >
+                      <span>Insight {i + 1} of 5</span>
+                      <span className="text-xs font-medium text-[var(--ac)] shrink-0">
+                        {collapsed ? "Show" : "Hide"}
+                      </span>
+                    </button>
+                    {!collapsed ? (
+                      <p className="text-sm text-[var(--ca)] px-3 pb-3 whitespace-pre-wrap break-words">
+                        {s}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <button
+            disabled={synthLoading || synthShown < 5}
+            onClick={() => void confirmSynthesis()}
+            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3 disabled:opacity-50"
+          >
             Yes, continue →
           </button>
           <button
@@ -1124,19 +1263,39 @@ export default function StartPage() {
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <p className="text-xs tracking-widest text-[var(--ac)]">CONEXA · EXECUTION INTELLIGENCE</p>
           <div className="space-y-2 text-sm">
-            {[
-              ["The Reality Check", activation.tabs.reality_check],
-              ["The Blindspot", activation.tabs.blindspot],
-              ["Shipping vs. Noise", activation.tabs.shipping_vs_noise],
-              ["The Next Move", activation.tabs.next_move],
-              ["The Integrity Forecast", activation.tabs.integrity_forecast],
-              ["Executive Synthesis", activation.tabs.executive_synthesis],
-            ].slice(0, actShown).map(([t, b], i) => (
-              <div key={i} className="border border-white/10 rounded-lg p-3">
-                <p className="font-semibold text-[var(--ac)] mb-1">{t}</p>
-                <p className="text-[var(--ca)]">{String(b ?? "")}</p>
-              </div>
-            ))}
+            {(
+              [
+                ["The Reality Check", activation.tabs.reality_check],
+                ["The Blindspot", activation.tabs.blindspot],
+                ["Shipping vs. Noise", activation.tabs.shipping_vs_noise],
+                ["The Next Move", activation.tabs.next_move],
+                ["The Integrity Forecast", activation.tabs.integrity_forecast],
+                ["Executive Synthesis", activation.tabs.executive_synthesis],
+              ] as const
+            ).slice(0, actShown).map(([t, b], i) => {
+              const collapsed = actCollapsed[i] === true;
+              return (
+                <div key={i} className="border border-white/10 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-white/5"
+                    onClick={() =>
+                      setActCollapsed((prev) => ({ ...prev, [i]: !collapsed }))
+                    }
+                  >
+                    <span className="font-semibold text-[var(--ac)]">{t}</span>
+                    <span className="text-xs font-medium text-[var(--ac)] shrink-0">
+                      {collapsed ? "Show" : "Hide"}
+                    </span>
+                  </button>
+                  {!collapsed ? (
+                    <p className="text-[var(--ca)] px-3 pb-3 whitespace-pre-wrap break-words">
+                      {String(b ?? "")}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
           {actShown >= 6 && (
             <>
@@ -1164,27 +1323,116 @@ export default function StartPage() {
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <h1 className="text-xl font-bold">First Entry</h1>
           <div className="space-y-2">
-            <button type="button" className={`w-full text-left p-3 rounded-lg border ${firstPath === "verified" ? "border-[var(--ac)]" : "border-white/10"}`} onClick={() => setFirstPath("verified")}>
+            <button
+              type="button"
+              className={`w-full text-left p-3 rounded-lg border ${firstPath === "verified" ? "border-[var(--ac)]" : "border-white/10"}`}
+              onClick={() => {
+                setFirstPath("verified");
+                setDeclFiles([]);
+              }}
+            >
               Verified Proof
             </button>
-            <button type="button" className={`w-full text-left p-3 rounded-lg border ${firstPath === "declaration" ? "border-[var(--ac)]" : "border-white/10"}`} onClick={() => setFirstPath("declaration")}>
+            <button
+              type="button"
+              className={`w-full text-left p-3 rounded-lg border ${firstPath === "declaration" ? "border-[var(--ac)]" : "border-white/10"}`}
+              onClick={() => setFirstPath("declaration")}
+            >
               Declaration
             </button>
-            <button type="button" className={`w-full text-left p-3 rounded-lg border ${firstPath === "signup" ? "border-[var(--ac)]" : "border-white/10"}`} onClick={() => setFirstPath("signup")}>
+            <button
+              type="button"
+              className={`w-full text-left p-3 rounded-lg border ${firstPath === "signup" ? "border-[var(--ac)]" : "border-white/10"}`}
+              onClick={() => {
+                setFirstPath("signup");
+                setDeclFiles([]);
+              }}
+            >
               Nothing to submit (Path B)
             </button>
           </div>
           {firstPath === "verified" && (
-            <input className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="https://…" value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} />
+            <input
+              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
+              placeholder="https://…"
+              value={proofUrl}
+              onChange={(e) => setProofUrl(e.target.value)}
+            />
           )}
           {firstPath === "declaration" && (
-            <textarea className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" value={decl} onChange={(e) => setDecl(e.target.value)} />
+            <>
+              <textarea
+                className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
+                  decl.trim().length > 0 && decl.trim().length < 30
+                    ? "border-amber-500/50"
+                    : "border-white/10"
+                }`}
+                placeholder="One or two tight sentences: what you shipped or what you're committing to today (30-140 characters)."
+                maxLength={140}
+                value={decl}
+                onChange={(e) => setDecl(e.target.value)}
+              />
+              <p
+                className={`text-xs ${
+                  decl.trim().length > 0 && decl.trim().length < 30
+                    ? "text-amber-300"
+                    : "text-[var(--ca)]"
+                }`}
+              >
+                {decl.trim().length}/140 · minimum 30 characters
+              </p>
+              <span className="block text-xs font-medium text-[var(--fw)]">
+                Attach proof (optional)
+              </span>
+              <p className="text-xs text-[var(--ca)]">
+                Up to 3 files · 5MB each · JPG, PNG, WebP, GIF, or PDF
+              </p>
+              <input
+                ref={declFileInputRef}
+                id="decl-first-files"
+                type="file"
+                multiple
+                accept={ENTRY_UPLOAD_ACCEPT}
+                className="sr-only"
+                onChange={(e) => {
+                  const files = e.target.files
+                    ? Array.from(e.target.files).slice(0, 3)
+                    : [];
+                  setDeclFiles(files);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => declFileInputRef.current?.click()}
+                className="w-full rounded-lg border border-dashed border-white/25 bg-black/25 px-4 py-3 text-sm font-medium text-[var(--fw)] hover:border-[var(--ac)]/60 hover:bg-black/35"
+              >
+                {declFiles.length > 0
+                  ? `Replace files (${declFiles.length} selected)`
+                  : "Choose files"}
+              </button>
+              {declFiles.length > 0 ? (
+                <ul className="text-xs text-[var(--ca)] space-y-1 list-disc list-inside">
+                  {declFiles.map((f, i) => (
+                    <li key={`${f.name}-${i}`}>
+                      {f.name} ({Math.round(f.size / 1024)} KB)
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
           )}
-          <select className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" value={workCat} onChange={(e) => setWorkCat(e.target.value as typeof workCat)}>
-            <option value="product">Product</option>
-            <option value="distribution">Distribution</option>
-            <option value="ops">Ops</option>
-          </select>
+          <label className="block text-sm font-medium text-[var(--fw)]">
+            What kind of work is this entry?
+            <select
+              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
+              value={workCat}
+              onChange={(e) => setWorkCat(e.target.value as typeof workCat)}
+            >
+              <option value="product">Product</option>
+              <option value="distribution">Distribution</option>
+              <option value="ops">Ops</option>
+            </select>
+          </label>
           {err && <p className="text-[var(--orange)] text-sm">{err}</p>}
           <button disabled={busy} onClick={submitFirst} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
             Lock entry →

@@ -33,7 +33,7 @@ Q4 (Early traction): "${u.cal_q4_traction ?? ""}"
 Q5 (30-day unknown): "${u.cal_q5_unknown ?? ""}"`;
 
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 12000);
+  const t = setTimeout(() => controller.abort(), 26000);
   let text: string;
   let tokens_in = 0;
   let tokens_out = 0;

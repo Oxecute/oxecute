@@ -6,9 +6,12 @@ import { detectReferralRewards } from "@/lib/referral-rewards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
+import { assertValidUploadPathsForUser } from "@/lib/entry-uploads";
 import { sendEmail } from "@/lib/email/send";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+
+const declarationUploadPaths = z.array(z.string().min(1).max(512)).max(3).optional();
 
 const jsonSchema = z.discriminatedUnion("path", [
   z.object({
@@ -18,8 +21,12 @@ const jsonSchema = z.discriminatedUnion("path", [
   }),
   z.object({
     path: z.literal("declaration"),
-    declaration_text: z.string().min(30).max(140),
+    declaration_text: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() : v),
+      z.string().min(30).max(140),
+    ),
     category: z.enum(["product", "distribution", "ops"]),
+    upload_paths: declarationUploadPaths,
   }),
   z.object({
     path: z.literal("signup"),
@@ -62,9 +69,32 @@ export async function POST(request: Request) {
   }
 
   const json = await request.json().catch(() => null);
+  if (json === null || typeof json !== "object") {
+    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
   const parsed = jsonSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    const first = parsed.error.issues[0];
+    const hint =
+      first?.path.join(".") === "declaration_text"
+        ? "Declaration must be 30-140 characters (after trimming spaces)."
+        : first?.path.join(".") === "url"
+          ? "Enter a valid proof URL (https://…)."
+          : (first?.message ?? "Check your entry and try again.");
+    return NextResponse.json({ error: hint }, { status: 400 });
+  }
+
+  let firstDeclUploadPaths: string[] | null = null;
+  if (parsed.data.path === "declaration") {
+    try {
+      firstDeclUploadPaths = assertValidUploadPathsForUser(
+        parsed.data.upload_paths,
+        user.id,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Invalid attachments";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
   }
 
   const today = utcTodayISO();
@@ -108,6 +138,7 @@ export async function POST(request: Request) {
       source_type,
       tier,
       declaration_text,
+      upload_paths: firstDeclUploadPaths,
       validation_hash,
       execution_day: true,
     });
