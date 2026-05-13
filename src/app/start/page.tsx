@@ -114,6 +114,7 @@ export default function StartPage() {
   const [stage, setStage] = useState("Building");
   const [mrr, setMrr] = useState("Pre-revenue");
   const [description, setDescription] = useState("");
+  const [contextTooShort, setContextTooShort] = useState(false);
 
   const [calI, setCalI] = useState(0);
   const [cal, setCal] = useState({
@@ -211,11 +212,30 @@ export default function StartPage() {
       if (!locked) {
         setStep(5);
         setSynthShown(0);
-        const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
-        const j = await syn.json();
-        const stmts: string[] = j.statements ?? [];
-        setSynthesis(stmts);
-        setSynthShown(stmts.length);
+        setSynthesis([]);
+        void (async () => {
+          try {
+            const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
+            const j = await syn.json();
+            const stmts: string[] = j.statements ?? [];
+            setSynthesis(stmts);
+            let i = 0;
+            const iv = setInterval(() => {
+              i += 1;
+              setSynthShown(Math.min(i, stmts.length));
+              if (i >= stmts.length) clearInterval(iv);
+            }, 300);
+          } catch {
+            setSynthesis([
+              "We couldn’t generate synthesis just now.",
+              "Your answers are saved — use “Edit my answers” or refresh.",
+              "",
+              "",
+              "",
+            ]);
+            setSynthShown(5);
+          }
+        })();
         return;
       }
 
@@ -231,13 +251,25 @@ export default function StartPage() {
       if (!u.conexa_day1_at) {
         setStep(7);
         setActShown(0);
-        const act = await fetch("/api/conexa/activation", { method: "POST" });
-        const j = await act.json();
-        setActivation({
-          tabs: j.tabs ?? {},
-          personal_insight: String(j.personal_insight ?? ""),
-        });
-        setActShown(6);
+        setActivation(null);
+        void (async () => {
+          try {
+            const act = await fetch("/api/conexa/activation", { method: "POST" });
+            const j = await act.json();
+            setActivation({
+              tabs: j.tabs ?? {},
+              personal_insight: String(j.personal_insight ?? ""),
+            });
+            setActShown(6);
+          } catch {
+            setActivation({
+              tabs: {},
+              personal_insight:
+                "Conexa could not load this read. Check your connection and refresh this page.",
+            });
+            setActShown(6);
+          }
+        })();
         return;
       }
 
@@ -551,13 +583,26 @@ export default function StartPage() {
     setStep(3);
   }
 
+  function trySaveContext() {
+    const len = description.trim().length;
+    if (len < 80) {
+      setContextTooShort(true);
+      window.alert(
+        `Your description needs at least 80 characters (you have ${len}). Add more detail about what you're building and who it's for.`,
+      );
+      return;
+    }
+    setContextTooShort(false);
+    void saveContext();
+  }
+
   async function saveContext() {
     setBusy(true);
     setErr(null);
     const res = await fetch("/api/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage, mrr, startup_description: description }),
+      body: JSON.stringify({ stage, mrr, startup_description: description.trim() }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -779,14 +824,20 @@ export default function StartPage() {
 
   if (booting) {
     return (
-      <main className="min-h-screen bg-[var(--mi)] flex items-center justify-center text-[var(--fw)]">
+      <main
+        data-onboarding-surface="true"
+        className="min-h-screen bg-[var(--mi)] flex items-center justify-center text-[var(--fw)]"
+      >
         Loading…
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--mi)] text-[var(--fw)] px-4 py-10 max-w-lg mx-auto">
+    <main
+      data-onboarding-surface="true"
+      className="min-h-screen bg-[var(--mi)] text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
+    >
       <div className="mb-6 flex justify-between text-sm text-[var(--ca)]">
         <Link href="/" className="hover:text-[var(--ac)]">
           ← Home
@@ -893,9 +944,44 @@ export default function StartPage() {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <textarea className="w-full min-h-[120px] rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="What are you building and who is it for? (min 80 chars)" value={description} onChange={(e) => setDescription(e.target.value)} />
-          <p className="text-xs text-[var(--t3)]">{description.length}/600</p>
-          <button disabled={busy || description.length < 80} onClick={saveContext} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
+          <textarea
+            className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
+              description.trim().length > 0 && description.trim().length < 80
+                ? "border-amber-500/50"
+                : "border-white/10"
+            }`}
+            placeholder="What are you building and who is it for? (min 80 chars)"
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (e.target.value.trim().length >= 80) setContextTooShort(false);
+            }}
+          />
+          {contextTooShort ? (
+            <p className="text-sm rounded-lg border border-amber-500/40 bg-amber-500/15 text-amber-100 px-3 py-2" role="alert">
+              Needs at least 80 characters before you can continue. Add a bit more about the problem, who it&apos;s for, and what you&apos;re shipping.
+            </p>
+          ) : null}
+          <p
+            className={`text-xs ${
+              description.trim().length > 0 && description.trim().length < 80
+                ? "text-amber-300"
+                : "text-[var(--ca)]"
+            }`}
+          >
+            {description.length}/600
+            {description.trim().length < 80 ? (
+              <span className="block mt-1 text-[var(--ca)]">
+                {Math.max(0, 80 - description.trim().length)} more needed (minimum 80).
+              </span>
+            ) : null}
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={trySaveContext}
+            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             Continue
           </button>
         </div>
@@ -1022,6 +1108,18 @@ export default function StartPage() {
         </div>
       )}
 
+      {step === 7 && !activation && (
+        <div className="space-y-4 glass-card rounded-2xl p-6 text-center">
+          <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]/80">
+            Conexa
+          </p>
+          <p className="text-sm text-[var(--ca)]">Preparing your execution read…</p>
+          <div className="flex justify-center py-4">
+            <span className="inline-block h-8 w-8 rounded-full border-2 border-[var(--ac)] border-t-transparent animate-spin" />
+          </div>
+        </div>
+      )}
+
       {step === 7 && activation && (
         <div className="space-y-4 glass-card rounded-2xl p-6">
           <p className="text-xs tracking-widest text-[var(--ac)]">CONEXA · EXECUTION INTELLIGENCE</p>
@@ -1036,7 +1134,7 @@ export default function StartPage() {
             ].slice(0, actShown).map(([t, b], i) => (
               <div key={i} className="border border-white/10 rounded-lg p-3">
                 <p className="font-semibold text-[var(--ac)] mb-1">{t}</p>
-                <p className="text-[var(--ca)]">{String(b)}</p>
+                <p className="text-[var(--ca)]">{String(b ?? "")}</p>
               </div>
             ))}
           </div>

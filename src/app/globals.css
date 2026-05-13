@@ -58,6 +58,26 @@ select {
   backdrop-filter: blur(12px);
 }
 
+/**
+ * Onboarding (start flow) is always dark per brief. Browsers often force light form
+ * foreground/background when prefers-color-scheme: light — this keeps fields readable.
+ */
+[data-onboarding-surface="true"] {
+  color-scheme: dark;
+}
+
+[data-onboarding-surface="true"] input:not([type="checkbox"]):not([type="radio"]),
+[data-onboarding-surface="true"] textarea,
+[data-onboarding-surface="true"] select {
+  color: var(--fw);
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+[data-onboarding-surface="true"] select option {
+  background-color: var(--mi);
+  color: var(--fw);
+}
+
 .text-balance {
   text-wrap: balance;
 }

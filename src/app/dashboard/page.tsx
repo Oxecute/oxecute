@@ -68,7 +68,6 @@ function DashboardMain() {
   const refreshShellUser = useShellUserRefresh();
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Record<string, unknown>[]>([]);
-  const [tick, setTick] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatText, setChatText] = useState("");
   const [chatLog, setChatLog] = useState<{ role: string; content: string }[]>([]);
@@ -92,12 +91,7 @@ function DashboardMain() {
 
   useEffect(() => {
     void loadEntries();
-  }, [loadEntries, tick]);
-
-  useEffect(() => {
-    const iv = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(iv);
-  }, []);
+  }, [loadEntries]);
 
   const report = user.conexa_day1_report as Record<string, unknown> | null;
   const tabs = (report?.tabs as Record<string, string>) ?? {};
@@ -393,7 +387,7 @@ function DashboardMain() {
                 setProofUrl("");
                 setDecl("");
                 refreshShellUser();
-                setTick((t) => t + 1);
+                void loadEntries();
               }}
             >
               Lock entry
