@@ -54,6 +54,17 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  /**
+   * Do not refresh Supabase session here: it races PKCE `exchangeCodeForSession`
+   * in the route handler and breaks mobile Google OAuth (redirect errors / loops).
+   */
+  if (
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/auth/callback/")
+  ) {
+    return NextResponse.next({ request: { headers: request.headers } });
+  }
+
   const segments = pathname.split("/").filter(Boolean);
   const rewriteTo =
     segments.length === 1 && !ROOT_APP_SEGMENTS.has(segments[0]!.toLowerCase())

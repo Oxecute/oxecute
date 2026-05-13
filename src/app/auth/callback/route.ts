@@ -11,9 +11,13 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const pwResetIntent = cookieStore.get("oxecute_pw_reset_intent")?.value === "1";
   const nextParam = searchParams.get("next");
+  const nextTrimmed = nextParam?.trim() ?? "";
   const nextRaw =
-    nextParam ??
-    (pwResetIntent ? "/auth/update-password" : "/start");
+    nextTrimmed.length > 0
+      ? nextTrimmed
+      : pwResetIntent
+        ? "/auth/update-password"
+        : "/start";
   const next = nextRaw.startsWith("/") ? nextRaw : `/${nextRaw}`;
 
   const oauthErr = searchParams.get("error");
