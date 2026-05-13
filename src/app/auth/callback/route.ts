@@ -1,23 +1,16 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { getPublicOriginFromRequest } from "@/lib/http/public-origin";
-import { forNextSetCookie } from "@/lib/supabase/for-next-cookie";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const { searchParams } = url;
-  const origin = getPublicOriginFromRequest(request);
+  const { searchParams, origin } = url;
   const cookieStore = await cookies();
   const pwResetIntent = cookieStore.get("oxecute_pw_reset_intent")?.value === "1";
   const nextParam = searchParams.get("next");
-  const nextTrimmed = nextParam?.trim() ?? "";
   const nextRaw =
-    nextTrimmed.length > 0
-      ? nextTrimmed
-      : pwResetIntent
-        ? "/auth/update-password"
-        : "/start";
+    nextParam ??
+    (pwResetIntent ? "/auth/update-password" : "/start");
   const next = nextRaw.startsWith("/") ? nextRaw : `/${nextRaw}`;
 
   const oauthErr = searchParams.get("error");
@@ -56,8 +49,7 @@ export async function GET(request: Request) {
           headers: Record<string, string>,
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const o = forNextSetCookie(options);
-            response.cookies.set(name, value, o);
+            response.cookies.set(name, value, options);
           });
           Object.entries(headers).forEach(([key, value]) => {
             response.headers.set(key, value);

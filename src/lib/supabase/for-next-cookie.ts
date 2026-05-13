@@ -1,39 +1,23 @@
 import type { CookieOptions } from "@supabase/ssr";
 
-function isValidSameSite(
-  v: unknown,
-): v is boolean | "lax" | "strict" | "none" | "unspecified" {
-  if (typeof v === "boolean") return true;
-  if (typeof v !== "string") return false;
-  const s = v.toLowerCase();
-  return s === "lax" || s === "strict" || s === "none" || s === "unspecified";
-}
-
-/** Keep only fields Next.js cookie serialization accepts; avoid throwing in middleware set(). */
-export function forNextSetCookie(options: CookieOptions | undefined): CookieOptions {
+/** Keep only attributes Next.js / Edge cookie serialization understands (avoids stray `cookie` package fields). */
+export function forNextSetCookie(
+  options: CookieOptions | undefined,
+): CookieOptions {
   if (!options) return {};
-  const {
-    path,
-    maxAge,
-    domain,
-    httpOnly,
-    secure,
-    sameSite,
-    expires,
-    partitioned,
-    priority,
-  } = options;
+  const o = options as Record<string, unknown>;
   const out: CookieOptions = {};
-  if (path !== undefined && typeof path === "string") out.path = path;
-  if (maxAge !== undefined && typeof maxAge === "number" && Number.isFinite(maxAge)) {
-    out.maxAge = maxAge;
+  if (typeof o.path === "string") out.path = o.path;
+  if (typeof o.maxAge === "number") out.maxAge = o.maxAge;
+  if (typeof o.domain === "string") out.domain = o.domain;
+  if (typeof o.httpOnly === "boolean") out.httpOnly = o.httpOnly;
+  if (typeof o.secure === "boolean") out.secure = o.secure;
+  if (typeof o.sameSite === "boolean" || typeof o.sameSite === "string") {
+    out.sameSite = o.sameSite as CookieOptions["sameSite"];
   }
-  if (domain !== undefined && typeof domain === "string") out.domain = domain;
-  if (httpOnly !== undefined && typeof httpOnly === "boolean") out.httpOnly = httpOnly;
-  if (secure !== undefined && typeof secure === "boolean") out.secure = secure;
-  if (sameSite !== undefined && isValidSameSite(sameSite)) out.sameSite = sameSite;
-  if (expires instanceof Date && !Number.isNaN(expires.getTime())) out.expires = expires;
-  if (partitioned !== undefined && typeof partitioned === "boolean") out.partitioned = partitioned;
-  if (priority !== undefined && typeof priority === "string") out.priority = priority;
+  if (o.expires instanceof Date) out.expires = o.expires;
+  if (typeof o.partitioned === "boolean") out.partitioned = o.partitioned;
+  if (typeof o.priority === "string")
+    out.priority = o.priority as CookieOptions["priority"];
   return out;
 }
