@@ -211,11 +211,12 @@ export function BellNotificationsPanel() {
 
 /** Full sticky right rail on desktop. */
 export function DashboardRightRail({ variant = "full" }: { variant?: "full" | "notifications" }) {
+  const user = useShellUser();
+
   if (variant === "notifications") {
     return <BellNotificationsPanel />;
   }
 
-  const user = useShellUser();
   const exec = Number(user.execution_count ?? 0);
   const day21 = Boolean(user.day21_reached);
   const day45 = Boolean(user.day45_reached);

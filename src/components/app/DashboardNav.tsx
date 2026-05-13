@@ -104,7 +104,6 @@ function NavSection({
 
 export function DashboardNav({
   user,
-  items: _ignored,
   onNavigate,
   className = "",
   inboxUnread = 0,
