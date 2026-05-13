@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Single-segment paths that must not be treated as public usernames (see app/u/[username]). */
@@ -47,7 +47,10 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet, headers) {
+        setAll(
+          cookiesToSet: { name: string; value: string; options: CookieOptions }[],
+          headers: Record<string, string>,
+        ) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set({ name, value, ...options });
           });
