@@ -33,11 +33,23 @@ export default function LoginPage() {
       return;
     }
     await supabase.auth.getUser();
+    await router.refresh();
     const me = await fetch("/api/me", { credentials: "same-origin" });
     setLoading(false);
     if (!me.ok) {
-      router.push("/start");
-      router.refresh();
+      if (me.status === 404) {
+        router.push("/start");
+        router.refresh();
+        return;
+      }
+      const body = await me.json().catch(() => ({}));
+      const msg =
+        typeof (body as { error?: unknown }).error === "string"
+          ? (body as { error: string }).error
+          : me.status === 500
+            ? "Server error while loading your profile."
+            : "Could not load your account.";
+      setError(msg);
       return;
     }
     const { user: row } = await me.json();

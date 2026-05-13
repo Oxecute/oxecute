@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { forNextSetCookie } from "@/lib/supabase/for-next-cookie";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Single-segment paths that must not be treated as public usernames (see app/u/[username]). */
@@ -52,11 +53,13 @@ export async function middleware(request: NextRequest) {
           headers: Record<string, string>,
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set({ name, value, ...options });
+            const o = forNextSetCookie(options);
+            request.cookies.set({ name, value, ...o });
           });
           response = baseResponse(request, rewriteTo);
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            const o = forNextSetCookie(options);
+            response.cookies.set(name, value, o);
           });
           Object.entries(headers).forEach(([key, value]) => {
             response.headers.set(key, value);

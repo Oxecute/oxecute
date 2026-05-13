@@ -33,29 +33,39 @@ const patchSchema = z
   .strict();
 
 export async function GET() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const admin = createServiceRoleClient();
-  const { data, error } = await admin.from("users").select("*").eq("id", user.id).single();
-  if (error || !data) {
-    return NextResponse.json(
-      {
-        error: "Not found",
-        auth_email: user.email ?? null,
-        user_metadata: user.user_metadata ?? {},
-      },
-      { status: 404 },
-    );
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = createServiceRoleClient();
+    const { data, error } = await admin.from("users").select("*").eq("id", user.id).single();
+    if (error || !data) {
+      return NextResponse.json(
+        {
+          error: "Not found",
+          auth_email: user.email ?? null,
+          user_metadata: user.user_metadata ?? {},
+        },
+        { status: 404 },
+      );
+    }
+    const { count: inboxUnread, error: notifErr } = await admin
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("read", false);
+    if (notifErr) {
+      console.error("[api/me] notifications count:", notifErr.message);
+      return NextResponse.json({ user: data, inbox_unread: 0 });
+    }
+    return NextResponse.json({ user: data, inbox_unread: inboxUnread ?? 0 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Server error";
+    console.error("[api/me] GET:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  const { count: inboxUnread } = await admin
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("read", false);
-  return NextResponse.json({ user: data, inbox_unread: inboxUnread ?? 0 });
 }
 
 export async function PATCH(request: Request) {
