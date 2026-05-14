@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
-import { redirectOAuthCodeToCallbackIfNeeded } from "@/lib/auth/oauth-return";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -15,7 +14,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    redirectOAuthCodeToCallbackIfNeeded();
     const p = new URLSearchParams(window.location.search);
     const ae = p.get("auth_error");
     if (!ae) return;
@@ -62,7 +60,6 @@ export default function LoginPage() {
       return;
     }
     const supabase = createClient();
-    await supabase.auth.signOut({ scope: "local" });
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },

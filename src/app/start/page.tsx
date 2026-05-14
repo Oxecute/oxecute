@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
-import { redirectOAuthCodeToCallbackIfNeeded } from "@/lib/auth/oauth-return";
 import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
@@ -159,10 +158,6 @@ export default function StartPage() {
   const uploadProofInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    redirectOAuthCodeToCallbackIfNeeded();
-  }, []);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
@@ -301,15 +296,16 @@ export default function StartPage() {
       setStep(8);
     }
 
-    async function resolveAuth() {
+    async function resolveAuth(opts?: { soft?: boolean }) {
       if (cancelled) return;
 
-      setBooting(true);
+      const soft = Boolean(opts?.soft);
+      if (!soft) setBooting(true);
       const meRes = await fetch("/api/me", { credentials: "same-origin" });
       if (cancelled) return;
 
       if (meRes.status === 401) {
-        setBooting(false);
+        if (!soft) setBooting(false);
         setStep(2);
         setHasAuthSession(false);
         return;
@@ -320,12 +316,12 @@ export default function StartPage() {
         setErr(null);
         setHasAuthSession(false);
         await hydrateFromUser(row as Record<string, unknown>);
-        setBooting(false);
+        if (!soft) setBooting(false);
         return;
       }
 
       if (meRes.status !== 404) {
-        setBooting(false);
+        if (!soft) setBooting(false);
         setErr("Could not load account status. Refresh the page.");
         return;
       }
@@ -336,7 +332,7 @@ export default function StartPage() {
       };
       const authEmail = meBody.auth_email ?? null;
       if (!authEmail) {
-        setBooting(false);
+        if (!soft) setBooting(false);
         setStep(2);
         setHasAuthSession(false);
         return;
@@ -375,7 +371,7 @@ export default function StartPage() {
               "Profile created but could not load it. Check that Supabase migrations are applied.",
             );
           }
-          setBooting(false);
+          if (!soft) setBooting(false);
           return;
         }
         const errJson = await res.json().catch(() => ({}));
@@ -384,7 +380,7 @@ export default function StartPage() {
             ? errJson.error
             : "Could not finish signup. Run the SQL migrations in supabase/migrations on your Supabase project, then try again.",
         );
-        setBooting(false);
+        if (!soft) setBooting(false);
         return;
       }
 
@@ -397,7 +393,7 @@ export default function StartPage() {
       );
       setHasAuthSession(true);
       setStep(2);
-      setBooting(false);
+      if (!soft) setBooting(false);
     }
 
     void resolveAuth();
@@ -406,7 +402,9 @@ export default function StartPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "TOKEN_REFRESHED") return;
-      void resolveAuth();
+      /* Mount already runs resolveAuth(); this fires immediately and would double-fetch + flash Loading on mobile. */
+      if (event === "INITIAL_SESSION") return;
+      void resolveAuth({ soft: true });
     });
 
     return () => {
@@ -921,7 +919,6 @@ export default function StartPage() {
       setErr("Could not build redirect URL.");
       return;
     }
-    await supabase.auth.signOut({ scope: "local" });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
