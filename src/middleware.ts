@@ -1,3 +1,5 @@
+import { authDebug } from "@/lib/auth/debug";
+import { forNextSetCookie } from "@/lib/supabase/for-next-cookie";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -30,6 +32,33 @@ function baseResponse(request: NextRequest, rewriteTo: URL | null) {
 }
 
 export async function middleware(request: NextRequest) {
+  const host = request.nextUrl.hostname;
+
+  /** Force apex / canonical host in production (set NEXT_PUBLIC_SITE_URL=https://oxecute.com on Vercel). */
+  const siteRaw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (
+    siteRaw &&
+    host !== "localhost" &&
+    host !== "127.0.0.1" &&
+    !host.endsWith(".vercel.app")
+  ) {
+    try {
+      const canonical = new URL(siteRaw);
+      if (canonical.hostname !== host) {
+        const url = request.nextUrl.clone();
+        url.hostname = canonical.hostname;
+        url.protocol = canonical.protocol;
+        authDebug("redirect to canonical host", {
+          from: host,
+          to: canonical.hostname,
+        });
+        return NextResponse.redirect(url, 308);
+      }
+    } catch {
+      /* ignore invalid NEXT_PUBLIC_SITE_URL */
+    }
+  }
+
   const { pathname } = request.nextUrl;
   const segments = pathname.split("/").filter(Boolean);
   const rewriteTo =
@@ -52,11 +81,12 @@ export async function middleware(request: NextRequest) {
           headers: Record<string, string>,
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set({ name, value, ...options });
+            const o = forNextSetCookie(options);
+            request.cookies.set({ name, value, ...o });
           });
           response = baseResponse(request, rewriteTo);
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, forNextSetCookie(options));
           });
           Object.entries(headers).forEach(([key, value]) => {
             response.headers.set(key, value);

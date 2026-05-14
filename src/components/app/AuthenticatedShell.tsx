@@ -1,5 +1,6 @@
 "use client";
 
+import { authDebug } from "@/lib/auth/debug";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -47,6 +48,19 @@ export function AuthenticatedShell({
   const [inboxUnread, setInboxUnread] = useState(0);
   const [userReloadNonce, setUserReloadNonce] = useState(0);
 
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_AUTH_DEBUG !== "1") return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      authDebug("onAuthStateChange", {
+        event,
+        hasSession: Boolean(session),
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
+
   const load = useCallback(async () => {
     const {
       data: { session },
@@ -63,6 +77,9 @@ export function AuthenticatedShell({
     const j = await res.json();
     setUser(j.user as AppShellUser);
     setInboxUnread(Number(j.inbox_unread ?? 0));
+    authDebug("shell user loaded", {
+      execution_count: Number((j.user as AppShellUser).execution_count ?? 0),
+    });
   }, [router, supabase.auth]);
 
   const refreshShellUser = useCallback(() => setUserReloadNonce((n) => n + 1), []);

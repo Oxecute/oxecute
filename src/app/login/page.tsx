@@ -53,7 +53,7 @@ export default function LoginPage() {
   async function signInWithGoogle() {
     setError(null);
     setLoading(true);
-    const redirectTo = oauthRedirectUrl("/start");
+    const redirectTo = oauthRedirectUrl("/dashboard");
     if (!redirectTo) {
       setLoading(false);
       setError("Could not build redirect URL.");
