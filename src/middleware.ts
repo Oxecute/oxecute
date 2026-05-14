@@ -76,10 +76,6 @@ export async function middleware(request: NextRequest) {
           cookiesToSet: { name: string; value: string; options: CookieOptions }[],
           headers: Record<string, string>,
         ) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const o = forNextSetCookie(options);
-            request.cookies.set({ name, value, ...o });
-          });
           response = baseResponse(request, rewriteTo);
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, forNextSetCookie(options));
