@@ -57,6 +57,10 @@ export async function middleware(request: NextRequest) {
   if (rootAuthRedirect) return rootAuthRedirect;
 
   const { pathname } = request.nextUrl;
+
+  if (pathname === "/api/auth/clear-session-cookies") {
+    return NextResponse.next({ request: { headers: request.headers } });
+  }
   const segments = pathname.split("/").filter(Boolean);
   const rewriteTo =
     segments.length === 1 && !ROOT_APP_SEGMENTS.has(segments[0]!.toLowerCase())

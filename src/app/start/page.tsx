@@ -6,6 +6,7 @@ import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
+import { AuthMobileHelp } from "@/components/auth-mobile-help";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -940,9 +941,10 @@ export default function StartPage() {
     return (
       <main
         data-onboarding-surface="true"
-        className="min-h-screen bg-black flex items-center justify-center text-[var(--fw)]"
+        className="min-h-screen bg-black flex flex-col items-center justify-center text-[var(--fw)] px-6"
       >
-        Loading…
+        <p>Loading…</p>
+        <AuthMobileHelp afterResetPath="/start" />
       </main>
     );
   }
@@ -1039,6 +1041,7 @@ export default function StartPage() {
               </button>
             </p>
           )}
+          <AuthMobileHelp afterResetPath="/start" />
           <p className="text-sm text-center text-[var(--ca)]">
             Already have an account? <Link href="/login" className="text-[var(--ac)] underline">Sign in</Link>
             {!hasAuthSession ? (

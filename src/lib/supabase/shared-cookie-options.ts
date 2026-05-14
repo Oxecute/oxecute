@@ -20,3 +20,15 @@ export function supabaseSharedCookieOptions():
     secure: true,
   };
 }
+
+/** Browser client only: avoid Secure cookies on http origins if domain is misconfigured locally. */
+export function supabaseBrowserCookieOptions():
+  | CookieOptionsWithName
+  | undefined {
+  const base = supabaseSharedCookieOptions();
+  if (!base || typeof window === "undefined") return base;
+  return {
+    ...base,
+    secure: window.location.protocol === "https:",
+  };
+}

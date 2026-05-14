@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthMobileHelp } from "@/components/auth-mobile-help";
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
 import Link from "next/link";
@@ -128,6 +129,7 @@ export default function LoginPage() {
             Start your record
           </Link>
         </p>
+        <AuthMobileHelp afterResetPath="/login" />
       </div>
     </main>
   );
