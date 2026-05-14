@@ -68,7 +68,7 @@ export async function GET(request: Request) {
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, forNextResponseCookie(options));
           });
-          Object.entries(headers).forEach(([key, value]) => {
+          Object.entries(headers ?? {}).forEach(([key, value]) => {
             response.headers.set(key, value);
           });
         },

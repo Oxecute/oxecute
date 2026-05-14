@@ -1,7 +1,8 @@
 import { runCronHeartbeat } from "@/lib/cron/heartbeat";
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+/** Vercel Cron invokes GET with `Authorization: Bearer CRON_SECRET` when configured. */
+async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization");
   if (!secret || auth !== `Bearer ${secret}`) {
@@ -14,4 +15,12 @@ export async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : "cron failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+export async function POST(request: Request) {
+  return handleCron(request);
 }
