@@ -47,6 +47,7 @@ export function AuthenticatedShell({
   const [user, setUser] = useState<AppShellUser | null>(null);
   const [inboxUnread, setInboxUnread] = useState(0);
   const [userReloadNonce, setUserReloadNonce] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_AUTH_DEBUG !== "1") return;
@@ -62,24 +63,63 @@ export function AuthenticatedShell({
   }, [supabase.auth]);
 
   const load = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/login");
-      return;
+    setLoadError(null);
+    const ME_TIMEOUT_MS = 25_000;
+
+    const fetchMe = async () => {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), ME_TIMEOUT_MS);
+      try {
+        return await fetch("/api/me", {
+          credentials: "same-origin",
+          signal: ctrl.signal,
+        });
+      } finally {
+        clearTimeout(tid);
+      }
+    };
+
+    try {
+      /** Prefer `/api/me` first: after OAuth it uses Set-Cookie on this origin immediately, while `getSession()` can wait on a refresh round-trip and look empty. */
+      let res = await fetchMe();
+
+      if (res.status === 401) {
+        const { error: refreshErr } = await supabase.auth.refreshSession();
+        if (!refreshErr) res = await fetchMe();
+      }
+
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+
+      if (res.status === 404) {
+        router.replace("/start");
+        return;
+      }
+
+      if (!res.ok) {
+        setLoadError("Could not load your account. Try again.");
+        return;
+      }
+
+      const j = await res.json();
+      setUser(j.user as AppShellUser);
+      setInboxUnread(Number(j.inbox_unread ?? 0));
+      authDebug("shell user loaded", {
+        execution_count: Number((j.user as AppShellUser).execution_count ?? 0),
+      });
+      void supabase.auth.getSession();
+    } catch (e) {
+      authDebug("shell load failed", { message: String(e) });
+      const aborted =
+        e instanceof DOMException && e.name === "AbortError";
+      setLoadError(
+        aborted
+          ? "Request timed out. Check your connection and try again."
+          : "Could not load your account. Try again.",
+      );
     }
-    const res = await fetch("/api/me", { credentials: "same-origin" });
-    if (!res.ok) {
-      router.push("/start");
-      return;
-    }
-    const j = await res.json();
-    setUser(j.user as AppShellUser);
-    setInboxUnread(Number(j.inbox_unread ?? 0));
-    authDebug("shell user loaded", {
-      execution_count: Number((j.user as AppShellUser).execution_count ?? 0),
-    });
   }, [router, supabase.auth]);
 
   const refreshShellUser = useCallback(() => setUserReloadNonce((n) => n + 1), []);
@@ -87,6 +127,24 @@ export function AuthenticatedShell({
   useEffect(() => {
     void load();
   }, [load, refreshKey, userReloadNonce]);
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[var(--bg)] text-[var(--t1)] px-6">
+        <p className="text-center text-sm max-w-sm">{loadError}</p>
+        <button
+          type="button"
+          className="rounded-full bg-[var(--ac)] text-[var(--mi)] px-5 py-2 text-sm font-semibold"
+          onClick={() => setUserReloadNonce((n) => n + 1)}
+        >
+          Retry
+        </button>
+        <a href="/login" className="text-sm text-[var(--ac)] underline">
+          Back to sign in
+        </a>
+      </main>
+    );
+  }
 
   if (!user) {
     return (
