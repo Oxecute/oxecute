@@ -1,9 +1,9 @@
 import { authDebug } from "@/lib/auth/debug";
+import { forNextResponseCookie } from "@/lib/supabase/merge-response-cookie";
+import { supabaseSharedCookieOptions } from "@/lib/supabase/shared-cookie-options";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-import { forNextSetCookie } from "@/lib/supabase/for-next-cookie";
 
 function sanitizeNextPath(path: string | null, fallback: string): string {
   const fb = fallback.startsWith("/") ? fallback : `/${fallback}`;
@@ -50,10 +50,13 @@ export async function GET(request: Request) {
   /** Must exist before exchangeCodeForSession so setAll can attach Set-Cookie to this response. */
   const response = NextResponse.redirect(redirectTarget);
 
+  const sharedCookies = supabaseSharedCookieOptions();
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(sharedCookies ? { cookieOptions: sharedCookies } : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -63,7 +66,7 @@ export async function GET(request: Request) {
           headers: Record<string, string>,
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, forNextSetCookie(options));
+            response.cookies.set(name, value, forNextResponseCookie(options));
           });
           Object.entries(headers).forEach(([key, value]) => {
             response.headers.set(key, value);

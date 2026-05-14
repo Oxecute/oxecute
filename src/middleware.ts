@@ -1,5 +1,6 @@
 import { authDebug } from "@/lib/auth/debug";
-import { forNextSetCookie } from "@/lib/supabase/for-next-cookie";
+import { forNextResponseCookie } from "@/lib/supabase/merge-response-cookie";
+import { supabaseSharedCookieOptions } from "@/lib/supabase/shared-cookie-options";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -64,10 +65,13 @@ export async function middleware(request: NextRequest) {
 
   let response = baseResponse(request, rewriteTo);
 
+  const sharedCookies = supabaseSharedCookieOptions();
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(sharedCookies ? { cookieOptions: sharedCookies } : {}),
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -78,7 +82,7 @@ export async function middleware(request: NextRequest) {
         ) {
           response = baseResponse(request, rewriteTo);
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, forNextSetCookie(options));
+            response.cookies.set(name, value, forNextResponseCookie(options));
           });
           Object.entries(headers).forEach(([key, value]) => {
             response.headers.set(key, value);
