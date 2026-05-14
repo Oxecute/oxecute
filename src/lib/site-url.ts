@@ -13,13 +13,12 @@ export function getPublicSiteOrigin(): string {
   }
 }
 
-/** Origin used in `signInWithOAuth` redirectTo — must match the host that holds the PKCE cookie. */
+/**
+ * Origin for `signInWithOAuth` redirectTo — **must equal `window.location.origin`** so the PKCE
+ * cookie written on this host is sent to `/auth/callback`. Do not substitute
+ * `NEXT_PUBLIC_SITE_URL` when the user might be on `www` and env points at apex (or vice versa).
+ */
 export function getBrowserOAuthOrigin(): string {
   if (typeof window === "undefined") return "";
-  const { hostname, origin } = window.location;
-  if (hostname === "localhost" || hostname === "127.0.0.1") return origin;
-  if (hostname.endsWith(".vercel.app")) return origin;
-  const canonical = getPublicSiteOrigin();
-  if (canonical) return canonical;
-  return origin;
+  return window.location.origin;
 }

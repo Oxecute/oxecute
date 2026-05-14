@@ -33,7 +33,8 @@ function baseResponse(request: NextRequest, rewriteTo: URL | null) {
 
 /**
  * Supabase sometimes sends users to Site URL root (`/?code=`) instead of `/auth/callback`.
- * Without this, `exchangeCodeForSession` never runs and the console can show chrome-error frames.
+ * Keep the **same hostname** as the request — do not rewrite www↔apex here, or you can fight
+ * Vercel "redirect www/apex" settings and get ERR_TOO_MANY_REDIRECTS.
  */
 function redirectAuthCodeFromRoot(request: NextRequest): NextResponse | null {
   const url = request.nextUrl;
@@ -44,59 +45,15 @@ function redirectAuthCodeFromRoot(request: NextRequest): NextResponse | null {
   const out = new URL(url.toString());
   out.pathname = "/auth/callback";
 
-  const siteRaw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const host = url.hostname;
-  if (
-    siteRaw &&
-    host !== "localhost" &&
-    host !== "127.0.0.1" &&
-    !host.endsWith(".vercel.app")
-  ) {
-    try {
-      const canonical = new URL(siteRaw);
-      out.hostname = canonical.hostname;
-      out.protocol = canonical.protocol;
-    } catch {
-      /* keep request host */
-    }
-  }
-
   authDebug("oauth: ?code on / redirected to /auth/callback", {
     host: out.hostname,
   });
-  return NextResponse.redirect(out, 308);
+  return NextResponse.redirect(out, 307);
 }
 
 export async function middleware(request: NextRequest) {
   const rootAuthRedirect = redirectAuthCodeFromRoot(request);
   if (rootAuthRedirect) return rootAuthRedirect;
-
-  const host = request.nextUrl.hostname;
-
-  /** Force apex / canonical host in production (set NEXT_PUBLIC_SITE_URL=https://oxecute.com on Vercel). */
-  const siteRaw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (
-    siteRaw &&
-    host !== "localhost" &&
-    host !== "127.0.0.1" &&
-    !host.endsWith(".vercel.app")
-  ) {
-    try {
-      const canonical = new URL(siteRaw);
-      if (canonical.hostname !== host) {
-        const url = request.nextUrl.clone();
-        url.hostname = canonical.hostname;
-        url.protocol = canonical.protocol;
-        authDebug("redirect to canonical host", {
-          from: host,
-          to: canonical.hostname,
-        });
-        return NextResponse.redirect(url, 308);
-      }
-    } catch {
-      /* ignore invalid NEXT_PUBLIC_SITE_URL */
-    }
-  }
 
   const { pathname } = request.nextUrl;
   const segments = pathname.split("/").filter(Boolean);
