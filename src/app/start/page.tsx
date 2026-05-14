@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
+import { redirectOAuthCodeToCallbackIfNeeded } from "@/lib/auth/oauth-return";
 import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
@@ -156,6 +157,10 @@ export default function StartPage() {
   const [uploadProofFiles, setUploadProofFiles] = useState<File[]>([]);
   const [workCat, setWorkCat] = useState<"product" | "distribution" | "ops">("product");
   const uploadProofInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    redirectOAuthCodeToCallbackIfNeeded();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -916,6 +921,7 @@ export default function StartPage() {
       setErr("Could not build redirect URL.");
       return;
     }
+    await supabase.auth.signOut({ scope: "local" });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
