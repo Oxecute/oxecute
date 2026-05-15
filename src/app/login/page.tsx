@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthMobileHelp } from "@/components/auth-mobile-help";
+import { userFacingAuthError } from "@/lib/auth/auth-error-message";
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
 import Link from "next/link";
@@ -90,7 +91,9 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {error && <p className="text-sm text-[var(--red)]">{error}</p>}
+          {error && (
+            <p className="text-sm text-[var(--red)] whitespace-pre-line">{error}</p>
+          )}
           <button
             type="submit"
             disabled={loading}
