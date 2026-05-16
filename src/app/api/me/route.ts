@@ -8,6 +8,10 @@ const patchSchema = z
   .object({
     stage: z.string().optional(),
     mrr: z.string().optional(),
+    startup_name: z.string().min(1).max(200).optional(),
+    full_name: z.string().min(1).max(200).optional(),
+    first_name: z.string().max(120).optional(),
+    last_name: z.string().max(120).optional(),
     startup_description: z.string().min(15).max(50).optional(),
     cal_q1_shipped: z.string().max(250).optional(),
     cal_q2_customers: z.string().max(250).optional(),
@@ -15,7 +19,7 @@ const patchSchema = z
     cal_q4_traction: z.string().max(250).optional(),
     cal_q5_unknown: z.string().max(250).optional(),
     calibration_locked: z.boolean().optional(),
-    calibration_synthesis: z.array(z.string()).length(5).optional(),
+    calibration_synthesis: z.array(z.string()).min(1).max(10).optional(),
     blocker_text: z.string().max(140).optional(),
     avoidance_tags: z.array(z.string()).optional(),
     conexa_day1_report: z.unknown().optional(),
@@ -99,12 +103,22 @@ export async function PATCH(request: Request) {
 
   const updates: Record<string, unknown> = { ...p };
 
+  if (p.first_name !== undefined || p.last_name !== undefined) {
+    const rowFirst = String((row as { first_name?: string | null }).first_name ?? "").trim();
+    const rowLast = String((row as { last_name?: string | null }).last_name ?? "").trim();
+    const nextFirst =
+      p.first_name !== undefined ? p.first_name.trim() : rowFirst;
+    const nextLast = p.last_name !== undefined ? p.last_name.trim() : rowLast;
+    const merged = `${nextFirst} ${nextLast}`.trim();
+    if (merged) updates.full_name = merged;
+  }
+
   if (p.calibration_locked === false) {
     if (row.conexa_day1_at) {
       return NextResponse.json(
         {
           error:
-            "CoNexa calibration can't be reopened after your Day 1 Conexa report is saved.",
+            "Conexa calibration can't be reopened after your Day 1 Conexa report is saved.",
         },
         { status: 403 },
       );

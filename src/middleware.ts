@@ -1,6 +1,6 @@
 import { authDebug } from "@/lib/auth/debug";
 import { forNextResponseCookie } from "@/lib/supabase/merge-response-cookie";
-import { supabaseSharedCookieOptions } from "@/lib/supabase/shared-cookie-options";
+import { supabaseSharedCookieOptionsForHost } from "@/lib/supabase/shared-cookie-options";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -56,7 +56,9 @@ export async function middleware(request: NextRequest) {
   const rootAuthRedirect = redirectAuthCodeFromRoot(request);
   if (rootAuthRedirect) return rootAuthRedirect;
 
-  const { pathname } = request.nextUrl;
+  const { pathname: rawPath } = request.nextUrl;
+  const pathname =
+    rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
 
   if (pathname === "/api/auth/clear-session-cookies") {
     return NextResponse.next({ request: { headers: request.headers } });
@@ -65,6 +67,7 @@ export async function middleware(request: NextRequest) {
   /**
    * Do not run `getUser()` here — it can rewrite auth cookies and drop the PKCE
    * `code_verifier` before `exchangeCodeForSession` in `/auth/callback` (mobile Safari/Chrome often hit this).
+   * Match with or without a trailing slash so this path never hits `getUser()`.
    */
   if (pathname === "/auth/callback") {
     return NextResponse.next({ request: { headers: request.headers } });
@@ -77,7 +80,9 @@ export async function middleware(request: NextRequest) {
 
   let response = baseResponse(request, rewriteTo);
 
-  const sharedCookies = supabaseSharedCookieOptions();
+  const sharedCookies = supabaseSharedCookieOptionsForHost(
+    request.nextUrl.hostname,
+  );
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -94,7 +99,11 @@ export async function middleware(request: NextRequest) {
         ) {
           response = baseResponse(request, rewriteTo);
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, forNextResponseCookie(options));
+            response.cookies.set(
+              name,
+              value,
+              forNextResponseCookie(options, request.nextUrl.hostname),
+            );
           });
           Object.entries(headers ?? {}).forEach(([key, value]) => {
             response.headers.set(key, value);

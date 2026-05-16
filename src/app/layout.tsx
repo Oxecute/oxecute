@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
-import { Urbanist } from "next/font/google";
+import { DM_Sans, Urbanist } from "next/font/google";
 import "./globals.css";
 
 const urbanist = Urbanist({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-urbanist",
+  display: "swap",
+  preload: true,
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-dm-sans",
   display: "swap",
   preload: true,
 });
@@ -22,7 +30,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${urbanist.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${urbanist.variable} ${dmSans.variable} font-sans antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

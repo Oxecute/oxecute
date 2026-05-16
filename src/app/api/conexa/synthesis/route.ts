@@ -26,11 +26,9 @@ export async function POST() {
     return NextResponse.json({ statements: stmts, cached: true });
   }
 
-  const userMsg = `Q1 (What they shipped): "${u.cal_q1_shipped ?? ""}"
-Q2 (Customer conversations): "${u.cal_q2_customers ?? ""}"
-Q3 (What didn't work): "${u.cal_q3_didnt_work ?? ""}"
-Q4 (Early traction): "${u.cal_q4_traction ?? ""}"
-Q5 (30-day unknown): "${u.cal_q5_unknown ?? ""}"`;
+  const userMsg = `1) Last 7 days (shipped or done): "${u.cal_q1_shipped ?? ""}"
+2) Avoiding (what they know matters): "${u.cal_q3_didnt_work ?? ""}"
+3) 30-day success (specific): "${u.cal_q5_unknown ?? ""}"`;
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 26000);
@@ -47,11 +45,9 @@ Q5 (30-day unknown): "${u.cal_q5_unknown ?? ""}"`;
   } catch {
     clearTimeout(t);
     const fallback = [
-      `Q1 read: ${(u.cal_q1_shipped || "empty").slice(0, 120)}`,
-      `Q2 read: ${(u.cal_q2_customers || "empty").slice(0, 120)}`,
-      `Q3 read: ${(u.cal_q3_didnt_work || "empty").slice(0, 120)}`,
-      `Q4 read: ${(u.cal_q4_traction || "empty").slice(0, 120)}`,
-      `Q5 read: ${(u.cal_q5_unknown || "empty").slice(0, 120)}`,
+      `Last 7 days: ${(u.cal_q1_shipped || "empty").slice(0, 120)}`,
+      `Avoiding: ${(u.cal_q3_didnt_work || "empty").slice(0, 120)}`,
+      `30-day success: ${(u.cal_q5_unknown || "empty").slice(0, 120)}`,
     ];
     return NextResponse.json({ statements: fallback, fallback: true });
   }
@@ -61,7 +57,9 @@ Q5 (30-day unknown): "${u.cal_q5_unknown ?? ""}"`;
   const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
   try {
     const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed) && parsed.length === 5) {
+    if (Array.isArray(parsed) && parsed.length >= 3) {
+      statements = parsed.slice(0, 3).map(String);
+    } else if (Array.isArray(parsed) && parsed.length > 0) {
       statements = parsed.map(String);
     }
   } catch {
@@ -69,11 +67,12 @@ Q5 (30-day unknown): "${u.cal_q5_unknown ?? ""}"`;
       .split("\n")
       .map((s) => s.replace(/^[-*]\s*/, "").trim())
       .filter(Boolean)
-      .slice(0, 5);
-    while (statements.length < 5) {
-      statements.push("More context needed. Keep building your record.");
-    }
+      .slice(0, 3);
   }
+  while (statements.length < 3) {
+    statements.push("More context needed. Keep building your record.");
+  }
+  statements = statements.slice(0, 3);
 
   return NextResponse.json({
     statements,

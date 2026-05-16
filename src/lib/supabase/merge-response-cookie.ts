@@ -1,10 +1,13 @@
 import type { CookieOptions } from "@supabase/ssr";
 
 import { forNextSetCookie } from "./for-next-cookie";
-import { supabaseSharedCookieOptions } from "./shared-cookie-options";
+import { supabaseSharedCookieOptionsForHost } from "./shared-cookie-options";
 
 /** Merge shared Domain/path with Supabase-provided options for Set-Cookie on Edge/Node. */
-export function forNextResponseCookie(options: CookieOptions): CookieOptions {
-  const d = supabaseSharedCookieOptions();
+export function forNextResponseCookie(
+  options: CookieOptions,
+  requestHostname: string,
+): CookieOptions {
+  const d = supabaseSharedCookieOptionsForHost(requestHostname);
   return forNextSetCookie(d ? { ...options, ...d } : options);
 }

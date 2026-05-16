@@ -99,6 +99,10 @@ select {
   text-wrap: balance;
 }
 
+.font-dm-sans {
+  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+}
+
 @keyframes pulse-ring {
   0%,
   100% {

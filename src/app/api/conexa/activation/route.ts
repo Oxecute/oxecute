@@ -17,17 +17,15 @@ export async function POST() {
   if (!u) return NextResponse.json({ error: "No user" }, { status: 404 });
 
   const fullName = String(u.full_name ?? "").split(" ")[0] || "founder";
+  // Calibration Q2/Q3 in UX map to cal_q3_didnt_work / cal_q5_unknown in DB (see initial schema).
   const fields = {
     startup_name: u.startup_name,
     stage: u.stage,
     mrr: u.mrr,
     startup_description: u.startup_description,
     cal_q1_shipped: u.cal_q1_shipped ?? "",
-    cal_q2_customers: u.cal_q2_customers ?? "",
-    cal_q3_didnt_work: u.cal_q3_didnt_work ?? "",
-    cal_q4_traction: u.cal_q4_traction ?? "",
-    cal_q5_unknown: u.cal_q5_unknown ?? "",
-    avoidance_tags: (u.avoidance_tags as string[]) ?? [],
+    cal_q2_avoidance: u.cal_q3_didnt_work ?? "",
+    cal_q3_success: u.cal_q5_unknown ?? "",
     blocker_text: u.blocker_text ?? "",
   };
 

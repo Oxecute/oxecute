@@ -10,6 +10,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-urbanist)", "sans-serif"],
+        urbanist: ["var(--font-urbanist)", "Urbanist", "sans-serif"],
+        dm: ["var(--font-dm-sans)", "DM Sans", "sans-serif"],
       },
       colors: {
         ox: {

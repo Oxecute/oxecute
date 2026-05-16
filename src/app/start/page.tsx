@@ -6,7 +6,16 @@ import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
+import "@/app/execution-intelligence.css";
 import { AuthMobileHelp } from "@/components/auth-mobile-help";
+import { OnboardingTopNav } from "@/components/onboarding/OnboardingTopNav";
+import {
+  CalibrationLoadingState,
+  CalibrationQuestionCard,
+  CalibrationSidebar,
+  MobileStepPills,
+} from "@/components/onboarding/calibration";
+import type { OnboardingFlowPhase } from "@/components/onboarding/calibration";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,53 +29,110 @@ const FOUND_US = [
   "Other",
 ] as const;
 
-/** Screen 4 - one card at a time (brief). */
+/** Conexa calibration: 3 questions → stored as Q1, Q3, Q5 (Q2/Q4 cleared on save). */
 const CALIBRATION_STEPS = [
   {
-    tag: "SHIPPED",
-    question: "What have you already built or shipped?",
+    field: "q1" as const,
+    tag: "RECENT",
+    question: "What have you shipped or done in the last 7 days?",
+    helper:
+      "Actual things. Code pushed, calls made, revenue collected, content posted. If it was nothing, say that.",
     placeholder:
-      "A landing page, an MVP, a first feature, a prototype - anything that exists and can be seen or used.",
+      "e.g. Shipped the auth flow, had 3 founder calls, posted on Reddit and got 12 DMs",
     maxLen: 250,
   },
   {
-    tag: "CUSTOMERS",
-    question:
-      "Have you spoken to any potential customers? What did you learn?",
+    field: "q3" as const,
+    tag: "AVOID",
+    question: "What have you been avoiding that you know matters?",
+    helper:
+      "The thing that's been on your list for weeks. The conversation you haven't had. The page you haven't shipped.",
     placeholder:
-      "How many conversations, what they said, what surprised you, what they are actually paying for today.",
+      "e.g. Reaching out to potential customers directly. I keep building features instead.",
     maxLen: 250,
   },
   {
-    tag: "ELIMINATED",
-    question: "What have you already tried that did not work?",
-    placeholder:
-      "Channels, features, pricing, messaging - anything you tested and abandoned, and why.",
-    maxLen: 250,
-  },
-  {
-    tag: "TRACTION",
-    question: "Do you have any early traction?",
-    placeholder:
-      "Users, revenue, waitlist, LOIs, pilots - anything. Numbers only. Zero is a valid answer.",
-    maxLen: 250,
-  },
-  {
-    tag: "30-DAY UNKNOWN",
-    question:
-      "What is the one thing you need to figure out in the next 30 days to know this is worth continuing?",
-    placeholder: "The single most important unknown right now.",
+    field: "q5" as const,
+    tag: "30-DAY",
+    question: "What does success look like in 30 days?",
+    helper:
+      "Specific and measurable. Not 'grow the product' — what number, what milestone, what moment?",
+    placeholder: "e.g. 20 active users submitting daily, 3 paying customers, £500 MRR",
     maxLen: 250,
   },
 ] as const;
 
-const CAL_FIELDS = ["q1", "q2", "q3", "q4", "q5"] as const;
+const CAL_LEGACY_EMPTY = { q2: "", q4: "" } as const;
+/** Min length per answer when submitting calibration to the API. */
+const CAL_MIN_SUBMIT_CHARS = 10;
+/** Min length on the previous answer before the next card becomes editable (avoid blocking on silent 10-char rule). */
+const CAL_UNLOCK_CHARS = 1;
+
+function onboardingFlowPhase(step: number): OnboardingFlowPhase {
+  if (step === 2) return "signup";
+  if (step === 3) return "startup";
+  return "conexa";
+}
+
+function conexaSectionSubtitle(step: number): string | undefined {
+  if (step < 4 || step > 8) return undefined;
+  const labels: Record<number, string> = {
+    4: "Three honest answers",
+    5: "Calibration synthesis",
+    7: "Day 0 read",
+    8: "First proof of work",
+  };
+  return labels[step];
+}
+
+/** Maps to existing `stage` / `mrr` DB fields (brief 2.3). */
+const STAGE_TILES = [
+  {
+    id: "idea",
+    title: "Idea stage",
+    sub: "Still validating",
+    stage: "Idea",
+    mrr: "Pre-revenue",
+  },
+  {
+    id: "pre_rev",
+    title: "Pre-revenue",
+    sub: "Building, not charging yet",
+    stage: "Building",
+    mrr: "Pre-revenue",
+  },
+  {
+    id: "early_rev",
+    title: "Early revenue",
+    sub: "Under £1K MRR",
+    stage: "Launched",
+    mrr: "$1-500",
+  },
+  {
+    id: "growing",
+    title: "Growing",
+    sub: "£1K+ MRR",
+    stage: "Scaling",
+    mrr: "$10K+",
+  },
+] as const;
+
+const LANDING_PREFILL_KEY = "oxecute_landing_prefill";
+
+function splitDisplayName(raw: string): { first: string; last: string } {
+  const t = raw.trim();
+  if (!t) return { first: "", last: "" };
+  const parts = t.split(/\s+/);
+  if (parts.length === 1) return { first: parts[0]!, last: "" };
+  return { first: parts[0]!, last: parts.slice(1).join(" ") };
+}
 
 const PENDING_BOOTSTRAP_KEY = "oxecute_pending_bootstrap";
 
 type PendingBootstrap = {
-  v: 1;
-  full_name: string;
+  v: 2;
+  first_name: string;
+  last_name: string;
   email: string;
   country: string;
   startup_name: string;
@@ -79,9 +145,33 @@ function readPendingBootstrap(): PendingBootstrap | null {
   const raw = localStorage.getItem(PENDING_BOOTSTRAP_KEY);
   if (!raw) return null;
   try {
-    const p = JSON.parse(raw) as PendingBootstrap;
-    if (p.v !== 1 || typeof p.email !== "string") return null;
-    return p;
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    if (p.v === 2 && typeof p.email === "string") {
+      return {
+        v: 2,
+        first_name: String(p.first_name ?? ""),
+        last_name: String(p.last_name ?? ""),
+        email: p.email,
+        country: String(p.country ?? ""),
+        startup_name: String(p.startup_name ?? ""),
+        found_us: String(p.found_us ?? FOUND_US[0]),
+        ref_code: typeof p.ref_code === "string" ? p.ref_code : null,
+      };
+    }
+    if (p.v === 1 && typeof p.full_name === "string" && typeof p.email === "string") {
+      const { first, last } = splitDisplayName(String(p.full_name));
+      return {
+        v: 2,
+        first_name: first,
+        last_name: last,
+        email: p.email,
+        country: String(p.country ?? ""),
+        startup_name: String(p.startup_name ?? ""),
+        found_us: String(p.found_us ?? FOUND_US[0]),
+        ref_code: typeof p.ref_code === "string" ? p.ref_code : null,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -90,7 +180,7 @@ function readPendingBootstrap(): PendingBootstrap | null {
 function savePendingBootstrap(payload: Omit<PendingBootstrap, "v">) {
   localStorage.setItem(
     PENDING_BOOTSTRAP_KEY,
-    JSON.stringify({ v: 1, ...payload }),
+    JSON.stringify({ v: 2, ...payload }),
   );
 }
 
@@ -101,11 +191,20 @@ function clearPendingBootstrap() {
 export default function StartPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  /** Harden hydrate(): soft auth fires often; avoid re-POSTing synthesis while cal is still unlocked. */
+  const openCalSynthHydrateDoneRef = useRef(false);
+  const openCalSynthHydrateInFlightRef = useRef(false);
+  /** Same for Day-0 activation when returning to /start before conexa_day1_at is set. */
+  const day0ActivationHydrateDoneRef = useRef(false);
+  const day0ActivationHydrateInFlightRef = useRef(false);
+  /** While saving calibration + fetching synthesis, ignore hydrateFromUser so stale /api/me cannot force step back to 4 (loads forever on "reading your pattern"). */
+  const calibrationSubmitInFlightRef = useRef(false);
   const [step, setStep] = useState(2);
   /** False until we finish first auth + /api/me (or pending bootstrap) resolution */
   const [booting, setBooting] = useState(true);
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [country, setCountry] = useState("");
@@ -121,8 +220,7 @@ export default function StartPage() {
   const [description, setDescription] = useState("");
   const [contextTooShort, setContextTooShort] = useState(false);
 
-  const [calI, setCalI] = useState(0);
-  const [calReveal, setCalReveal] = useState(true);
+  const [calSubmitting, setCalSubmitting] = useState(false);
   const [cal, setCal] = useState({
     q1: "",
     q2: "",
@@ -138,8 +236,6 @@ export default function StartPage() {
   const [synthLoading, setSynthLoading] = useState(false);
 
   const [blocker, setBlocker] = useState("");
-  const [avoid, setAvoid] = useState<string[]>([]);
-
   const [activation, setActivation] = useState<{
     tabs: Record<string, string>;
     personal_insight: string;
@@ -157,6 +253,27 @@ export default function StartPage() {
   const [uploadProofFiles, setUploadProofFiles] = useState<File[]>([]);
   const [workCat, setWorkCat] = useState<"product" | "distribution" | "ops">("product");
   const uploadProofInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(LANDING_PREFILL_KEY);
+      if (!raw) return;
+      const j = JSON.parse(raw) as {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        password?: string;
+      };
+      if (typeof j.firstName === "string") setFirstName(j.firstName);
+      if (typeof j.lastName === "string") setLastName(j.lastName);
+      if (typeof j.email === "string") setEmail(j.email);
+      if (typeof j.password === "string") setPassword(j.password);
+      sessionStorage.removeItem(LANDING_PREFILL_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -183,7 +300,22 @@ export default function StartPage() {
     let cancelled = false;
 
     async function hydrateFromUser(u: Record<string, unknown>) {
-      setFullName(String(u.full_name ?? ""));
+      if (calibrationSubmitInFlightRef.current) return;
+
+      const fn = String(u.first_name ?? "").trim();
+      const ln = String(u.last_name ?? "").trim();
+      const legacy = String(u.full_name ?? "").trim();
+      if (fn || ln) {
+        setFirstName(fn);
+        setLastName(ln);
+      } else if (legacy) {
+        const sp = splitDisplayName(legacy);
+        setFirstName(sp.first);
+        setLastName(sp.last);
+      } else {
+        setFirstName("");
+        setLastName("");
+      }
       setEmail(String(u.email ?? ""));
       setCountry(String(u.country ?? ""));
       setStartupName(String(u.startup_name ?? ""));
@@ -202,11 +334,6 @@ export default function StartPage() {
       });
 
       setBlocker(String(u.blocker_text ?? ""));
-      setAvoid(
-        Array.isArray(u.avoidance_tags)
-          ? (u.avoidance_tags as string[])
-          : [],
-      );
 
       const desc = String(u.startup_description ?? "");
       if (desc.trim().length < 15) {
@@ -215,40 +342,56 @@ export default function StartPage() {
       }
 
       const locked = Boolean(u.calibration_locked);
-      const q1ok = String(u.cal_q1_shipped ?? "").trim().length > 0;
-      const q5ok = String(u.cal_q5_unknown ?? "").trim().length > 0;
-      if (!locked && (!q1ok || !q5ok)) {
-        setCalI(0);
+      const q1ok =
+        String(u.cal_q1_shipped ?? "").trim().length >= CAL_MIN_SUBMIT_CHARS;
+      const q3ok =
+        String(u.cal_q3_didnt_work ?? "").trim().length >= CAL_MIN_SUBMIT_CHARS;
+      const q5ok =
+        String(u.cal_q5_unknown ?? "").trim().length >= CAL_MIN_SUBMIT_CHARS;
+      if (!locked && (!q1ok || !q3ok || !q5ok)) {
         setStep(4);
         return;
       }
 
       if (!locked) {
         setStep(5);
+        if (openCalSynthHydrateDoneRef.current || openCalSynthHydrateInFlightRef.current) {
+          return;
+        }
+        openCalSynthHydrateInFlightRef.current = true;
         setSynthShown(0);
         setSynthesis([]);
+        setSynthLoading(true);
         void (async () => {
           try {
             const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
             const j = await syn.json();
             const stmts: string[] = j.statements ?? [];
             setSynthesis(stmts);
-            setSynthCollapsed({ 1: true, 2: true, 3: true, 4: true });
+            setSynthCollapsed(
+              stmts.length <= 1
+                ? {}
+                : Object.fromEntries(
+                    Array.from({ length: stmts.length - 1 }, (_, k) => [k + 1, true]),
+                  ),
+            );
             let i = 0;
             const iv = setInterval(() => {
               i += 1;
               setSynthShown(Math.min(i, stmts.length));
               if (i >= stmts.length) clearInterval(iv);
             }, 300);
+            openCalSynthHydrateDoneRef.current = true;
           } catch {
             setSynthesis([
               "We couldn’t generate synthesis just now.",
               "Your answers are saved — use “Edit my answers” or refresh.",
               "",
-              "",
-              "",
             ]);
-            setSynthShown(5);
+            setSynthShown(3);
+          } finally {
+            setSynthLoading(false);
+            openCalSynthHydrateInFlightRef.current = false;
           }
         })();
         return;
@@ -258,13 +401,25 @@ export default function StartPage() {
       const tags = Array.isArray(u.avoidance_tags)
         ? (u.avoidance_tags as string[])
         : [];
-      if (!blockerOk || tags.length === 0) {
-        setStep(6);
+      if (!blockerOk) {
+        setStep(3);
         return;
+      }
+      if (tags.length === 0) {
+        await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ avoidance_tags: ["Nothing yet"] }),
+        });
       }
 
       if (!u.conexa_day1_at) {
         setStep(7);
+        if (day0ActivationHydrateDoneRef.current || day0ActivationHydrateInFlightRef.current) {
+          return;
+        }
+        day0ActivationHydrateInFlightRef.current = true;
         setActShown(0);
         setActivation(null);
         void (async () => {
@@ -276,6 +431,7 @@ export default function StartPage() {
               personal_insight: String(j.personal_insight ?? ""),
             });
             setActShown(6);
+            day0ActivationHydrateDoneRef.current = true;
           } catch {
             setActivation({
               tabs: {},
@@ -283,6 +439,8 @@ export default function StartPage() {
                 "Conexa could not load this read. Check your connection and refresh this page.",
             });
             setActShown(6);
+          } finally {
+            day0ActivationHydrateInFlightRef.current = false;
           }
         })();
         return;
@@ -346,7 +504,8 @@ export default function StartPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            full_name: pending.full_name,
+            first_name: pending.first_name,
+            last_name: pending.last_name,
             email: pending.email,
             country: pending.country,
             startup_name: pending.startup_name,
@@ -387,11 +546,13 @@ export default function StartPage() {
 
       const meta = meBody.user_metadata ?? {};
       setEmail(authEmail);
-      setFullName(
+      const metaFull =
         (typeof meta.full_name === "string" && meta.full_name) ||
-          (typeof meta.name === "string" && meta.name) ||
-          "",
-      );
+        (typeof meta.name === "string" && meta.name) ||
+        "";
+      const sp = splitDisplayName(String(metaFull));
+      setFirstName(sp.first);
+      setLastName(sp.last);
       setHasAuthSession(true);
       setStep(2);
       if (!soft) setBooting(false);
@@ -399,17 +560,22 @@ export default function StartPage() {
 
     void resolveAuth();
 
+    let softAuthDebounce: ReturnType<typeof setTimeout> | null = null;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "TOKEN_REFRESHED") return;
       /* Mount already runs resolveAuth(); this fires immediately and would double-fetch + flash Loading on mobile. */
       if (event === "INITIAL_SESSION") return;
-      void resolveAuth({ soft: true });
+      if (softAuthDebounce) clearTimeout(softAuthDebounce);
+      softAuthDebounce = setTimeout(() => {
+        void resolveAuth({ soft: true });
+      }, 350);
     });
 
     return () => {
       cancelled = true;
+      if (softAuthDebounce) clearTimeout(softAuthDebounce);
       subscription.unsubscribe();
     };
   }, [router, supabase]);
@@ -447,8 +613,8 @@ export default function StartPage() {
       };
       const authedEmail = probeJson.auth_email;
       if (authedEmail) {
-        if (!fullName.trim() || !country.trim() || !startupName.trim()) {
-          setErr("Please fill in name, country, and startup name.");
+        if (!firstName.trim() || !lastName.trim() || !country.trim() || !startupName.trim()) {
+          setErr("Please fill in first name, last name, country, and startup name.");
           setBusy(false);
           return;
         }
@@ -461,7 +627,8 @@ export default function StartPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            full_name: fullName,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
             email: authedEmail,
             country,
             startup_name: startupName,
@@ -516,7 +683,7 @@ export default function StartPage() {
         }
         setHasAuthSession(true);
         setErr(null);
-        if (!fullName.trim() || !country.trim() || !startupName.trim()) {
+        if (!firstName.trim() || !lastName.trim() || !country.trim() || !startupName.trim()) {
           setBusy(false);
           return;
         }
@@ -534,7 +701,8 @@ export default function StartPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            full_name: fullName,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
             email: signedEmail,
             country,
             startup_name: startupName,
@@ -564,7 +732,8 @@ export default function StartPage() {
     }
     if (!data.session) {
       savePendingBootstrap({
-        full_name: fullName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email,
         country,
         startup_name: startupName,
@@ -581,7 +750,8 @@ export default function StartPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        full_name: fullName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email,
         country,
         startup_name: startupName,
@@ -602,6 +772,10 @@ export default function StartPage() {
   }
 
   function trySaveContext() {
+    if (!startupName.trim()) {
+      window.alert("Add your startup name.");
+      return;
+    }
     const len = description.trim().length;
     if (len < 15 || len > 50) {
       setContextTooShort(true);
@@ -610,6 +784,15 @@ export default function StartPage() {
           ? `Keep this to 50 characters max (you have ${len}). One tight line on what you are building.`
           : `Add at least 15 characters (you have ${len}). What are you building, in one line?`,
       );
+      return;
+    }
+    const stageOk = STAGE_TILES.some((t) => t.stage === stage && t.mrr === mrr);
+    if (!stageOk) {
+      window.alert("Pick a stage: one of the four tiles.");
+      return;
+    }
+    if (!blocker.trim()) {
+      window.alert("What is your biggest blocker right now?");
       return;
     }
     setContextTooShort(false);
@@ -622,7 +805,13 @@ export default function StartPage() {
     const res = await fetch("/api/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage, mrr, startup_description: description.trim() }),
+      body: JSON.stringify({
+        startup_name: startupName.trim(),
+        stage,
+        mrr,
+        startup_description: description.trim(),
+        blocker_text: blocker.trim(),
+      }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -630,34 +819,37 @@ export default function StartPage() {
       return;
     }
     setStep(4);
-    setCalI(0);
-    setCalReveal(true);
   }
 
-  async function saveCalibrationAndNext() {
-    if (calI < 4) {
-      setCalI(calI + 1);
-      setCalReveal(false);
-      return;
-    }
+  async function submitCalibrationReport() {
+    if (!CALIBRATION_STEPS.every((s) => cal[s.field].trim().length >= CAL_MIN_SUBMIT_CHARS)) return;
+    openCalSynthHydrateDoneRef.current = false;
+    calibrationSubmitInFlightRef.current = true;
+    setCalSubmitting(true);
     setBusy(true);
-    setStep(5);
-    setSynthLoading(true);
-    setSynthShown(0);
-    setSynthesis([]);
-    setSynthCollapsed({});
+    setErr(null);
     try {
-      await fetch("/api/me", {
+      const res = await fetch("/api/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cal_q1_shipped: cal.q1,
-          cal_q2_customers: cal.q2,
+          cal_q2_customers: CAL_LEGACY_EMPTY.q2,
           cal_q3_didnt_work: cal.q3,
-          cal_q4_traction: cal.q4,
+          cal_q4_traction: CAL_LEGACY_EMPTY.q4,
           cal_q5_unknown: cal.q5,
         }),
       });
+      if (!res.ok) {
+        setErr("Could not save calibration");
+        return;
+      }
+      setCal((c) => ({ ...c, q2: CAL_LEGACY_EMPTY.q2, q4: CAL_LEGACY_EMPTY.q4 }));
+      setStep(5);
+      setSynthShown(0);
+      setSynthesis([]);
+      setSynthCollapsed({});
+      setSynthLoading(true);
       const syn = await fetch("/api/conexa/synthesis", { method: "POST" });
       const j = await syn.json();
       let stmts: string[] = j.statements ?? [];
@@ -666,47 +858,103 @@ export default function StartPage() {
           "We couldn’t load full synthesis.",
           "Your answers are saved — tap “Edit my answers” or refresh.",
           "",
-          "",
-          "",
         ];
       }
-      while (stmts.length < 5) stmts.push("");
-      setSynthesis(stmts.slice(0, 5));
-      setSynthCollapsed({ 1: true, 2: true, 3: true, 4: true });
+      while (stmts.length < 3) stmts.push("");
+      setSynthesis(stmts);
+      setSynthCollapsed(
+        stmts.length <= 1
+          ? {}
+          : Object.fromEntries(
+              Array.from({ length: stmts.length - 1 }, (_, k) => [k + 1, true]),
+            ),
+      );
       let i = 0;
       const iv = setInterval(() => {
         i += 1;
         setSynthShown(Math.min(i, stmts.length));
         if (i >= stmts.length) clearInterval(iv);
       }, 220);
+      openCalSynthHydrateDoneRef.current = true;
     } catch {
       setSynthesis([
         "We couldn’t generate synthesis just now.",
         "Your answers are saved — use “Edit my answers” or refresh.",
         "",
-        "",
-        "",
       ]);
-      setSynthShown(5);
+      setSynthCollapsed({ 1: true, 2: true });
+      setSynthShown(3);
     } finally {
+      calibrationSubmitInFlightRef.current = false;
       setSynthLoading(false);
+      setCalSubmitting(false);
       setBusy(false);
     }
   }
 
   async function confirmSynthesis() {
-    await fetch("/api/me", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        calibration_locked: true,
-        calibration_synthesis: synthesis,
-      }),
-    });
-    setStep(6);
+    setBusy(true);
+    setErr(null);
+    try {
+      const lockRes = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          calibration_locked: true,
+          calibration_synthesis: synthesis,
+        }),
+      });
+      if (!lockRes.ok) {
+        setErr("Could not save calibration lock");
+        return;
+      }
+
+      const meRes = await fetch("/api/me", { credentials: "same-origin" });
+      if (meRes.ok) {
+        const { user: row } = await meRes.json();
+        const rowTags = Array.isArray(row.avoidance_tags) ? row.avoidance_tags : [];
+        if (rowTags.length === 0) {
+          await fetch("/api/me", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avoidance_tags: ["Nothing yet"] }),
+          });
+        }
+      }
+
+      setStep(7);
+      setActShown(0);
+      setActivation(null);
+      try {
+        const act = await fetch("/api/conexa/activation", { method: "POST" });
+        const j = await act.json();
+        setActivation({
+          tabs: j.tabs ?? {},
+          personal_insight: String(j.personal_insight ?? ""),
+        });
+        let i = 0;
+        const iv = setInterval(() => {
+          i += 1;
+          setActShown(Math.min(i, 6));
+          if (i >= 6) clearInterval(iv);
+        }, 600);
+        day0ActivationHydrateDoneRef.current = true;
+      } catch {
+        setActivation({
+          tabs: {},
+          personal_insight:
+            "Conexa could not load this read. Check your connection and refresh this page.",
+        });
+        setActShown(6);
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   function editCalibrationFromSynthesis() {
+    openCalSynthHydrateDoneRef.current = false;
+    openCalSynthHydrateInFlightRef.current = false;
     setErr(null);
     void fetch("/api/events", {
       method: "POST",
@@ -717,14 +965,16 @@ export default function StartPage() {
         session_id: "web",
       }),
     });
-    setCalI(0);
-    setCalReveal(true);
     setStep(4);
     setSynthesis([]);
     setSynthShown(0);
   }
 
   async function editCalibrationFromActivation() {
+    day0ActivationHydrateDoneRef.current = false;
+    day0ActivationHydrateInFlightRef.current = false;
+    openCalSynthHydrateDoneRef.current = false;
+    openCalSynthHydrateInFlightRef.current = false;
     setErr(null);
     setBusy(true);
     const res = await fetch("/api/me", {
@@ -737,7 +987,7 @@ export default function StartPage() {
       setErr(
         typeof j.error === "string"
           ? j.error
-          : "Could not unlock CoNexa calibration for editing.",
+          : "Could not unlock Conexa calibration for editing.",
       );
       setBusy(false);
       return;
@@ -762,41 +1012,12 @@ export default function StartPage() {
         q5: String(u.cal_q5_unknown ?? ""),
       });
     }
-    setCalI(0);
-    setCalReveal(true);
     setStep(4);
     setSynthesis([]);
     setSynthShown(0);
     setActivation(null);
     setActShown(0);
     setBusy(false);
-  }
-
-  async function saveGap() {
-    if (!blocker.trim() || avoid.length === 0) {
-      setErr("Complete gap capture");
-      return;
-    }
-    setErr(null);
-    await fetch("/api/me", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blocker_text: blocker, avoidance_tags: avoid }),
-    });
-    setStep(7);
-    setActShown(0);
-    const act = await fetch("/api/conexa/activation", { method: "POST" });
-    const j = await act.json();
-    setActivation({
-      tabs: j.tabs,
-      personal_insight: j.personal_insight,
-    });
-    let i = 0;
-    const iv = setInterval(() => {
-      i += 1;
-      setActShown(Math.min(i, 6));
-      if (i >= 6) clearInterval(iv);
-    }, 600);
   }
 
   async function persistActivationAndGo() {
@@ -933,7 +1154,8 @@ export default function StartPage() {
     await supabase.auth.signOut();
     setHasAuthSession(false);
     setEmail("");
-    setFullName("");
+    setFirstName("");
+    setLastName("");
     setPassword("");
   }
 
@@ -949,278 +1171,515 @@ export default function StartPage() {
     );
   }
 
+  const wideOnboarding = step >= 2 && step <= 8;
+  /** Match Execution Intelligence HTML: full chrome for every /start step. */
+  const useFlowChrome = step >= 2 && step <= 8;
+  const calibrationAnswersComplete = CALIBRATION_STEPS.every(
+    (s) => cal[s.field].trim().length >= CAL_MIN_SUBMIT_CHARS,
+  );
+  const startupStepReady =
+    Boolean(startupName.trim()) &&
+    description.trim().length >= 15 &&
+    description.trim().length <= 50 &&
+    STAGE_TILES.some((t) => t.stage === stage && t.mrr === mrr) &&
+    Boolean(blocker.trim());
+
   return (
     <main
       data-onboarding-surface="true"
-      className="min-h-screen bg-black text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
+      className={
+        useFlowChrome
+          ? "ei-root min-h-screen bg-[#080910] text-[#EEEEF2] flex flex-col"
+          : "min-h-screen bg-black text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
+      }
     >
-      <div className="mb-6 flex justify-between text-sm text-[var(--ca)]">
-        <Link href="/" className="hover:text-[var(--ac)]">
-          ← Home
-        </Link>
-        {step >= 2 && step <= 7 && (
-          <span>
-            {hasAuthSession && step === 2
-              ? "Finish signup · 1 / 6"
-              : `Step ${step - 1} of 6`}
-          </span>
-        )}
-      </div>
+      {useFlowChrome ? <OnboardingTopNav /> : null}
 
-      {step === 2 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">
-            {hasAuthSession ? "Finish your profile" : "Identity"}
-          </h1>
-          {hasAuthSession ? (
-            <p className="text-sm text-[var(--ca)]">
-              You&apos;re signed in. Add the details below so we can create your Oxecute profile.
-            </p>
-          ) : null}
-          <input className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          <input
-            className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 disabled:opacity-60"
-            placeholder="Email"
-            type="email"
-            value={email}
-            readOnly={hasAuthSession}
-            onChange={(e) => !hasAuthSession && setEmail(e.target.value)}
+      <div
+        className={
+          useFlowChrome
+            ? `flex flex-1 min-h-0 w-full pt-[58px] ${wideOnboarding ? "flex-col md:flex-row" : "flex-col"}`
+            : "min-h-screen"
+        }
+      >
+      {(step >= 2 && step <= 8) && (
+        <>
+          <CalibrationSidebar
+            phase={onboardingFlowPhase(step)}
+            conexaSubtitle={conexaSectionSubtitle(step)}
           />
-          {!hasAuthSession ? (
-            <input className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          ) : null}
-          <input className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
-          <input className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" placeholder="Startup name" value={startupName} onChange={(e) => setStartupName(e.target.value)} />
-          <label className="block text-sm text-[var(--ca)]">How did you find us?</label>
-          <div className="flex flex-wrap gap-2">
-            {FOUND_US.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`text-xs px-3 py-2 rounded-full border transition-colors ${
-                  foundUs === f
-                    ? "bg-[var(--ac)] text-[var(--mi)] border-[var(--ac)]"
-                    : "border-white/25 text-[var(--fw)] hover:border-[var(--ac)]/60"
-                }`}
-                onClick={() => setFoundUs(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          {err && <p className="text-[var(--orange)] text-sm">{err}</p>}
-          <button disabled={busy} onClick={runIdentity} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
-            Continue
-          </button>
-          {!hasAuthSession ? (
-            <>
-              <div className="relative flex items-center gap-3 py-2">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-xs text-[var(--t3)]">or</span>
-                <div className="h-px flex-1 bg-white/10" />
+
+          <div className="flex flex-1 flex-col min-w-0 min-h-0 bg-[#080910]">
+            <MobileStepPills phase={onboardingFlowPhase(step)} />
+
+            <div className="flex-1 min-h-0 overflow-y-auto w-full">
+            {step === 2 && (
+              <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+                <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                      {hasAuthSession ? "Account" : "Identity"}
+                    </p>
+                    <h1
+                      className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] mb-2"
+                      style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                    >
+                      {hasAuthSession ? "Finish your profile" : "Create your account"}
+                    </h1>
+                    <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+                      {hasAuthSession
+                        ? "Add the details below so we can create your Oxecute profile."
+                        : "Next: your startup, then Conexa — calibration through your first proof."}
+                    </p>
+                  </div>
+                  <div className="px-6 md:px-8 py-7 space-y-4">
+                    {hasAuthSession ? (
+                      <p className="text-[13px] text-[#9194AB]">
+                        You&apos;re signed in. Complete your profile to continue.
+                      </p>
+                    ) : null}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">
+                          First name
+                        </label>
+                        <input
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          placeholder="First name"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">
+                          Last name
+                        </label>
+                        <input
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          placeholder="Last name"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Email</label>
+                      <input
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] disabled:opacity-60"
+                        placeholder="you@company.com"
+                        type="email"
+                        value={email}
+                        readOnly={hasAuthSession}
+                        onChange={(e) => !hasAuthSession && setEmail(e.target.value)}
+                      />
+                    </div>
+                    {!hasAuthSession ? (
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Password</label>
+                        <input
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          placeholder="••••••••"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </div>
+                    ) : null}
+                    <div>
+                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Country</label>
+                      <input
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                        placeholder="Country"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Startup name</label>
+                      <input
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                        placeholder="e.g. Oxecute"
+                        value={startupName}
+                        onChange={(e) => setStartupName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-[#9194AB] mb-2">How did you find us?</label>
+                      <div className="flex flex-wrap gap-2">
+                        {FOUND_US.map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            className={`text-xs px-3 py-2 rounded-full border transition-colors ${
+                              foundUs === f
+                                ? "border-[rgba(99,102,241,0.45)] bg-[rgba(99,102,241,0.08)] text-[#EEEEF2]"
+                                : "border-white/[0.11] text-[#9194AB] hover:border-white/20"
+                            }`}
+                            onClick={() => setFoundUs(f)}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {err ? <p className="text-sm text-orange-300">{err}</p> : null}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={runIdentity}
+                      className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50 transition-all"
+                    >
+                      Continue
+                    </button>
+                    {!hasAuthSession ? (
+                      <>
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-px flex-1 bg-white/[0.08]" />
+                          <span className="text-[11px] text-[#52556A]">or</span>
+                          <div className="h-px flex-1 bg-white/[0.08]" />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void signInWithGoogle()}
+                          className="btn-google w-full"
+                        >
+                          <span className="g-icon" aria-hidden />
+                          Continue with Google
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-center text-xs text-[#52556A]">
+                        <button type="button" onClick={() => void signOutAndReset()} className="text-[#818CF8] underline">
+                          Use a different account
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="w-full max-w-[560px] mt-6 space-y-4">
+                  <AuthMobileHelp afterResetPath="/start" />
+                  <p className="text-[13px] text-center text-[#9194AB]">
+                    Already have an account?{" "}
+                    <Link href="/login" className="text-[#818CF8] underline">
+                      Sign in
+                    </Link>
+                    {!hasAuthSession ? (
+                      <>
+                        {" · "}
+                        <Link href="/auth/forgot-password" className="text-[#818CF8] underline">
+                          Forgot password
+                        </Link>
+                      </>
+                    ) : null}
+                  </p>
+                  <div className="flex justify-center">
+                    <Link
+                      href="/"
+                      className="text-[13px] text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
+                    >
+                      ← Back to site
+                    </Link>
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void signInWithGoogle()}
-                className="w-full flex items-center justify-center gap-2 rounded-full border border-white/20 bg-black/20 text-[var(--fw)] font-medium py-3 hover:bg-black/30"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Continue with Google
-              </button>
-            </>
-          ) : (
-            <p className="text-center text-xs text-[var(--t3)]">
-              <button type="button" onClick={() => void signOutAndReset()} className="text-[var(--ac)] underline">
-                Use a different account
-              </button>
-            </p>
-          )}
-          <AuthMobileHelp afterResetPath="/start" />
-          <p className="text-sm text-center text-[var(--ca)]">
-            Already have an account? <Link href="/login" className="text-[var(--ac)] underline">Sign in</Link>
-            {!hasAuthSession ? (
-              <>
-                {" · "}
-                <Link href="/auth/forgot-password" className="text-[var(--ac)] underline">
-                  Forgot password
-                </Link>
-              </>
-            ) : null}
-          </p>
-        </div>
-      )}
+            )}
 
-      {step === 3 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">Context</h1>
-          <label className="block text-sm font-medium text-[var(--fw)]">
-            Where is your startup right now?
-            <select
-              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
-              value={stage}
-              onChange={(e) => setStage(e.target.value)}
-            >
-              {["Idea", "Building", "Launched", "Scaling"].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-medium text-[var(--fw)]">
-            Monthly revenue (MRR)?
-            <select
-              className="mt-1.5 w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)]"
-              value={mrr}
-              onChange={(e) => setMrr(e.target.value)}
-            >
-              {["Pre-revenue", "$1-500", "$500-2K", "$2K-10K", "$10K+"].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <textarea
-            className={`w-full min-h-[120px] rounded-lg bg-black/30 border px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80 ${
-              description.trim().length > 0 &&
-              (description.trim().length < 15 || description.trim().length > 50)
-                ? "border-amber-500/50"
-                : "border-white/10"
-            }`}
-            placeholder="What are you building? One line, max 50 characters."
-            maxLength={50}
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              if (
-                e.target.value.trim().length >= 15 &&
-                e.target.value.trim().length <= 50
-              ) {
-                setContextTooShort(false);
-              }
-            }}
-          />
-          {contextTooShort ? (
-            <p className="text-sm rounded-lg border border-amber-500/40 bg-amber-500/15 text-amber-100 px-3 py-2" role="alert">
-              Use 15–50 characters: a single clear line on what you are building (no essay).
-            </p>
-          ) : null}
-          <p
-            className={`text-xs ${
-              description.trim().length > 0 &&
-              (description.trim().length < 15 || description.trim().length > 50)
-                ? "text-amber-300"
-                : "text-[var(--ca)]"
-            }`}
-          >
-            {description.length}/50 · 15 character minimum
-          </p>
-          <button
-            type="button"
-            disabled={
-              busy ||
-              description.trim().length < 15 ||
-              description.trim().length > 50
-            }
-            onClick={trySaveContext}
-            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Continue
-          </button>
-        </div>
-      )}
+            {step === 3 && (
+                <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
+                  <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
+                    <header className="space-y-3 border-b border-white/[0.06] pb-6">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] font-dm">
+                        Tell us about your startup
+                      </p>
+                      <h1
+                        className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] font-urbanist leading-tight"
+                        style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                      >
+                        What are you building?
+                      </h1>
+                      <p className="text-[13px] font-light text-[#9194AB] font-dm leading-relaxed">
+                        Three quick questions. No pitch required. Conexa uses this to give you
+                        something real, not generic advice.
+                      </p>
+                    </header>
 
-      {step === 4 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">CoNexa Calibration</h1>
-          <p className="text-xs text-[var(--ca)]">
-            Question {calI + 1} of {CALIBRATION_STEPS.length}
-          </p>
-          {!calReveal ? (
-            <div className="rounded-xl border border-white/15 bg-black/25 px-4 py-8 text-center space-y-3">
-              <p className="text-sm text-[var(--ca)]">
-                Next calibration question is hidden until you&apos;re ready.
-              </p>
-              <button
-                type="button"
-                onClick={() => setCalReveal(true)}
-                className="rounded-full border border-[var(--ac)]/60 text-[var(--ac)] font-semibold px-6 py-2.5 text-sm hover:bg-[var(--ac)]/10"
-              >
-                Show question
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex gap-2 justify-center" aria-hidden>
-                {CALIBRATION_STEPS.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2 w-2 rounded-full border ${
-                      i === calI
-                        ? "bg-[var(--ac)] border-[var(--ac)]"
-                        : i < calI
-                          ? "bg-[var(--p)] border-[var(--p)]"
-                          : "border-[var(--t3)] bg-transparent"
-                    }`}
-                  />
-                ))}
+                    <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#7C3AED] transition-[width] duration-300 ease-in-out"
+                        style={{
+                          width: `${
+                            (Number(Boolean(startupName.trim())) +
+                              Number(
+                                description.trim().length >= 15 &&
+                                  description.trim().length <= 50,
+                              ) +
+                              Number(
+                                STAGE_TILES.some(
+                                  (t) => t.stage === stage && t.mrr === mrr,
+                                ),
+                              ) +
+                              Number(Boolean(blocker.trim()))) *
+                            25
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                          Startup name
+                        </label>
+                        <input
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          placeholder="e.g. Oxecute"
+                          value={startupName}
+                          onChange={(e) => setStartupName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                          What are you building and who is it for?
+                        </label>
+                        <textarea
+                          className={`w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A] ${
+                            description.trim().length > 0 &&
+                            (description.trim().length < 15 ||
+                              description.trim().length > 50)
+                              ? "border-amber-500/50"
+                              : "border-white/[0.11]"
+                          }`}
+                          maxLength={50}
+                          placeholder="e.g. Execution intelligence for solo founders who can't get warm intros"
+                          value={description}
+                          onChange={(e) => {
+                            setDescription(e.target.value);
+                            if (
+                              e.target.value.trim().length >= 15 &&
+                              e.target.value.trim().length <= 50
+                            ) {
+                              setContextTooShort(false);
+                            }
+                          }}
+                        />
+                        {contextTooShort ? (
+                          <p className="text-xs text-amber-300 mt-1" role="alert">
+                            15–50 characters required (API).
+                          </p>
+                        ) : null}
+                        <p className="text-[11px] font-dm text-[#52556A] mt-1">
+                          {description.length}/50 · one line for your record
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-2">
+                          What stage are you at?
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {STAGE_TILES.map((t) => {
+                            const sel = stage === t.stage && mrr === t.mrr;
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => {
+                                  setStage(t.stage);
+                                  setMrr(t.mrr);
+                                }}
+                                className={`rounded-[10px] border px-3 py-3 text-left transition font-dm ${
+                                  sel
+                                    ? "border-[rgba(99,102,241,0.45)] bg-[rgba(99,102,241,0.08)] text-[#EEEEF2]"
+                                    : "border-white/[0.11] bg-white/[0.02] text-[#9194AB] hover:border-white/20"
+                                }`}
+                              >
+                                <div
+                                  className={`text-[13px] font-medium ${sel ? "text-[#EEEEF2]" : "text-[#9194AB]"}`}
+                                >
+                                  {t.title}
+                                </div>
+                                <div className="text-[10px] text-[#52556A] mt-0.5">
+                                  {t.sub}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                          What&apos;s your biggest blocker right now?
+                        </label>
+                        <textarea
+                          className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A]"
+                          placeholder="Be honest. Conexa reads this literally."
+                          value={blocker}
+                          onChange={(e) => setBlocker(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {err ? <p className="text-sm text-orange-300">{err}</p> : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!startupStepReady) return;
+                        void trySaveContext();
+                      }}
+                      className={`startup-next-btn mt-2 w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold font-dm text-white relative overflow-hidden transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#6366F1] to-[#7C3AED] ${
+                        startupStepReady
+                          ? "ready opacity-100 cursor-pointer shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+                          : "opacity-45 cursor-not-allowed"
+                      }`}
+                    >
+                      Next — Conexa calibration →
+                    </button>
+                    <p className="text-[11px] font-dm text-[#52556A] text-center">
+                      No account yet. You see your report first.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/")}
+                    className="mt-6 text-[13px] font-dm text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                  >
+                    ← Back to site
+                  </button>
+                </div>
+            )}
+
+            {step === 4 && (
+                <>
+                {!calSubmitting ? (
+                      <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
+                        <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
+                          <header className="space-y-3 border-b border-white/[0.06] pb-6">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] font-dm">
+                              Conexa calibration
+                            </p>
+                            <h1
+                              className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] font-urbanist leading-tight"
+                              style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                            >
+                              Three honest answers.
+                            </h1>
+                            <p className="text-[13px] font-light text-[#9194AB] font-dm leading-relaxed">
+                              Conexa reads these literally. The more specific you are, the sharper your
+                              report. Don&apos;t perform — this isn&apos;t a pitch.
+                            </p>
+                          </header>
+
+                          <div className="h-1 w-full max-w-full rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#7C3AED] transition-[width] duration-300 ease-in-out"
+                              style={{
+                                width: `${
+                                  (CALIBRATION_STEPS.filter(
+                                    (s) => cal[s.field].trim().length >= CAL_MIN_SUBMIT_CHARS,
+                                  ).length /
+                                    CALIBRATION_STEPS.length) *
+                                  100
+                                }%`,
+                              }}
+                            />
+                          </div>
+
+                          <p className="text-[11px] font-dm text-[#52556A]">
+                            Move through in order. Each answer needs at least {CAL_MIN_SUBMIT_CHARS}{" "}
+                            characters before you can generate your report.
+                          </p>
+
+                          <div className="space-y-4">
+                            {CALIBRATION_STEPS.map((meta, i) => {
+                              const field = meta.field;
+                              const prev = CALIBRATION_STEPS[i - 1];
+                              const unlocked =
+                                i === 0 ||
+                                (prev &&
+                                  cal[prev.field].trim().length >= CAL_UNLOCK_CHARS);
+                              return (
+                                <CalibrationQuestionCard
+                                  key={field}
+                                  index={i}
+                                  totalSteps={CALIBRATION_STEPS.length}
+                                  meta={meta}
+                                  field={field}
+                                  value={cal[field]}
+                                  unlocked={unlocked}
+                                  onChange={(f, v) =>
+                                    setCal((prev) => ({ ...prev, [f]: v }))
+                                  }
+                                />
+                              );
+                            })}
+                          </div>
+
+                          {err ? (
+                            <p className="text-sm text-orange-300">{err}</p>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!calibrationAnswersComplete) return;
+                              void submitCalibrationReport();
+                            }}
+                            className={`calibration-submit-btn mt-2 w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#6366F1] to-[#7C3AED] ${
+                              calibrationAnswersComplete
+                                ? "ready opacity-100 cursor-pointer shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+                                : "opacity-45 cursor-not-allowed"
+                            }`}
+                          >
+                            Generate my Conexa report →
+                          </button>
+
+                          <p className="text-[11px] font-dm text-[#52556A] pt-2">
+                            <strong className="text-[#EEEEF2] font-semibold">
+                              Your answers are private.
+                            </strong>{" "}
+                            Conexa uses them to generate your Day 0 report.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setStep(3)}
+                          className="mt-6 text-[13px] font-dm text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                        >
+                          ← Back
+                        </button>
+                      </div>
+                ) : (
+                  <div className="flex min-h-[40vh] w-full items-center justify-center py-12 px-4">
+                    <CalibrationLoadingState />
+                  </div>
+                )}
+                </>
+            )}
+
+            {step === 5 && (
+              <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+              <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                  Synthesis
+                </p>
+                <h1
+                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                >
+                  Your calibration read
+                </h1>
+                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed mt-2">
+                  Five insights from Conexa before your Day 0 report.
+                </p>
               </div>
-              {(() => {
-                const meta = CALIBRATION_STEPS[calI];
-                const field = CAL_FIELDS[calI];
-                const value = cal[field];
-                return (
-                  <>
-                    <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]/80">
-                      {meta.tag}
-                    </p>
-                    <p className="text-base font-semibold text-[var(--fw)] leading-snug">
-                      {meta.question}
-                    </p>
-                    <textarea
-                      className="w-full min-h-[120px] rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--t3)]"
-                      placeholder={meta.placeholder}
-                      maxLength={meta.maxLen}
-                      value={value}
-                      onChange={(e) =>
-                        setCal({ ...cal, [field]: e.target.value })
-                      }
-                    />
-                    <p className="text-xs text-[var(--t3)]">
-                      {value.length}/{meta.maxLen}
-                      {calI <= 2 ? " · '0' or 'none' is fine if that's accurate" : null}
-                    </p>
-                  </>
-                );
-              })()}
-              <button
-                onClick={saveCalibrationAndNext}
-                disabled={
-                  busy ||
-                  (calI === 0 && cal.q1.trim().length < 1) ||
-                  (calI === 4 && cal.q5.trim().length < 1)
-                }
-                className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3"
-              >
-                {calI === 4 ? "Complete CoNexa calibration →" : "Next question →"}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {step === 5 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">Synthesis</h1>
+              <div className="px-6 md:px-8 py-7 space-y-4">
           {synthLoading ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-8 text-center space-y-3">
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center space-y-3">
               <div className="flex justify-center">
-                <span className="inline-block h-8 w-8 rounded-full border-2 border-[var(--ac)] border-t-transparent animate-spin" />
+                <span className="inline-block h-8 w-8 rounded-full border-2 border-[#6366F1] border-t-transparent animate-spin" />
               </div>
-              <p className="text-sm text-[var(--ca)]">
+              <p className="text-sm text-[#9194AB]">
                 Generating your synthesis from your calibration answers… This usually takes a few seconds.
               </p>
             </div>
@@ -1229,10 +1688,10 @@ export default function StartPage() {
               {synthesis.slice(0, synthShown).map((s, i) => {
                 const collapsed = synthCollapsed[i] === true;
                 return (
-                  <div key={i} className="border border-white/10 rounded-lg bg-black/20 overflow-hidden">
+                  <div key={i} className="border border-white/[0.08] rounded-lg bg-white/[0.02] overflow-hidden">
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-semibold text-[var(--fw)] hover:bg-white/5"
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-semibold text-[#EEEEF2] hover:bg-white/[0.04]"
                       onClick={() =>
                         setSynthCollapsed((prev) => ({
                           ...prev,
@@ -1240,13 +1699,15 @@ export default function StartPage() {
                         }))
                       }
                     >
-                      <span>Insight {i + 1} of 5</span>
-                      <span className="text-xs font-medium text-[var(--ac)] shrink-0">
+                      <span>
+                        Insight {i + 1} of {Math.max(synthesis.length, 1)}
+                      </span>
+                      <span className="text-xs font-medium text-[#818CF8] shrink-0">
                         {collapsed ? "Show" : "Hide"}
                       </span>
                     </button>
                     {!collapsed ? (
-                      <p className="text-sm text-[var(--ca)] px-3 pb-3 whitespace-pre-wrap break-words">
+                      <p className="text-sm text-[#9194AB] px-3 pb-3 whitespace-pre-wrap break-words">
                         {s}
                       </p>
                     ) : null}
@@ -1256,74 +1717,65 @@ export default function StartPage() {
             </div>
           )}
           <button
-            disabled={synthLoading || synthShown < 5}
+            disabled={
+              busy ||
+              synthLoading ||
+              synthesis.length === 0 ||
+              synthShown < synthesis.length
+            }
             onClick={() => void confirmSynthesis()}
-            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3 disabled:opacity-50"
+            className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50 transition-all"
           >
             Yes, continue →
           </button>
           <button
             type="button"
-            disabled={synthShown < 5}
+            disabled={synthesis.length === 0 || synthShown < synthesis.length}
             onClick={editCalibrationFromSynthesis}
-            className="w-full rounded-full border border-white/25 text-[var(--fw)] font-medium py-3 hover:bg-white/5"
+            className="w-full min-h-[48px] rounded-[11px] border border-white/[0.11] text-[#9194AB] font-medium hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
           >
             Edit my answers
           </button>
-          <p className="text-xs text-center text-[var(--t3)]">
-            You&apos;ll return to the 5 CoNexa calibration questions, then see a fresh synthesis.
+          <p className="text-[11px] text-center text-[#52556A]">
+            You&apos;ll return to the three Conexa calibration questions, then see a fresh synthesis.
           </p>
-        </div>
-      )}
-
-      {step === 6 && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <h1 className="text-xl font-bold">Gap capture</h1>
-          <textarea className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2" maxLength={140} placeholder="Biggest blocker" value={blocker} onChange={(e) => setBlocker(e.target.value)} />
-          <div className="flex flex-wrap gap-2">
-            {[
-              "Product work",
-              "Talking to customers",
-              "Fundraising",
-              "Hiring",
-              "Marketing and distribution",
-              "Operations",
-              "Nothing yet",
-            ].map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                className={`text-xs px-3 py-1 rounded-full border ${avoid.includes(tag) ? "bg-[var(--ac)] text-[var(--mi)]" : "border-white/20"}`}
-                onClick={() => {
-                  if (tag === "Nothing yet") setAvoid(["Nothing yet"]);
-                  else setAvoid((a) => [...a.filter((x) => x !== "Nothing yet"), tag]);
-                }}
-              >
-                {tag}
-              </button>
-            ))}
+              </div>
+            </div>
           </div>
-          <button onClick={saveGap} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
-            Continue
-          </button>
-        </div>
-      )}
+            )}
 
-      {step === 7 && !activation && (
-        <div className="space-y-4 glass-card rounded-2xl p-6 text-center">
-          <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]/80">
-            Conexa
-          </p>
-          <p className="text-sm text-[var(--ca)]">Preparing your execution read…</p>
-          <div className="flex justify-center py-4">
-            <span className="inline-block h-8 w-8 rounded-full border-2 border-[var(--ac)] border-t-transparent animate-spin" />
+            {step === 7 && !activation && (
+              <div className="flex min-h-full w-full flex-col items-center justify-center py-16 px-4">
+            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] px-8 py-12 text-center">
+              <p className="text-[10px] font-semibold tracking-[0.13em] uppercase text-[#818CF8] mb-3">
+                Conexa
+              </p>
+              <p className="text-[15px] text-[#9194AB]">Preparing your execution read…</p>
+              <div className="flex justify-center py-8">
+                <span className="inline-block h-10 w-10 rounded-full border-2 border-[#6366F1] border-t-transparent animate-spin" />
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+            )}
 
-      {step === 7 && activation && (
-        <div className="space-y-4 glass-card rounded-2xl p-6">
-          <p className="text-xs tracking-widest text-[var(--ac)]">CONEXA · EXECUTION INTELLIGENCE</p>
+            {step === 7 && activation && (
+              <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+              <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                  Conexa · Execution intelligence
+                </p>
+                <h1
+                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                >
+                  Your Day 0 read
+                </h1>
+                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed mt-2">
+                  Six tabs unlock as they&apos;re revealed.
+                </p>
+              </div>
+              <div className="px-6 md:px-8 py-7 space-y-4">
           <div className="space-y-2 text-sm">
             {(
               [
@@ -1337,21 +1789,21 @@ export default function StartPage() {
             ).slice(0, actShown).map(([t, b], i) => {
               const collapsed = actCollapsed[i] === true;
               return (
-                <div key={i} className="border border-white/10 rounded-lg overflow-hidden">
+                <div key={i} className="border border-white/[0.08] rounded-lg overflow-hidden bg-white/[0.02]">
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-white/5"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-white/[0.04]"
                     onClick={() =>
                       setActCollapsed((prev) => ({ ...prev, [i]: !collapsed }))
                     }
                   >
-                    <span className="font-semibold text-[var(--ac)]">{t}</span>
-                    <span className="text-xs font-medium text-[var(--ac)] shrink-0">
+                    <span className="font-semibold text-[#818CF8]">{t}</span>
+                    <span className="text-xs font-medium text-[#818CF8] shrink-0">
                       {collapsed ? "Show" : "Hide"}
                     </span>
                   </button>
                   {!collapsed ? (
-                    <p className="text-[var(--ca)] px-3 pb-3 whitespace-pre-wrap break-words">
+                    <p className="text-[#9194AB] px-3 pb-3 whitespace-pre-wrap break-words">
                       {String(b ?? "")}
                     </p>
                   ) : null}
@@ -1361,37 +1813,50 @@ export default function StartPage() {
           </div>
           {actShown >= 6 && (
             <>
-              <p className="text-sm">{activation.personal_insight}</p>
+              <p className="text-sm text-[#EEEEF2]">{activation.personal_insight}</p>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void editCalibrationFromActivation()}
-                className="w-full rounded-full border border-white/25 text-[var(--fw)] font-medium py-3 hover:bg-white/5 disabled:opacity-50"
+                className="w-full min-h-[48px] rounded-[11px] border border-white/[0.11] text-[#9194AB] font-medium hover:bg-white/[0.04] disabled:opacity-50"
               >
-                Edit CoNexa calibration answers
+                Edit Conexa calibration answers
               </button>
-              <p className="text-xs text-[var(--t3)]">
-                Reopens the 5 questions, then synthesis, gap capture, and this Conexa read run again with your updates.
+              <p className="text-[11px] text-[#52556A]">
+                Reopens the three questions, then synthesis, and this Conexa read runs again with your updates.
               </p>
-              <button onClick={persistActivationAndGo} className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3">
+              <button
+                type="button"
+                onClick={persistActivationAndGo}
+                className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+              >
                 Start my record →
               </button>
             </>
           )}
-        </div>
-      )}
+              </div>
+            </div>
+          </div>
+            )}
 
-      {step === 8 && (
-        <div className="space-y-5 glass-card rounded-2xl p-6">
-          <header className="space-y-1">
-            <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[var(--ac)]">
-              First entry
-            </p>
-            <h1 className="text-xl font-bold text-[var(--fw)]">Submit your first proof.</h1>
-            <p className="text-sm text-[var(--ca)]">
-              Your record starts the moment you submit. Choose your path.
-            </p>
-          </header>
+            {step === 8 && (
+              <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+              <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8]">
+                  First entry
+                </p>
+                <h1
+                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                >
+                  Submit your first proof.
+                </h1>
+                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+                  Your record starts the moment you submit. Choose your path.
+                </p>
+              </div>
+              <div className="px-6 md:px-8 py-7 space-y-5">
 
           <div className="space-y-3">
             <button
@@ -1633,12 +2098,19 @@ export default function StartPage() {
                   uploadContext.trim().length > 140))
             }
             onClick={() => void submitFirst()}
-            className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Lock Entry → Start My Record
           </button>
-        </div>
+              </div>
+            </div>
+          </div>
+            )}
+            </div>
+          </div>
+        </>
       )}
+      </div>
     </main>
   );
 }

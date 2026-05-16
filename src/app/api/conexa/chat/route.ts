@@ -35,11 +35,11 @@ Execution rate: ${executionRate(Number(u.execution_count ?? 0), String(u.created
 Category mix: Product ${pPct}% / Distribution ${dPct}% / Ops ${oPct}%
 === PERMANENT BASELINE ===
 Description: ${u.startup_description}
-Q1 Shipped: ${u.cal_q1_shipped}
-Q2 Customers: ${u.cal_q2_customers}
-Q3 Didn't work: ${u.cal_q3_didnt_work}
-Q4 Traction: ${u.cal_q4_traction}
-Q5 30-day unknown: ${u.cal_q5_unknown}
+Q1 (Last 7 days): ${u.cal_q1_shipped}
+Q2 (legacy): ${u.cal_q2_customers}
+Q3 (Avoiding): ${u.cal_q3_didnt_work}
+Q4 (legacy): ${u.cal_q4_traction}
+Q5 (30-day success): ${u.cal_q5_unknown}
 Biggest blocker: ${u.blocker_text}
 Avoidance pattern: ${((u.avoidance_tags as string[]) || []).join(", ")}
 === RECENT SUBMISSIONS (last 10) ===

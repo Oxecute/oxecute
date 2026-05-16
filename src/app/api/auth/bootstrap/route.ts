@@ -6,15 +6,44 @@ import { suggestUsernameFromStartup } from "@/lib/username";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-const bodySchema = z.object({
-  full_name: z.string().min(1),
-  email: z.string().email(),
-  country: z.string().min(1),
-  startup_name: z.string().min(1),
-  found_us: z.string().min(1),
-  ref_code: z.string().optional().nullable(),
-  session_id: z.string().optional(),
-});
+const bodySchema = z
+  .object({
+    full_name: z.string().min(1).optional(),
+    first_name: z.string().max(120).optional(),
+    last_name: z.string().max(120).optional(),
+    email: z.string().email(),
+    country: z.string().min(1),
+    startup_name: z.string().min(1),
+    found_us: z.string().min(1),
+    ref_code: z.string().optional().nullable(),
+    session_id: z.string().optional(),
+  })
+  .strict()
+  .superRefine((b, ctx) => {
+    const fn = (b.first_name ?? "").trim();
+    const ln = (b.last_name ?? "").trim();
+    const legacy = (b.full_name ?? "").trim();
+    if (legacy) return;
+    if (!fn || !ln) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "first_name and last_name are required when full_name is omitted",
+        path: ["first_name"],
+      });
+    }
+  });
+
+function resolvedFullName(b: {
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+}): string {
+  const legacy = (b.full_name ?? "").trim();
+  if (legacy) return legacy;
+  const fn = (b.first_name ?? "").trim();
+  const ln = (b.last_name ?? "").trim();
+  return `${fn} ${ln}`.trim();
+}
 
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
@@ -43,6 +72,15 @@ export async function POST(request: Request) {
   }
 
   const b = parsed.data;
+  const fullName = resolvedFullName(b);
+  let firstName = (b.first_name ?? "").trim() || null;
+  let lastName = (b.last_name ?? "").trim() || null;
+  if (!firstName && !lastName && fullName) {
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    firstName = parts[0] ?? null;
+    lastName = parts.length > 1 ? parts.slice(1).join(" ") : null;
+  }
+
   if (b.email.toLowerCase() !== user.email.toLowerCase()) {
     return NextResponse.json({ error: "Email mismatch" }, { status: 400 });
   }
@@ -73,7 +111,9 @@ export async function POST(request: Request) {
       id: user.id,
       email: b.email,
       username,
-      full_name: b.full_name,
+      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       country: b.country,
       startup_name: b.startup_name,
       found_us: b.found_us,
