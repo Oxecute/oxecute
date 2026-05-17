@@ -520,7 +520,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 40px 40px 20px;
+  padding: 32px 28px 40px 16px;
   position: relative;
   z-index: 2;
   min-height: 0;
@@ -528,17 +528,18 @@
 .ei-root .carousel-wrap {
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: min(100%, 580px);
 }
 .ei-root .c-glow {
   position: absolute;
-  inset: -60px;
+  inset: -72px;
   background: radial-gradient(ellipse at 50% 40%, rgba(79, 70, 229, 0.11) 0%, transparent 65%);
   pointer-events: none;
 }
 .ei-root .c-track {
   position: relative;
-  height: 420px;
+  height: min(560px, calc(100svh - 160px));
+  min-height: 380px;
 }
 .ei-root .c-slide {
   position: absolute;
