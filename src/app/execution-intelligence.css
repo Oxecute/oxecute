@@ -361,7 +361,7 @@
   color: var(--t2);
   line-height: 1.68;
   max-width: 440px;
-  margin-bottom: 26px;
+  margin-bottom: 12px;
   opacity: 0;
   transition: opacity 0.7s ease 0.1s;
 }

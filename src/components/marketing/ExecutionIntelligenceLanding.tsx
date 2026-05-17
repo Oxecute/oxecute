@@ -249,9 +249,7 @@ export function ExecutionIntelligenceLanding() {
             Your execution is real. The problem is it&apos;s invisible to investors, to the market,
             to anyone who didn&apos;t watch you build.
             <br />
-            <br />
             Oxecute turns what you actually do into a verified record.
-            <br />
             <br />
             Conexa reads the pattern and tells you what&apos;s working, what you&apos;re circling,
             and what to move on next. Every day you execute, the record builds.
