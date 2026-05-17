@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import type { NavItem } from "./dashboard-nav-config";
 import {
+  COMING_SOON_PILL_CLASS,
   NAV_NETWORK_ITEMS,
   NAV_OVERVIEW_ITEMS,
   NAV_TOOL_ITEMS,
@@ -50,13 +51,6 @@ function NavIcon({ href }: { href: string }) {
       return (
         <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M13 2L4.09 12.5a2 2 0 001.64 3.2h5.09L11 22l8.91-10.5a2 2 0 00-1.64-3.2h-5.09L13 2z" strokeLinejoin="round" />
-        </svg>
-      );
-    case "/conexa":
-      return (
-        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
-          <path d="M12 2l8.66 5v10L12 22l-8.66-5V7L12 2z" strokeLinejoin="round" />
-          <path d="M12 12l8.66-5M12 12v10M12 12L3.34 7" strokeLinejoin="round" />
         </svg>
       );
     case "/directive":
@@ -129,9 +123,10 @@ function LogOutIcon({ className = "" }: { className?: string }) {
 
 const navRowBase =
   "flex items-center gap-2.5 py-2 pl-2 pr-2 rounded-lg text-[13px] leading-snug border-l-[3px] transition-colors";
-const navRowActive = "border-l-[#c8f542] bg-[#c8f542]/12 text-white font-medium";
+const navRowActive =
+  "border-l-[#2dd4bf] text-white font-medium bg-gradient-to-r from-[rgba(14,164,114,0.22)] via-[rgba(45,212,191,0.1)] to-transparent shadow-[inset_0_0_24px_-14px_rgba(45,212,191,0.2)] [&_svg]:text-[#a7f3d0]";
 const navRowIdle =
-  "border-l-transparent text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200";
+  "border-l-transparent text-zinc-300 hover:bg-[rgba(14,164,114,0.12)] hover:text-[#a7f3d0] hover:border-l-[rgba(45,212,191,0.35)]";
 const navRowDisabled =
   "border-l-transparent text-zinc-500 cursor-not-allowed hover:bg-transparent hover:text-zinc-500";
 
@@ -156,14 +151,15 @@ function NavSection({
   return (
     <div className="mb-4 last:mb-0">
       {soonBadge ? (
-        <div className="flex items-center gap-2 px-2 mb-1.5">
-          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.14em]">{title}</p>
-          <span className="text-[8px] font-semibold uppercase tracking-wider text-zinc-500 border border-zinc-600/90 rounded px-1 py-0.5">
-            Soon
+        <div className="flex items-center gap-2 px-2 mb-1.5 flex-wrap">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-[0.14em]">{title}</p>
+          <span className={COMING_SOON_PILL_CLASS} title={`${title} — coming soon`}>
+            <span className="w-1 h-1 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.4)] shrink-0" aria-hidden />
+            Coming soon
           </span>
         </div>
       ) : (
-        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.14em] px-2 mb-1.5">{title}</p>
+        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-[0.14em] px-2 mb-1.5">{title}</p>
       )}
       <div className="space-y-0.5">
         {items.map((item) => {
@@ -194,7 +190,17 @@ function NavSection({
               className={`${navRowBase} ${active ? navRowActive : navRowIdle} flex`}
             >
               <NavIcon href={item.href} />
-              <span className="min-w-0 flex-1">{item.label}</span>
+              <span
+                className={`min-w-0 flex-1 ${item.href === "/tools" ? "whitespace-nowrap" : ""}`}
+              >
+                {item.label}
+              </span>
+              {item.href === "/tools" ? (
+                <span className={COMING_SOON_PILL_CLASS} title="Connect Tools — coming soon">
+                  <span className="w-1 h-1 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.4)] shrink-0" aria-hidden />
+                  Coming soon
+                </span>
+              ) : null}
               {isInbox && inboxUnread > 0 ? (
                 <span className="text-[10px] font-bold tabular-nums text-white bg-red-500/90 min-w-[1.25rem] h-5 px-1 rounded-md flex items-center justify-center shrink-0">
                   {inboxUnread > 99 ? "99+" : inboxUnread}
@@ -226,7 +232,7 @@ export function DashboardNav({
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const profileActive = pathname === "/settings/profile" || pathname.startsWith("/settings/");
+  const settingsActive = pathname === "/settings/profile" || pathname.startsWith("/settings/");
   const initials = String(user.full_name ?? user.username ?? "?")
     .split(/\s+/)
     .map((s) => s[0])
@@ -235,62 +241,70 @@ export function DashboardNav({
     .toUpperCase();
 
   return (
-    <nav className={`text-sm ${className}`}>
-      <Link href="/dashboard" className="flex items-center gap-2.5 px-2 py-3 mb-1" onClick={onNavigate}>
-        <img src="/brand/logo-icon.svg" alt="" width={32} height={32} className="h-8 w-8 shrink-0" decoding="async" />
-        <span className="font-semibold text-white tracking-tight text-[15px]">Oxecute</span>
-      </Link>
-
-      <div className="border-t border-zinc-800/80 pt-3 mt-1">
-        <NavSection title="Overview" user={user} items={NAV_OVERVIEW_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
-        <NavSection
-          title="Network"
-          user={user}
-          items={NAV_NETWORK_ITEMS}
-          onNavigate={onNavigate}
-          inboxUnread={inboxUnread}
-          soonBadge
-          forceDisabled
-        />
-        <NavSection title="Tools" user={user} items={NAV_TOOL_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
+    <nav className={`flex flex-col flex-1 min-h-0 text-sm ${className}`}>
+      <div className="shrink-0 overflow-visible pr-1">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-start w-full overflow-visible py-2.5 pl-0.5 pr-4 mb-0.5"
+          onClick={onNavigate}
+        >
+          <img
+            src="/brand/Logo-04.svg?v=5"
+            alt="Oxecute"
+            width={400}
+            height={102}
+            className="h-[15.552px] sm:h-[16.848px] w-auto max-w-none object-contain object-left shrink-0 block"
+            decoding="async"
+          />
+        </Link>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-zinc-800/80 space-y-3">
-        <Link
-          href="/settings/profile"
-          onClick={onNavigate}
-          className="flex items-center gap-3 px-2 py-1.5 -mx-1 rounded-lg hover:bg-white/[0.06] transition-colors min-w-0"
-        >
-          <div className="w-9 h-9 rounded-full bg-[#4F46E5] text-white text-xs font-bold flex items-center justify-center shrink-0">
-            {initials}
-          </div>
-          <div className="min-w-0 text-left">
-            <p className="text-sm font-medium text-white truncate">{user.full_name ?? user.username}</p>
-            <p className="text-[11px] text-zinc-500 truncate">@{user.username}</p>
-          </div>
-        </Link>
-        <div className="space-y-0.5">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none pr-0.5 -mr-0.5">
+        <div className="border-t border-zinc-800/80 pt-2.5 mt-0.5">
+          <NavSection title="Overview" user={user} items={NAV_OVERVIEW_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
+          <NavSection
+            title="Network"
+            user={user}
+            items={NAV_NETWORK_ITEMS}
+            onNavigate={onNavigate}
+            inboxUnread={inboxUnread}
+            soonBadge
+            forceDisabled
+          />
+          <NavSection title="Tools" user={user} items={NAV_TOOL_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-zinc-800/80 space-y-3">
           <Link
             href="/settings/profile"
             onClick={onNavigate}
-            className={`${navRowBase} ${profileActive ? navRowActive : navRowIdle} flex`}
+            className={`flex items-center gap-3 px-2 py-1.5 -mx-1 rounded-lg hover:bg-white/[0.06] transition-colors min-w-0 ${
+              settingsActive ? "ring-1 ring-[#2dd4bf]/45 bg-white/[0.04]" : ""
+            }`}
           >
-            <NavIcon href="/settings/profile" />
-            Profile
+            <div className="w-9 h-9 rounded-full bg-[#4F46E5] text-white text-xs font-bold flex items-center justify-center shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-sm font-medium text-white truncate">{user.full_name ?? user.username}</p>
+              <p className="text-[11px] text-zinc-400 truncate">@{user.username}</p>
+            </div>
           </Link>
-          <button
-            type="button"
-            className={`${navRowBase} w-full text-left flex items-center border-l-transparent text-red-400/90 hover:text-red-400 hover:bg-red-500/10 hover:border-l-transparent`}
-            onClick={async () => {
-              onNavigate?.();
-              await supabase.auth.signOut();
-              router.push("/login");
-              router.refresh();
-            }}
-          >
-            <LogOutIcon className="opacity-90" />
-            Log out
-          </button>
+          <div className="space-y-0.5">
+            <button
+              type="button"
+              className={`${navRowBase} w-full text-left flex items-center border-l-transparent text-red-400/90 hover:text-red-400 hover:bg-red-500/10 hover:border-l-transparent`}
+              onClick={async () => {
+                onNavigate?.();
+                await supabase.auth.signOut();
+                router.push("/login");
+                router.refresh();
+              }}
+            >
+              <LogOutIcon className="opacity-90" />
+              Log out
+            </button>
+          </div>
         </div>
       </div>
     </nav>

@@ -73,7 +73,7 @@ export async function conexaActivation(
   return callAnthropic({
     system: ACTIVATION_SYSTEM_PROMPT_V1,
     messages: [{ role: "user", content: userMsg }],
-    max_tokens: 1800,
+    max_tokens: 6144,
     signal,
   });
 }

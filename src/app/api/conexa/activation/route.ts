@@ -1,4 +1,4 @@
-import { clampConexaPersonalInsight, clampConexaTabBody } from "@/lib/conexa/format-conexa-output";
+import { clampConexaPersonalInsight, clampConexaTabBody, limitSentences } from "@/lib/conexa/format-conexa-output";
 import { parseActivationResponse } from "@/lib/conexa/prompts";
 import { conexaActivation } from "@/lib/conexa/anthropic";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -76,17 +76,23 @@ export async function POST() {
       .trim(),
   );
 
-  const tab = (key: string) => clampConexaTabBody(sections[key] ?? "");
+  const TAB_SENTENCE_CAP = 5;
+
+  const formatTabBody = (canonical: string) => {
+    const raw = sections[canonical] ?? "";
+    const limited = limitSentences(raw, TAB_SENTENCE_CAP);
+    return clampConexaTabBody(limited, 80, 12000);
+  };
 
   const report = {
     version: "v1.0",
     tabs: {
-      reality_check: tab("Tab 1 - The Reality Check"),
-      blindspot: tab("Tab 2 - The Blindspot"),
-      shipping_vs_noise: tab("Tab 3 - Shipping vs. Noise"),
-      next_move: tab("Tab 4 - The Next Move"),
-      integrity_forecast: tab("Tab 5 - The Integrity Forecast"),
-      executive_synthesis: tab("Tab 6 - Executive Synthesis"),
+      reality_check: formatTabBody("Tab 1 - The Reality Check"),
+      blindspot: formatTabBody("Tab 2 - The Blindspot"),
+      shipping_vs_noise: formatTabBody("Tab 3 - Shipping vs. Noise"),
+      next_move: formatTabBody("Tab 4 - The Next Move"),
+      integrity_forecast: formatTabBody("Tab 5 - The Integrity Forecast"),
+      executive_synthesis: formatTabBody("Tab 6 - Executive Synthesis"),
     },
     personal_insight,
     generated_at: new Date().toISOString(),

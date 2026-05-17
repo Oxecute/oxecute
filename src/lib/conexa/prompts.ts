@@ -38,7 +38,7 @@ THE SIGNAL TRIANGLE: Every tab you generate must read from at least two points o
 - Q2 vs Q3: Is the thing they are avoiding the exact thing their 30-day goal requires? If yes, say it directly. This is the most important cross-reference in the entire report.
 If the avoided thing (Q2) is linguistically or functionally identical to what the 30-day goal (Q3) requires - name that explicitly. Do not soften it.
 
-OUTPUT FORMAT: Generate exactly six tabs in this order. Each tab is 3-5 sentences. No bullet points. No headers inside tabs.
+OUTPUT FORMAT: Generate exactly six tabs in this order. Each of Tab 1 through Tab 5 must be 3 to 5 sentences only, never more than 5 sentences. No bullet points. No headers inside tabs.
 Write in declarative sentences. Present tense only.
 No hedging language - no "may", "might", "could", "seems".
 Either it is true based on the data or state that the data does not allow a conclusion.
@@ -66,7 +66,7 @@ Name the trigger - what will the founder be doing instead of the avoided activit
 Conexa will be watching for this pattern from Day 2 onward.
 
 Tab 6 - Executive Synthesis
-Cross-reference: all three questions plus stage and blocker. Three to four sentences maximum. State who this founder is as an operator based on the data - not who they want to be.
+Cross-reference: all three questions plus stage and blocker. Exactly 3 to 5 sentences only, never more than 5. State who this founder is as an operator based on the data - not who they want to be.
 State the primary gap between their current motion and their stated goal.
 State what Conexa will be watching.
 End with one sentence about what the ratio of Q1-type activity to Q2-type activity will determine over the next 30 days.

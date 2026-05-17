@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
+import { RecordPageHeader, RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
 import { useCallback, useEffect, useState } from "react";
 
 type Notif = {
@@ -59,22 +60,24 @@ function InboxMain() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Inbox</h1>
-          <p className="text-sm text-[var(--t2)] mt-1">
-            System and product notices for @{user.username}.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="text-sm font-semibold text-[var(--p)]"
-          onClick={() => void markAll()}
-        >
-          Mark all read
-        </button>
-      </div>
+    <div className="space-y-6 max-w-3xl w-full min-w-0">
+      <RecordPageHeader
+        title={
+          <h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+            Inbox
+          </h1>
+        }
+        subtitle={<p className={RECORD_PAGE_SUBTITLE_CLASS}>System and product notices for @{user.username}.</p>}
+        extraActions={
+          <button
+            type="button"
+            className="rounded-full bg-transparent px-3.5 py-1.5 text-[12px] font-semibold text-[#0EA472] border border-[#0EA472]/45 hover:bg-[#0EA472]/10"
+            onClick={() => void markAll()}
+          >
+            Mark all read
+          </button>
+        }
+      />
 
       {loading ? <p className="text-[var(--t2)]">Loading…</p> : null}
 
@@ -82,13 +85,15 @@ function InboxMain() {
         {items.map((n) => (
           <li
             key={n.id}
-            className={`rounded-xl border p-4 text-sm ${
+            className={`rounded-xl border p-4 text-sm min-w-0 ${
               n.read ? "border-[var(--bdr)] bg-[var(--sur)]" : "border-[var(--p)]/40 bg-[var(--sur2)]"
             }`}
           >
-            <div className="flex flex-wrap justify-between gap-2">
-              <p className="font-semibold text-[var(--t1)]">{n.title}</p>
-              <span className="text-xs text-[var(--t3)] tabular-nums">
+            <div className="flex flex-wrap items-start justify-between gap-2 gap-x-4">
+              <p className="font-semibold text-[#EAEFF8] break-words whitespace-normal min-w-0 flex-1 leading-snug">
+                {n.title}
+              </p>
+              <span className="text-xs text-[#A8B0CC] tabular-nums shrink-0">
                 {new Date(n.created_at).toLocaleString("en-GB", {
                   day: "2-digit",
                   month: "short",
@@ -97,7 +102,11 @@ function InboxMain() {
                 })}
               </span>
             </div>
-            {n.body ? <p className="text-[var(--t2)] mt-2">{n.body}</p> : null}
+            {n.body ? (
+              <p className="text-[#B4BCCF] mt-2.5 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
+                {n.body}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-3 mt-3">
               {n.action_url ? (
                 <a href={n.action_url} className="text-[var(--p)] text-sm font-medium">
@@ -127,7 +136,7 @@ function InboxMain() {
 
 export default function InboxPage() {
   return (
-    <AuthenticatedShell breadcrumb="Dashboards / Inbox">
+    <AuthenticatedShell>
       <InboxMain />
     </AuthenticatedShell>
   );

@@ -34,12 +34,12 @@ export function MobileStepPills({ phase }: Props) {
       <div
         className={`flex-1 rounded-full border px-3 py-2 text-center text-[11px] font-dm transition-colors ${
           signupPhase
-            ? "border-white/10 text-[#5E6580]"
+            ? "border-white/10 text-ox-t2"
             : startupActive
               ? "border-[#4F46E5]/40 bg-[#4F46E5]/10 text-[#EAEFF8]"
               : startupDone
                 ? "border-white/10 bg-transparent text-[#9194AB]"
-                : "border-white/10 text-[#5E6580]"
+                : "border-white/10 text-ox-t2"
         }`}
       >
         <span className="inline-flex items-center gap-1.5 justify-center w-full">
@@ -56,14 +56,14 @@ export function MobileStepPills({ phase }: Props) {
       <div
         className={`flex-1 rounded-full border px-3 py-2 text-center text-[11px] font-dm transition-colors ${
           conexaActive
-            ? "border-[#4F46E5]/40 bg-[#4F46E5]/10 text-[#EAEFF8]"
-            : "border-white/10 text-[#5E6580]"
+            ? "border-[#0EA472]/40 bg-[#0EA472]/10 text-[#EAEFF8]"
+            : "border-white/10 text-ox-t2"
         }`}
       >
         <span className="inline-flex items-center gap-1.5 justify-center w-full">
           {conexaActive ? (
             <>
-              <span className="h-1.5 w-1.5 rounded-full bg-[#4F46E5] shrink-0" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0EA472] shrink-0" />
               Conexa
             </>
           ) : (

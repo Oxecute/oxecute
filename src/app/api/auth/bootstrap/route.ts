@@ -13,7 +13,7 @@ const bodySchema = z
     last_name: z.string().max(120).optional(),
     email: z.string().email(),
     country: z.string().min(1),
-    startup_name: z.string().min(1),
+    startup_name: z.string().max(200),
     found_us: z.string().min(1),
     ref_code: z.string().optional().nullable(),
     session_id: z.string().optional(),

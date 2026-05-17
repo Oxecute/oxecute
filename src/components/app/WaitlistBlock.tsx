@@ -12,7 +12,7 @@ export function WaitlistBlock({ featureSlug, title }: { featureSlug: string; tit
       <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="email"
-          className="flex-1 border border-[var(--bdr)] rounded-lg px-3 py-2 text-sm bg-[var(--bg)]"
+          className="flex-1 border border-[var(--bdr)] rounded-lg px-3 py-2 text-sm bg-[var(--bg)] placeholder:text-[var(--ox-placeholder)]"
           placeholder="you@founder.email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

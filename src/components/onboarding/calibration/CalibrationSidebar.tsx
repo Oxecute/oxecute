@@ -9,7 +9,7 @@ function LockIcon() {
       height="14"
       viewBox="0 0 24 24"
       fill="none"
-      className="shrink-0 mt-0.5 text-[#5E6580]"
+      className="shrink-0 mt-0.5 text-ox-t2"
       aria-hidden
     >
       <path
@@ -39,18 +39,18 @@ type SidebarProps = {
 
 export function CalibrationSidebar({ phase, conexaSubtitle }: SidebarProps) {
   return (
-    <aside className="hidden md:flex w-[240px] shrink-0 flex-col bg-[#0D0F1A] border-r border-white/[0.06] min-h-[100dvh] px-5 py-6">
+    <aside className="hidden md:flex w-[240px] shrink-0 flex-col bg-black border-r border-white/[0.08] min-h-[100dvh] px-5 py-6">
       <Link
         href="/"
-        className="block w-9 h-9 shrink-0"
+        className="flex h-12 w-10 shrink-0 items-center justify-center"
         aria-label="Oxecute home"
       >
         <img
           src="/brand/logo-icon.svg"
           alt=""
-          width={36}
-          height={36}
-          className="w-9 h-9"
+          width={40}
+          height={48}
+          className="h-12 w-10 max-h-12 max-w-10 object-contain"
           decoding="async"
         />
       </Link>
@@ -58,7 +58,7 @@ export function CalibrationSidebar({ phase, conexaSubtitle }: SidebarProps) {
         <StepTracker phase={phase} conexaSubtitle={conexaSubtitle} />
       </div>
       <div className="flex-1 min-h-0" aria-hidden />
-      <p className="text-[11px] text-[#5E6580] flex gap-2 items-start shrink-0 font-dm leading-relaxed">
+      <p className="text-[11px] text-ox-t2 flex gap-2 items-start shrink-0 font-dm leading-relaxed">
         <LockIcon />
         <span>
           Your answers are private. Conexa uses them to generate your Day 0 report.

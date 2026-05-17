@@ -100,7 +100,7 @@ export default function UpdatePasswordPage() {
               type="password"
               required
               autoComplete="new-password"
-              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
+              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ox-placeholder)]"
               placeholder={`New password (min ${MIN_LEN} characters)`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -109,7 +109,7 @@ export default function UpdatePasswordPage() {
               type="password"
               required
               autoComplete="new-password"
-              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
+              className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-[var(--fw)] placeholder:text-[var(--ox-placeholder)]"
               placeholder="Confirm password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
+import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 import {
   ExecutionGrid,
   ExecutionStats,
@@ -12,7 +13,6 @@ import { useCallback, useEffect, useState } from "react";
 function ProfileSettingsMain() {
   const shellUser = useShellUser();
   const [bio, setBio] = useState("");
-  const [profilePublic, setProfilePublic] = useState(true);
   const [showBreaks, setShowBreaks] = useState(true);
   const [showSignal, setShowSignal] = useState(false);
   const [username, setUsername] = useState("");
@@ -25,7 +25,6 @@ function ProfileSettingsMain() {
     const j = await res.json();
     const u = j.user as Record<string, unknown>;
     setBio(String(u.profile_bio ?? ""));
-    setProfilePublic(Boolean(u.profile_public ?? false));
     setShowBreaks(Boolean(u.show_breaks ?? true));
     setShowSignal(Boolean(u.show_signal_score ?? false));
     setUsername(String(u.username ?? ""));
@@ -62,7 +61,7 @@ function ProfileSettingsMain() {
     }
     const body: Record<string, unknown> = {
       profile_bio: bio.trim() ? bio.trim() : null,
-      profile_public: profilePublic,
+      profile_public: true,
       show_breaks: showBreaks,
       show_signal_score: showSignal,
     };
@@ -103,9 +102,9 @@ function ProfileSettingsMain() {
 
   return (
     <div className="space-y-10 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold">My Profile</h1>
-      </div>
+      <RecordPageHeader
+        title={<h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>My Profile</h1>}
+      />
 
       <ProfileHeader
         fullName={String(shellUser.full_name ?? shellUser.username)}
@@ -128,21 +127,23 @@ function ProfileSettingsMain() {
           />
         </label>
         <label className="block text-sm">
-          <span className="text-[var(--t2)]">Username</span>
-          <input
-            className="mt-1 w-full border border-[var(--bdr)] rounded-lg px-3 py-2 text-sm bg-[var(--bg)]"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <span className="text-xs text-[var(--t3)]">3–20 chars, letters, numbers, _-. Locked after 7 days.</span>
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={profilePublic}
-            onChange={(e) => setProfilePublic(e.target.checked)}
-          />
-          Public profile
+          <span className="text-[var(--t2)]">Profile URL</span>
+          <div className="mt-1 flex items-stretch w-full rounded-lg border border-[var(--bdr)] bg-[var(--bg)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--ac)]/35">
+            <span className="flex items-center px-3 text-sm text-[var(--t3)] shrink-0 border-r border-[var(--bdr)] select-none">
+              oxecute/
+            </span>
+            <input
+              className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none text-[var(--t1)]"
+              value={username}
+              onChange={(e) => {
+                const v = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20);
+                setUsername(v);
+              }}
+              autoComplete="username"
+              spellCheck={false}
+            />
+          </div>
+          <span className="text-xs text-[var(--t3)]">3–20 characters after oxecute/. Letters, numbers, _-.</span>
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showBreaks} onChange={(e) => setShowBreaks(e.target.checked)} />
@@ -179,7 +180,7 @@ function ProfileSettingsMain() {
 
 export default function ProfileSettingsPage() {
   return (
-    <AuthenticatedShell breadcrumb="Dashboards / My Profile">
+    <AuthenticatedShell>
       <ProfileSettingsMain />
     </AuthenticatedShell>
   );

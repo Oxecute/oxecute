@@ -51,9 +51,9 @@ export function MarketingSiteNav({ page }: { page: Page }) {
             <img
               src="/brand/logo-icon.svg"
               alt=""
-              className="h-10 w-10 md:h-11 md:w-11"
-              width={44}
-              height={44}
+              className="h-12 w-10 object-contain"
+              width={40}
+              height={48}
               decoding="async"
             />
           </Link>

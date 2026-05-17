@@ -5,6 +5,7 @@ import {
   useShellUser,
   useShellUserRefresh,
 } from "@/components/app/AuthenticatedShell";
+import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
 import {
@@ -15,7 +16,8 @@ import {
 } from "@/lib/entry-uploads";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
   return (
@@ -70,9 +72,11 @@ function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
 const ENTRY_LOCK_BUTTON =
   "w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
 
-function DashboardMain() {
+function DashboardMainInner() {
   const user = useShellUser();
   const refreshShellUser = useShellUserRefresh();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Record<string, unknown>[]>([]);
   const [breakDays, setBreakDays] = useState<number[]>([]);
@@ -91,13 +95,6 @@ function DashboardMain() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [declFiles, setDeclFiles] = useState<File[]>([]);
   const [conexaTab, setConexaTab] = useState<string>("reality_check");
-  const [countdownTick, setCountdownTick] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setCountdownTick((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
-  void countdownTick;
 
   const loadEntries = useCallback(async () => {
     const {
@@ -113,6 +110,29 @@ function DashboardMain() {
   useEffect(() => {
     void loadEntries();
   }, [loadEntries]);
+
+  const openEntryModal = useCallback(() => {
+    setSubmitError(null);
+    setDeclFiles([]);
+    setUploadProofFiles([]);
+    setUploadContext("");
+    setProofUrl("");
+    setDecl("");
+    setEntryPath("verified");
+    setModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = () => openEntryModal();
+    window.addEventListener("oxe:open-submit-entry", onOpen);
+    return () => window.removeEventListener("oxe:open-submit-entry", onOpen);
+  }, [openEntryModal]);
+
+  useEffect(() => {
+    if (searchParams.get("submit") !== "1") return;
+    openEntryModal();
+    router.replace("/dashboard", { scroll: false });
+  }, [searchParams, router, openEntryModal]);
 
   const report = user.conexa_day1_report as Record<string, unknown> | null;
   const tabs = (report?.tabs as Record<string, string>) ?? {};
@@ -157,11 +177,6 @@ function DashboardMain() {
 
   const execCount = Number(user.execution_count ?? 0);
   const day21Reached = Boolean(user.day21_reached);
-  const foundingMember = Boolean(
-    (user as { founding_member?: boolean }).founding_member,
-  );
-  const headerDay = Math.max(1, execCount);
-  const headerSubtitle = `Day ${headerDay} · ${day21Reached ? "Builder" : "Record"} Tier · ${foundingMember ? "Founding" : "Free"}`;
   const beganDate =
     user.created_at != null
       ? new Date(user.created_at).toLocaleDateString("en-GB", {
@@ -182,7 +197,7 @@ function DashboardMain() {
         : null;
 
   const gridLegend = (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#5E6580] mt-3.5">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-300 mt-3.5">
       <span className="inline-flex items-center gap-1.5">
         <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0EA472]" /> Verified Proof
       </span>
@@ -200,8 +215,6 @@ function DashboardMain() {
       </span>
     </div>
   );
-
-  const utcClock = `${new Date().toISOString().slice(11, 19)} UTC`;
 
   const ledgerRows = [...entries]
     .sort(
@@ -244,52 +257,23 @@ function DashboardMain() {
 
   return (
     <>
-      <section className="rounded-[28px] border border-white/[0.055] bg-[#13151C] text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20 shadow-[0_32px_80px_rgba(0,0,0,0.25)]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4 border-b border-white/[0.055] pb-5">
-          <div className="min-w-0">
+      <section className="text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
+        <RecordPageHeader
+          title={
             <h1
               className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]"
               style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
             >
               Founder Operating Record
             </h1>
-            <p className="text-[12px] sm:text-[13px] text-[#5E6580] mt-1.5 leading-snug">{headerSubtitle}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 sm:shrink-0 sm:ml-auto">
-            <span className="inline-flex items-center rounded-full bg-[#1C1F2A] px-3.5 py-1.5 text-[12px] font-medium text-[#5E6580] ring-1 ring-white/[0.06]">
-              Today
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#1C1F2A] px-3.5 py-1.5 text-[12px] font-medium text-[#A8B0CC] tabular-nums ring-1 ring-white/[0.06]">
-              <svg className="w-[14px] h-[14px] shrink-0 text-[#5E6580]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" strokeLinecap="round" />
-              </svg>
-              {utcClock}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitError(null);
-                setDeclFiles([]);
-                setEntryPath("verified");
-                setProofUrl("");
-                setDecl("");
-                setUploadContext("");
-                setUploadProofFiles([]);
-                setModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-[#0EA472] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_16px_rgba(14,164,114,0.28)] hover:opacity-95"
-            >
-              <span className="text-base leading-none font-bold" aria-hidden>
-                +
-              </span>
-              Submit Entry
-            </button>
-          </div>
-        </div>
+          }
+          subtitle={
+            <p className="text-[12px] sm:text-[13px] font-medium text-[#4F46E5] leading-snug">Commit</p>
+          }
+        />
 
         {gapWarn ? (
-          <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-[#5E6580]">
+          <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
             <span className="text-[#C2A478] shrink-0 mt-0.5" aria-hidden>
               ⓘ
             </span>
@@ -299,21 +283,21 @@ function DashboardMain() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Days executed</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-300 mb-2.5">Days executed</p>
             <p className="text-[30px] font-bold tabular-nums leading-none tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
               {String(execCount)}
             </p>
-            <p className="text-[11px] text-[#2E3347] mt-1.5">{execCount} of 30 days</p>
+            <p className="text-[11px] text-zinc-300 mt-1.5">{execCount} of 30 days</p>
           </div>
           <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Total submissions</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-300 mb-2.5">Total submissions</p>
             <p className="text-[30px] font-bold tabular-nums leading-none" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
               {entries.length}
             </p>
-            <p className="text-[11px] text-[#2E3347] mt-1.5 tabular-nums">{String(user.break_count ?? 0)} breaks</p>
+            <p className="text-[11px] text-zinc-300 mt-1.5 tabular-nums">{String(user.break_count ?? 0)} breaks</p>
           </div>
           <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-300 mb-2.5">
               Directive completion
             </p>
             {day21Reached ? (
@@ -324,9 +308,9 @@ function DashboardMain() {
                 Open Daily Directive
               </Link>
             ) : (
-              <p className="flex items-center gap-2 text-[12.5px] text-[#5E6580]">
+              <p className="flex items-center gap-2 text-[12.5px] text-ox-t2">
                 <svg
-                  className="w-[14px] h-[14px] shrink-0 text-[#5E6580]"
+                  className="w-[14px] h-[14px] shrink-0 text-ox-t2"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -336,7 +320,7 @@ function DashboardMain() {
                   <rect x="5" y="11" width="14" height="10" rx="2" />
                   <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
                 </svg>
-                Unlocks Day 21
+                Unlocks at 21 days executed
               </p>
             )}
           </div>
@@ -347,7 +331,7 @@ function DashboardMain() {
                 : "border border-[rgba(124,100,220,0.45)] shadow-[0_0_28px_rgba(124,100,220,0.14)]"
             }`}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Signal score</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-300 mb-2.5">Signal score</p>
             {day21Reached ? (
               <Link
                 href="/signal"
@@ -356,9 +340,9 @@ function DashboardMain() {
                 View Signal Score
               </Link>
             ) : (
-              <p className="flex items-center gap-2 text-[12.5px] text-[#5E6580]">
+              <p className="flex items-center gap-2 text-[12.5px] text-ox-t2">
                 <svg
-                  className="w-[14px] h-[14px] shrink-0 text-[#5E6580]"
+                  className="w-[14px] h-[14px] shrink-0 text-ox-t2"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -368,14 +352,14 @@ function DashboardMain() {
                   <rect x="5" y="11" width="14" height="10" rx="2" />
                   <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
                 </svg>
-                Unlocks Day 21
+                Unlocks at 21 days executed
               </p>
             )}
           </div>
         </div>
 
         {entries[0]?.tier === "upload_unverified" ? (
-          <p className="text-[12.5px] text-[#5E6580] border border-white/[0.055] rounded-[20px] p-4 bg-[#1C1F2A]">
+          <p className="text-[12.5px] text-ox-t2 border border-white/[0.055] rounded-[20px] p-4 bg-[#1C1F2A]">
             File upload is on your record as unverified. Add a Verified Proof URL from the dashboard within 30 days for
             full Signal weight.
           </p>
@@ -384,7 +368,7 @@ function DashboardMain() {
         <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
           {entries[0]?.tier === "signup_execution" ? (
             <div className="px-[22px] py-3.5 border-b border-white/[0.055]">
-              <p className="text-[12.5px] text-[#5E6580] leading-snug">
+              <p className="text-[12.5px] text-ox-t2 leading-snug">
                 Signing up was your Day 1 record. Submit your first verified proof today to build from here.
               </p>
             </div>
@@ -395,10 +379,10 @@ function DashboardMain() {
                 <p className="text-[14.5px] font-semibold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
                   30-Day Execution Grid
                 </p>
-                {beganDate ? <p className="text-[11.5px] text-[#2E3347] mt-0.5">Began {beganDate}</p> : null}
+                {beganDate ? <p className="text-[11.5px] text-zinc-300 mt-0.5">Began {beganDate}</p> : null}
               </div>
               <div className="flex flex-wrap items-center gap-3 text-[11.5px]">
-                <span className="text-[#5E6580] tabular-nums">
+                <span className="text-ox-t2 tabular-nums">
                   Total: {entries.length} | Breaks: {String(user.break_count ?? 0)} |{" "}
                   <span className="text-[11.5px] font-medium text-[#0EA472]">FOR visible</span>
                 </span>
@@ -413,9 +397,11 @@ function DashboardMain() {
                 if (ent?.tier === "verified_proof" || ent?.tier === "signup_execution") {
                   cls = "bg-[#0EA472] border-[#0EA472] shadow-[0_2px_8px_rgba(14,164,114,0.3)]";
                 } else if (ent?.tier === "declaration_pending") {
-                  cls = "bg-[rgba(124,100,220,0.15)] border-[rgba(124,100,220,0.25)]";
+                  cls =
+                    "bg-[#7C64DC] border-[#9B8CE8] shadow-[0_2px_10px_rgba(124,100,220,0.45)]";
                 } else if (ent?.tier === "upload_unverified") {
-                  cls = "bg-[rgba(194,164,120,0.15)] border-[rgba(194,164,120,0.25)]";
+                  cls =
+                    "bg-[#C2A478] border-[#D4B896] shadow-[0_2px_10px_rgba(194,164,120,0.42)]";
                 } else if (isBreakDay) {
                   cls = "bg-[#E24B4A] border-[#E24B4A] shadow-[0_2px_8px_rgba(226,75,74,0.3)]";
                 }
@@ -443,12 +429,12 @@ function DashboardMain() {
               <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
                 Execution Ledger
               </p>
-              <p className="text-[11.5px] text-[#2E3347] mt-0.5">Auto-captured · tamper-proof · append-only</p>
+              <p className="text-[11.5px] text-ox-t3 mt-0.5">Auto-captured · tamper-proof · append-only</p>
             </div>
           </div>
           <div className="p-5 space-y-2">
             {ledgerRows.length === 0 ? (
-              <p className="text-[12.5px] text-[#5E6580]">No ledger rows yet.</p>
+              <p className="text-[12.5px] text-ox-t2">No ledger rows yet.</p>
             ) : (
               ledgerRows.map((e) => {
                 const tier = String(e.tier ?? "");
@@ -484,7 +470,7 @@ function DashboardMain() {
                       <p className="text-[13px] font-medium text-[#EAEFF8]">
                         Day {String(e.day_number)} · {title}
                       </p>
-                      <p className="text-[11px] text-[#5E6580] mt-0.5">{ts} UTC</p>
+                      <p className="text-[11px] text-ox-t2 mt-0.5">{ts} UTC</p>
                     </div>
                     <span className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border shrink-0 ${badgeCls}`}>
                       {badge}
@@ -520,7 +506,7 @@ function DashboardMain() {
                             <span aria-hidden>🔒</span> Locked · Immutable
                           </span>
                         ) : null}
-                        <span className="text-[#2E3347] tabular-nums ml-auto">
+                        <span className="text-ox-t3 tabular-nums ml-auto">
                           {new Date(String(e.created_at)).toLocaleString("en-GB", {
                             day: "2-digit",
                             month: "short",
@@ -533,7 +519,7 @@ function DashboardMain() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[12.5px] text-[#5E6580] py-4">No submissions yet.</p>
+                <p className="text-[12.5px] text-ox-t2 py-4">No submissions yet.</p>
               )}
             </div>
           </div>
@@ -548,12 +534,12 @@ function DashboardMain() {
               {(["product", "distribution", "ops"] as const).map((k) => (
                 <div key={k}>
                   <div className="flex justify-between text-[12.5px] mb-1.5">
-                    <span className="text-[#5E6580] capitalize">{k}</span>
+                    <span className="text-ox-t2 capitalize">{k}</span>
                     <span className="font-medium text-[#EAEFF8] tabular-nums">{Math.round((byCat[k] / totalCat) * 100)}%</span>
                   </div>
                   <div className="h-1 rounded-sm bg-white/[0.06] overflow-hidden">
                     <div
-                      className={`h-full rounded-sm ${k === "product" ? "bg-[#0EA472]" : k === "distribution" ? "bg-[#7C64DC]" : "bg-[#2E3347]"}`}
+                      className={`h-full rounded-sm ${k === "product" ? "bg-[#0EA472]" : k === "distribution" ? "bg-[#7C64DC]" : "bg-ox-t3"}`}
                       style={{ width: `${(byCat[k] / totalCat) * 100}%` }}
                     />
                   </div>
@@ -564,37 +550,40 @@ function DashboardMain() {
         </div>
 
         {report && visibleConexaTabs.length > 0 ? (
-          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden text-[12.5px]">
-            <div className="flex flex-wrap items-start justify-between gap-2 px-[22px] py-4 border-b border-white/[0.055]">
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] text-[12.5px]">
+            <div className="px-[22px] pt-4 pb-3 border-b border-white/[0.055]">
               <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
                 Conexa Intelligence{" "}
-                <span className="text-xs font-normal text-[#5E6580]">
+                <span className="text-xs font-normal text-ox-t2">
                   · {visibleConexaTabs.length} tabs active from Day 1
                 </span>
               </p>
             </div>
-            <div className="flex gap-0.5 overflow-x-auto border-b border-white/[0.055] px-[22px] scrollbar-none">
-              {visibleConexaTabs.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setConexaTab(key)}
-                  className={`shrink-0 px-[13px] py-[11px] text-xs whitespace-nowrap border-b-2 transition-colors ${
-                    activeConexaKey === key
-                      ? "text-[#EAEFF8] border-[#0EA472]"
-                      : "text-[#2E3347] border-transparent hover:text-[#5E6580]"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="sticky top-0 z-20 flex flex-nowrap items-end gap-0 overflow-x-auto scrollbar-none bg-[#1C1F2A]/98 backdrop-blur-[6px] px-[22px] pt-1 border-b border-white/[0.055]">
+              {visibleConexaTabs.map(({ key, label }) => {
+                const active = activeConexaKey === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setConexaTab(key)}
+                    className={`relative shrink-0 min-h-[42px] px-[13px] py-2.5 text-xs whitespace-nowrap rounded-t-[12px] border border-transparent transition-colors ${
+                      active
+                        ? "z-[2] -mb-px font-semibold text-white border border-white/[0.1] border-b-0 border-l-[3px] border-l-[#2dd4bf] bg-[#1C1F2A] shadow-[inset_0_1px_0_0_rgba(45,212,191,0.22)]"
+                        : "z-[1] mb-0 text-[#A8B0CC] hover:border-white/[0.06] hover:border-b-0 hover:bg-white/[0.04] hover:text-[#a7f3d0]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             <div className="p-5 sm:px-[22px] sm:pb-[22px]">
               <div className="rounded-[14px] border border-white/[0.055] bg-white/[0.025] px-[18px] py-4">
                 <p className="text-[13.5px] font-semibold mb-2" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
                   {CONEXA_TAB_ORDER.find((t) => t.key === activeConexaKey)?.label ?? ""}
                 </p>
-                <p className="text-[12.5px] text-[#5E6580] leading-[1.75] whitespace-pre-wrap break-words">
+                <p className="text-[12.5px] text-ox-t2 leading-[1.75] whitespace-pre-wrap break-words">
                   {String(tabs[activeConexaKey] ?? "")}
                 </p>
               </div>
@@ -606,7 +595,7 @@ function DashboardMain() {
       <button
         type="button"
         onClick={() => setChatOpen(true)}
-        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#4F46E5] text-white px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(240px+0.75rem+1rem)] lg:left-[calc(248px+1rem+1.25rem)] md:bottom-6"
+        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#4F46E5] text-white px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(1.25rem+min(260px,22vw)+1.25rem)] lg:left-[calc(1.75rem+272px+1.5rem)] md:bottom-6"
       >
         <span className="text-[#c8f542] text-[8px] leading-none" aria-hidden>
           ●
@@ -627,7 +616,7 @@ function DashboardMain() {
               >
                 {entries.length === 0 ? "Submit your first proof." : "Submit today's proof."}
               </h2>
-              <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
+              <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
                 {entries.length === 0
                   ? "Your record starts the moment you submit. Choose your path."
                   : "One lock per UTC day. Choose how you are proving today's execution."}
@@ -664,7 +653,7 @@ function DashboardMain() {
                     </span>
                     <span>
                       <span className="block font-semibold text-[#EAEFF8]">Verified Proof</span>
-                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
+                      <span className="mt-1 block text-xs text-ox-t2 leading-snug">
                         External URL · HEAD request validates immediately · Full Signal Score weight
                       </span>
                     </span>
@@ -692,7 +681,7 @@ function DashboardMain() {
                     />
                     <span>
                       <span className="block font-semibold text-[#EAEFF8]">Declaration</span>
-                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
+                      <span className="mt-1 block text-xs text-ox-t2 leading-snug">
                         Stated intent · 30–140 chars · Upgrade within 30 days
                       </span>
                     </span>
@@ -722,7 +711,7 @@ function DashboardMain() {
                     </span>
                     <span>
                       <span className="block font-semibold text-[#EAEFF8]">Upload</span>
-                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
+                      <span className="mt-1 block text-xs text-ox-t2 leading-snug">
                         File upload · PDF, DOCX, PNG, PPTX, XLSX · Max 10MB each · Up to 3 files
                       </span>
                     </span>
@@ -733,7 +722,7 @@ function DashboardMain() {
               {entryPath === "verified" ? (
                 <div className="space-y-3">
                   <input
-                    className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[#EAEFF8] placeholder:text-[#5E6580]/80 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
+                    className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[#EAEFF8] placeholder:text-[var(--ox-placeholder)] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
                     value={proofUrl}
                     onChange={(e) => {
                       setProofUrl(e.target.value);
@@ -745,19 +734,19 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300 whitespace-nowrap">
                       Verified proof · Live
                     </span>
-                    <p className="text-xs text-[#5E6580]">Highest Signal weight when the URL validates.</p>
+                    <p className="text-xs text-ox-t2">Highest Signal weight when the URL validates.</p>
                   </div>
                 </div>
               ) : null}
 
               {entryPath === "declaration" ? (
                 <div className="space-y-3">
-                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580] leading-relaxed">
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-ox-t2 leading-relaxed">
                     What are you building today? What will prove it&apos;s done? · 30–140 chars
                   </label>
                   <div className="relative">
                     <textarea
-                      className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[#EAEFF8] placeholder:text-[#5E6580]/60 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
+                      className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[#EAEFF8] placeholder:text-[var(--ox-placeholder)] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
                         decl.trim().length > 0 && decl.trim().length < 30
                           ? "border-amber-500/50"
                           : "border-white/10"
@@ -770,7 +759,7 @@ function DashboardMain() {
                       }}
                       placeholder="Be specific."
                     />
-                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#5E6580]">
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-ox-t2">
                       {decl.length}/140
                     </span>
                   </div>
@@ -778,11 +767,11 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 whitespace-nowrap">
                       Declaration · Pending
                     </span>
-                    <p className="text-xs text-[#5E6580]">
+                    <p className="text-xs text-ox-t2">
                       Upgrade within 30 days with a Verified Proof URL.
                     </p>
                   </div>
-                  <label className="block text-xs text-[#5E6580]">
+                  <label className="block text-xs text-ox-t2">
                     Attach proof (optional) — up to 3 files, 5MB each (JPG, PNG, WebP, GIF, PDF)
                   </label>
                   <input
@@ -799,7 +788,7 @@ function DashboardMain() {
                     }}
                   />
                   {declFiles.length > 0 ? (
-                    <ul className="text-xs text-[#5E6580] space-y-1 list-disc list-inside">
+                    <ul className="text-xs text-ox-t2 space-y-1 list-disc list-inside">
                       {declFiles.map((f, i) => (
                         <li key={`${f.name}-${i}`}>
                           {f.name} ({Math.round(f.size / 1024)} KB)
@@ -812,7 +801,7 @@ function DashboardMain() {
 
               {entryPath === "upload" ? (
                 <div className="space-y-3">
-                  <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580]">
+                  <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-ox-t2">
                     Upload file
                   </span>
                   <input
@@ -829,7 +818,7 @@ function DashboardMain() {
                     }}
                   />
                   {uploadProofFiles.length > 0 ? (
-                    <ul className="text-xs text-[#5E6580] space-y-1 list-disc list-inside">
+                    <ul className="text-xs text-ox-t2 space-y-1 list-disc list-inside">
                       {uploadProofFiles.map((f, i) => (
                         <li key={`${f.name}-${i}`}>
                           {f.name} ({Math.round(f.size / 1024)} KB)
@@ -837,12 +826,12 @@ function DashboardMain() {
                       ))}
                     </ul>
                   ) : null}
-                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580] leading-relaxed">
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-ox-t2 leading-relaxed">
                     What was made? · 30–140 chars required
                   </label>
                   <div className="relative">
                     <textarea
-                      className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[#EAEFF8] placeholder:text-[#5E6580]/60 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
+                      className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[#EAEFF8] placeholder:text-[var(--ox-placeholder)] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
                         uploadContext.trim().length > 0 && uploadContext.trim().length < 30
                           ? "border-amber-500/50"
                           : "border-white/10"
@@ -855,7 +844,7 @@ function DashboardMain() {
                         setSubmitError(null);
                       }}
                     />
-                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#5E6580]">
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-ox-t2">
                       {uploadContext.length}/140
                     </span>
                   </div>
@@ -863,7 +852,7 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-200 whitespace-nowrap">
                       Submission · Unverified
                     </span>
-                    <p className="text-xs text-[#5E6580]">
+                    <p className="text-xs text-ox-t2">
                       Link a Verified Proof within 30 days for full Signal weight.
                     </p>
                   </div>
@@ -871,7 +860,7 @@ function DashboardMain() {
               ) : null}
 
               <div className="space-y-2">
-                <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-[#5E6580]">
+                <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-ox-t2">
                   Work type
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -892,7 +881,7 @@ function DashboardMain() {
                       className={`rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
                         cat === id
                           ? "border-blue-400/50 bg-blue-950/80 text-white"
-                          : "border-white/20 text-[#5E6580] hover:border-[var(--ac)]/45"
+                          : "border-white/20 text-ox-t2 hover:border-[var(--ac)]/45"
                       }`}
                     >
                       {label}
@@ -1010,7 +999,7 @@ function DashboardMain() {
               </button>
               <button
                 type="button"
-                className="text-sm text-[#5E6580] hover:text-[#EAEFF8]"
+                className="text-sm text-ox-t2 hover:text-[#EAEFF8]"
                 onClick={() => {
                   setModalOpen(false);
                   setSubmitError(null);
@@ -1077,7 +1066,7 @@ function DashboardMain() {
               <span className="font-semibold text-[15px] tracking-tight">CONEXA</span>
               <button
                 type="button"
-                className="text-[12px] text-[#5E6580] hover:text-[#EAEFF8]"
+                className="text-[12px] text-ox-t2 hover:text-[#EAEFF8]"
                 onClick={() => setChatOpen(false)}
               >
                 Close
@@ -1085,7 +1074,7 @@ function DashboardMain() {
             </header>
             <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
               {chatLog.length === 0 ? (
-                <p className="text-[13px] text-[#5E6580] leading-relaxed">
+                <p className="text-[13px] text-ox-t2 leading-relaxed">
                   Ask Conexa about your execution record, blockers, or what to ship next. Messages use your FOR context
                   on the server.
                 </p>
@@ -1110,7 +1099,7 @@ function DashboardMain() {
               ))}
               {chatSending ? (
                 <div className="flex justify-start">
-                  <div className="rounded-[12px] px-3 py-2.5 border border-white/[0.06] bg-white/[0.04] text-[#5E6580] text-[13px]">
+                  <div className="rounded-[12px] px-3 py-2.5 border border-white/[0.06] bg-white/[0.04] text-ox-t2 text-[13px]">
                     Thinking…
                   </div>
                 </div>
@@ -1118,7 +1107,7 @@ function DashboardMain() {
             </div>
             <div className="p-3 border-t border-white/[0.055] flex gap-2 bg-[#1C1F2A]">
               <input
-                className="flex-1 min-w-0 rounded-[10px] border border-[rgba(255,255,255,0.055)] bg-[#1C1F2A] px-3 py-2.5 text-sm text-[#EAEFF8] placeholder:text-[#5E6580] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
+                className="flex-1 min-w-0 rounded-[10px] border border-[rgba(255,255,255,0.055)] bg-[#1C1F2A] px-3 py-2.5 text-sm text-[#EAEFF8] placeholder:text-[var(--ox-placeholder)] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
                 value={chatText}
                 placeholder="Message Conexa…"
                 disabled={chatSending}
@@ -1143,6 +1132,14 @@ function DashboardMain() {
         </div>
       )}
     </>
+  );
+}
+
+function DashboardMain() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardMainInner />
+    </Suspense>
   );
 }
 

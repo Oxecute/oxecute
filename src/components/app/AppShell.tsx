@@ -1,12 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 import { DashboardNav, type MeUser } from "./DashboardNav";
-import { formatCountdown, getUtcWindowRemainingParts } from "./utc-countdown";
 
 export type AppShellUser = MeUser & {
   full_name?: string;
@@ -17,137 +13,42 @@ export type AppShellUser = MeUser & {
   founding_member?: boolean;
 };
 
+/** Three-column shell: dark canvas + rounded nav / main / rail cards (product layout). */
+const COL_GAP = "gap-4 md:gap-5 lg:gap-6";
+/** Nav column shell: no vertical scroll here — clipping x would crop the wordmark. Scroll lives inside DashboardNav. */
+const COL_NAV_PANEL =
+  "rounded-2xl border border-[var(--bdr)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] min-h-0 max-h-[calc(100dvh-1.75rem)] flex flex-col overflow-hidden";
+const COL_MAIN =
+  "rounded-2xl border border-[var(--bdr)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] min-h-0 max-h-[calc(100dvh-1.75rem)] overflow-y-auto overflow-x-hidden scrollbar-none";
+const COL_RAIL =
+  "rounded-2xl border border-[var(--bdr)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] min-h-0 max-h-[calc(100dvh-1.75rem)] overflow-y-auto scrollbar-none";
+const COL_STICKY = "sticky top-4 md:top-5 self-start w-full min-w-0";
+
 export function AppShell({
   user,
-  breadcrumb = "Dashboards / Founder Operating Record",
   children,
   inlineRightRail,
   unreadCount = 0,
 }: {
   user: AppShellUser;
-  breadcrumb?: string;
   children: React.ReactNode;
   inlineRightRail?: React.ReactNode;
   unreadCount?: number;
 }) {
-  const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [mobileNav, setMobileNav] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setTick((x) => x + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  void tick;
-
-  useEffect(() => {
-    if (!accountOpen) return;
-    function close(e: MouseEvent) {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
-        setAccountOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [accountOpen]);
-
-  const clock = new Date().toISOString().slice(11, 19);
-  const win = formatCountdown(getUtcWindowRemainingParts());
-
-  const initials = String(user.full_name ?? user.username ?? "?")
-    .split(/\s+/)
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  const exec = Math.min(100, Math.max(0, Number(user.execution_count ?? 0) * 5));
-  const avatarBg =
-    exec >= 75
-      ? "bg-[var(--p)]"
-      : exec >= 50
-        ? "bg-[var(--na)]"
-        : exec >= 25
-          ? "bg-[var(--t2)]"
-          : "bg-[var(--t3)]";
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
-      <header className="sticky top-0 z-20 h-12 flex items-center px-3 md:px-4 border-b border-[var(--bdr)] bg-[#181B24] gap-3 text-sm">
-        <button
-          type="button"
-          className="md:hidden p-2 -ml-1 rounded-lg border border-[var(--bdr)] text-[var(--t2)]"
-          aria-label="Open menu"
-          onClick={() => setMobileNav(true)}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        <Link href="/" className="shrink-0 flex items-center" aria-label="Oxecute home">
-          <img
-            src="/brand/logo-icon.svg"
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8"
-            decoding="async"
-          />
-        </Link>
-        <span className="hidden sm:inline text-[var(--t3)] truncate text-xs md:text-sm">
-          {breadcrumb}
-        </span>
-        <span className="hidden lg:inline ml-auto text-xs text-[var(--t2)] tabular-nums">
-          Window {win}
-        </span>
-        <span className="lg:ml-0 ml-auto text-xs text-[var(--t2)] tabular-nums">
-          {clock} UTC
-        </span>
-        <div className="relative z-30 shrink-0" ref={accountRef}>
-          <button
-            type="button"
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[var(--fw)] ${avatarBg} focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ac)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sur)]`}
-            aria-expanded={accountOpen}
-            aria-haspopup="menu"
-            aria-label="Account menu"
-            onClick={() => setAccountOpen((o) => !o)}
-          >
-            {initials}
-          </button>
-          {accountOpen ? (
-            <div
-              className="absolute right-0 top-[calc(100%+6px)] w-44 rounded-xl border border-[var(--bdr)] bg-[var(--sur)] shadow-lg py-1 z-50 text-left"
-              role="menu"
-            >
-              <Link
-                href="/settings/profile"
-                role="menuitem"
-                className="block px-3 py-2.5 text-sm text-[var(--t1)] hover:bg-[var(--sur2)]"
-                onClick={() => setAccountOpen(false)}
-              >
-                Profile
-              </Link>
-              <button
-                type="button"
-                role="menuitem"
-                className="w-full text-left px-3 py-2.5 text-sm text-[#E24B4A] hover:bg-[var(--sur2)]"
-                onClick={async () => {
-                  setAccountOpen(false);
-                  await supabase.auth.signOut();
-                  router.push("/login");
-                  router.refresh();
-                }}
-              >
-                Log out
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </header>
+    <div className="min-h-screen bg-[var(--mi)] text-[var(--t1)]">
+      <button
+        type="button"
+        className="md:hidden fixed left-3 top-3 z-30 p-2.5 rounded-xl border border-[var(--bdr)] bg-[var(--sur2)] text-[var(--t2)] shadow-lg"
+        aria-label="Open menu"
+        onClick={() => setMobileNav(true)}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
       {mobileNav ? (
         <div className="fixed inset-0 z-40 md:hidden">
@@ -157,31 +58,32 @@ export function AppShell({
             aria-label="Close menu"
             onClick={() => setMobileNav(false)}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[#181B24] border-r border-[var(--bdr)] p-3 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto min-h-0 scrollbar-none">
-              <DashboardNav
-                user={user}
-                inboxUnread={unreadCount}
-                onNavigate={() => setMobileNav(false)}
-              />
-            </div>
+          <aside className="absolute left-0 top-0 bottom-0 w-[min(300px,88vw)] flex flex-col max-h-[100dvh] rounded-r-2xl border-y border-r border-[var(--bdr)] bg-[var(--sur2)] shadow-[0_12px_48px_rgba(0,0,0,0.45)] py-6 pl-5 pr-4 overflow-hidden">
+            <DashboardNav
+              className="flex-1 min-h-0"
+              user={user}
+              inboxUnread={unreadCount}
+              onNavigate={() => setMobileNav(false)}
+            />
           </aside>
         </div>
       ) : null}
 
       <div
-        className={`w-full min-w-0 max-w-[100vw] px-0 py-5 md:py-7 grid md:gap-3 lg:gap-4 ${
+        className={`w-full min-w-0 max-w-[100vw] px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7 grid ${COL_GAP} mx-auto ${
           inlineRightRail
-            ? "md:grid-cols-[240px_1fr_minmax(300px,348px)] lg:grid-cols-[248px_1fr_minmax(308px,360px)]"
-            : "max-w-5xl mx-auto md:grid-cols-[224px_1fr] px-4"
+            ? `max-w-[1920px] md:grid-cols-[minmax(232px,260px)_minmax(0,1fr)_minmax(288px,360px)] lg:grid-cols-[minmax(248px,280px)_minmax(0,1fr)_minmax(300px,380px)]`
+            : "max-w-5xl md:grid-cols-[minmax(228px,260px)_minmax(0,1fr)]"
         }`}
       >
-        <aside className="hidden md:block min-w-0 border-y border-r border-[var(--bdr)] border-l-0 bg-[#181B24] rounded-r-[20px] p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
-          <DashboardNav user={user} inboxUnread={unreadCount} />
+        <aside
+          className={`hidden md:flex ${COL_STICKY} ${COL_NAV_PANEL} bg-[var(--sur2)] p-5 lg:p-[22px]`}
+        >
+          <DashboardNav user={user} inboxUnread={unreadCount} className="flex-1 min-h-0" />
         </aside>
-        <div className={`min-w-0 ${inlineRightRail ? "px-3 md:px-4 lg:px-5" : ""}`}>{children}</div>
+        <div className={`min-w-0 ${COL_STICKY} ${COL_MAIN} bg-[var(--shell-bg)]`}>{children}</div>
         {inlineRightRail ? (
-          <aside className="hidden md:block min-w-0 border-y border-l border-[var(--bdr)] border-r-0 bg-[var(--bg)] pl-3 lg:pl-4 pr-0 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
+          <aside className={`hidden md:block ${COL_STICKY} ${COL_RAIL} bg-[var(--sur2)] p-5 lg:p-[22px]`}>
             {inlineRightRail}
           </aside>
         ) : null}

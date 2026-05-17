@@ -6,6 +6,7 @@ import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
+import { getCountryOptions } from "@/lib/country-options";
 import "@/app/execution-intelligence.css";
 import { AuthMobileHelp } from "@/components/auth-mobile-help";
 import {
@@ -195,6 +196,7 @@ function clearPendingBootstrap() {
 export default function StartPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const countryOptions = useMemo(() => getCountryOptions(), []);
   /** Harden hydrate(): soft auth fires often; avoid re-POSTing synthesis while cal is still unlocked. */
   const openCalSynthHydrateDoneRef = useRef(false);
   const openCalSynthHydrateInFlightRef = useRef(false);
@@ -509,7 +511,7 @@ export default function StartPage() {
             last_name: pending.last_name,
             email: pending.email,
             country: pending.country,
-            startup_name: pending.startup_name,
+            startup_name: pending.startup_name.trim(),
             found_us: pending.found_us,
             ref_code: pending.ref_code,
             session_id: "web",
@@ -546,16 +548,20 @@ export default function StartPage() {
       }
 
       const meta = meBody.user_metadata ?? {};
-      setEmail(authEmail);
-      const metaFull =
-        (typeof meta.full_name === "string" && meta.full_name) ||
-        (typeof meta.name === "string" && meta.name) ||
-        "";
-      const sp = splitDisplayName(String(metaFull));
-      setFirstName(sp.first);
-      setLastName(sp.last);
-      setHasAuthSession(true);
-      setStep(2);
+      if (!soft) {
+        setEmail(authEmail);
+        const metaFull =
+          (typeof meta.full_name === "string" && meta.full_name) ||
+          (typeof meta.name === "string" && meta.name) ||
+          "";
+        const sp = splitDisplayName(String(metaFull));
+        setFirstName(sp.first);
+        setLastName(sp.last);
+        setHasAuthSession(true);
+        setStep(2);
+      } else {
+        setHasAuthSession(true);
+      }
       if (!soft) setBooting(false);
     }
 
@@ -614,8 +620,8 @@ export default function StartPage() {
       };
       const authedEmail = probeJson.auth_email;
       if (authedEmail) {
-        if (!firstName.trim() || !lastName.trim() || !country.trim() || !startupName.trim()) {
-          setErr("Please fill in first name, last name, country, and startup name.");
+        if (!firstName.trim() || !lastName.trim() || !country.trim()) {
+          setErr("Please fill in first name, last name, and country.");
           setBusy(false);
           return;
         }
@@ -632,7 +638,7 @@ export default function StartPage() {
             last_name: lastName.trim(),
             email: authedEmail,
             country,
-            startup_name: startupName,
+            startup_name: "",
             found_us: foundUs,
             ref_code: readRef(),
             session_id: "web",
@@ -650,6 +656,30 @@ export default function StartPage() {
         setStep(3);
         return;
       }
+    }
+
+    if (!hasAuthSession) {
+      if (!firstName.trim() || !lastName.trim() || !country.trim()) {
+        setErr("Please fill in first name, last name, and country.");
+        setBusy(false);
+        return;
+      }
+      if (!email.trim() || !password.trim()) {
+        setErr("Please enter your email and password.");
+        setBusy(false);
+        return;
+      }
+      if (password.length < 6) {
+        setErr("Password must be at least 6 characters.");
+        setBusy(false);
+        return;
+      }
+    }
+
+    if (hasAuthSession) {
+      setBusy(false);
+      setErr("We couldn&apos;t link your session to this step. Refresh the page and try again.");
+      return;
     }
 
     const origin =
@@ -684,7 +714,8 @@ export default function StartPage() {
         }
         setHasAuthSession(true);
         setErr(null);
-        if (!firstName.trim() || !lastName.trim() || !country.trim() || !startupName.trim()) {
+        if (!firstName.trim() || !lastName.trim() || !country.trim()) {
+          setErr("Please fill in first name, last name, and country.");
           setBusy(false);
           return;
         }
@@ -706,7 +737,7 @@ export default function StartPage() {
             last_name: lastName.trim(),
             email: signedEmail,
             country,
-            startup_name: startupName,
+            startup_name: "",
             found_us: foundUs,
             ref_code: readRef(),
             session_id: "web",
@@ -737,7 +768,7 @@ export default function StartPage() {
         last_name: lastName.trim(),
         email,
         country,
-        startup_name: startupName,
+        startup_name: "",
         found_us: foundUs,
         ref_code: readRef(),
       });
@@ -755,7 +786,7 @@ export default function StartPage() {
         last_name: lastName.trim(),
         email,
         country,
-        startup_name: startupName,
+        startup_name: "",
         found_us: foundUs,
         ref_code: readRef(),
         session_id: "web",
@@ -1211,8 +1242,8 @@ export default function StartPage() {
             <div className="flex-1 min-h-0 overflow-y-auto w-full">
             {step === 2 && (
               <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
-                <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
-                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
+                <div className="w-full max-w-[560px] bg-[#111318]">
+                  <div className="pt-1 pb-5 border-b border-white/[0.06]">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
                       {hasAuthSession ? "Account" : "Identity"}
                     </p>
@@ -1222,36 +1253,36 @@ export default function StartPage() {
                     >
                       {hasAuthSession ? "Finish your profile" : "Create your account"}
                     </h1>
-                    <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
+                    <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
                       {hasAuthSession
                         ? "Add the details below so we can create your Oxecute profile."
-                        : "Your startup, then Conexa calibration through your first proof."}
+                        : "Next you&apos;ll share what you&apos;re building, then Conexa calibration and your first proof."}
                     </p>
                   </div>
-                  <div className="px-6 md:px-8 py-7 space-y-4">
+                  <div className="py-7 space-y-4">
                     {hasAuthSession ? (
-                      <p className="text-[13px] text-[#5E6580]">
+                      <p className="text-[13px] text-ox-t2">
                         You&apos;re signed in. Complete your profile to continue.
                       </p>
                     ) : null}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">
+                        <label className="block text-[11px] font-medium text-ox-t2 mb-1.5">
                           First name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)]"
                           placeholder="First name"
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">
+                        <label className="block text-[11px] font-medium text-ox-t2 mb-1.5">
                           Last name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)]"
                           placeholder="Last name"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
@@ -1259,10 +1290,10 @@ export default function StartPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Email</label>
+                      <label className="block text-[11px] font-medium text-ox-t2 mb-1.5">Email</label>
                       <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 disabled:opacity-60"
-                        placeholder="you@company.com"
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 disabled:opacity-60 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)]"
+                        placeholder="you@startup.com"
                         type="email"
                         value={email}
                         readOnly={hasAuthSession}
@@ -1271,11 +1302,10 @@ export default function StartPage() {
                     </div>
                     {!hasAuthSession ? (
                       <div>
-                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Password</label>
-                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">Minimum 6 characters.</p>
+                        <label className="block text-[11px] font-medium text-ox-t2 mb-1.5">Password</label>
+                        <p className="text-[10px] font-dm text-ox-t3 mb-1.5">Minimum 6 characters.</p>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
-                          placeholder="••••••••"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[var(--ox-placeholder)]"
                           type="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
@@ -1283,25 +1313,31 @@ export default function StartPage() {
                       </div>
                     ) : null}
                     <div>
-                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Country</label>
-                      <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
-                        placeholder="Country"
+                      <label className="block text-[11px] font-medium text-ox-t2 mb-1.5">Country</label>
+                      <select
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 cursor-pointer"
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
-                      />
+                        aria-label="Country"
+                      >
+                        <option value="" className="bg-[#1C1F2A] text-ox-t2">
+                          Select country
+                        </option>
+                        {country &&
+                        !countryOptions.some((o) => o.name === country) ? (
+                          <option value={country} className="bg-[#1C1F2A]">
+                            {country}
+                          </option>
+                        ) : null}
+                        {countryOptions.map((o) => (
+                          <option key={o.code} value={o.name} className="bg-[#1C1F2A]">
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Startup name</label>
-                      <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
-                        placeholder="e.g. Oxecute"
-                        value={startupName}
-                        onChange={(e) => setStartupName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#5E6580] mb-2">How did you find us?</label>
+                      <label className="block text-[11px] font-medium text-ox-t2 mb-2">How did you find us?</label>
                       <div className="flex flex-wrap gap-2">
                         {FOUND_US.map((f) => (
                           <button
@@ -1310,7 +1346,7 @@ export default function StartPage() {
                             className={`text-xs px-3 py-2 rounded-full border transition-colors ${
                               foundUs === f
                                 ? "border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.1)] text-[#EAEFF8]"
-                                : "border-white/[0.11] text-[#5E6580] hover:border-white/20"
+                                : "border-white/[0.11] text-ox-t2 hover:border-white/20"
                             }`}
                             onClick={() => setFoundUs(f)}
                           >
@@ -1332,7 +1368,7 @@ export default function StartPage() {
                       <>
                         <div className="flex items-center gap-3 py-1">
                           <div className="h-px flex-1 bg-white/[0.08]" />
-                          <span className="text-[11px] text-[#2E3347]">or</span>
+                          <span className="text-[11px] text-ox-t3">or</span>
                           <div className="h-px flex-1 bg-white/[0.08]" />
                         </div>
                         <button
@@ -1341,12 +1377,19 @@ export default function StartPage() {
                           onClick={() => void signInWithGoogle()}
                           className="btn-google w-full"
                         >
-                          <span className="g-icon" aria-hidden />
+                          <img
+                            src="/brand/google-g.svg"
+                            alt=""
+                            width={18}
+                            height={18}
+                            className="g-icon-img"
+                            decoding="async"
+                          />
                           Continue with Google
                         </button>
                       </>
                     ) : (
-                      <p className="text-center text-xs text-[#2E3347]">
+                      <p className="text-center text-xs text-ox-t3">
                         <button type="button" onClick={() => void signOutAndReset()} className="text-[#4F46E5] underline">
                           Use a different account
                         </button>
@@ -1356,7 +1399,7 @@ export default function StartPage() {
                 </div>
                 <div className="w-full max-w-[560px] mt-6 space-y-4">
                   <AuthMobileHelp afterResetPath="/start" />
-                  <p className="text-[13px] text-center text-[#5E6580]">
+                  <p className="text-[13px] text-center text-ox-t2">
                     Already have an account?{" "}
                     <Link href="/login" className="text-[#4F46E5] underline">
                       Sign in
@@ -1373,7 +1416,7 @@ export default function StartPage() {
                   <div className="flex justify-center">
                     <Link
                       href="/"
-                      className="text-[13px] text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
+                      className="text-[13px] text-ox-t2 border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
                     >
                       ← Back to site
                     </Link>
@@ -1395,7 +1438,7 @@ export default function StartPage() {
                       >
                         What are you building?
                       </h1>
-                      <p className="text-[13px] font-light text-[#5E6580] font-dm leading-relaxed">
+                      <p className="text-[13px] font-light text-ox-t2 font-dm leading-relaxed">
                         Three quick questions. No pitch required. Conexa uses this to give you
                         something real, not generic advice.
                       </p>
@@ -1403,7 +1446,7 @@ export default function StartPage() {
 
                     <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#4338ca] transition-[width] duration-300 ease-in-out"
+                        className="h-full rounded-full bg-gradient-to-r from-[#0EA472] to-[#059669] transition-[width] duration-300 ease-in-out"
                         style={{
                           width: `${
                             (Number(Boolean(startupName.trim())) +
@@ -1425,25 +1468,25 @@ export default function StartPage() {
 
                     <div className="space-y-5">
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-ox-t2 mb-1.5">
                           Startup name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)]"
                           placeholder="e.g. Oxecute"
                           value={startupName}
                           onChange={(e) => setStartupName(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-ox-t2 mb-1.5">
                           What are you building and who is it for?
                         </label>
-                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">
+                        <p className="text-[10px] font-dm text-ox-t3 mb-1.5">
                           Minimum 50 characters · maximum 500 (after trimming).
                         </p>
                         <textarea
-                          className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347] ${
+                          className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)] ${
                             description.trim().length > 0 &&
                             (description.trim().length < 50 ||
                               description.trim().length > 500)
@@ -1468,12 +1511,12 @@ export default function StartPage() {
                             50–500 characters required.
                           </p>
                         ) : null}
-                        <p className="text-[11px] font-dm text-[#2E3347] mt-1">
+                        <p className="text-[11px] font-dm text-ox-t3 mt-1">
                           {description.length}/500
                         </p>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-2">
+                        <label className="block text-[11px] font-medium font-dm text-ox-t2 mb-2">
                           What stage are you at?
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1490,15 +1533,15 @@ export default function StartPage() {
                                 className={`rounded-[10px] border px-3 py-3 text-left transition font-dm ${
                                   sel
                                     ? "border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.1)] text-[#EAEFF8]"
-                                    : "border-white/[0.11] bg-white/[0.02] text-[#5E6580] hover:border-white/20"
+                                    : "border-white/[0.11] bg-white/[0.02] text-ox-t2 hover:border-white/20"
                                 }`}
                               >
                                 <div
-                                  className={`text-[13px] font-medium ${sel ? "text-[#EAEFF8]" : "text-[#5E6580]"}`}
+                                  className={`text-[13px] font-medium ${sel ? "text-[#EAEFF8]" : "text-ox-t2"}`}
                                 >
                                   {t.title}
                                 </div>
-                                <div className="text-[10px] text-[#2E3347] mt-0.5">
+                                <div className="text-[10px] text-ox-t3 mt-0.5">
                                   {t.sub}
                                 </div>
                               </button>
@@ -1507,12 +1550,12 @@ export default function StartPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-ox-t2 mb-1.5">
                           What&apos;s your biggest blocker right now?
                         </label>
-                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">Required — a short honest line is enough.</p>
+                        <p className="text-[10px] font-dm text-ox-t3 mb-1.5">Required — a short honest line is enough.</p>
                         <textarea
-                          className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347]"
+                          className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[13px] placeholder:font-semibold placeholder:font-urbanist placeholder:leading-snug placeholder:text-[var(--ox-placeholder)]"
                           placeholder="Be honest. Conexa reads this literally."
                           value={blocker}
                           onChange={(e) => setBlocker(e.target.value)}
@@ -1534,14 +1577,14 @@ export default function StartPage() {
                     >
                       Next — Conexa calibration
                     </button>
-                    <p className="text-[11px] font-dm text-[#2E3347] text-center">
+                    <p className="text-[11px] font-dm text-ox-t3 text-center">
                       No account yet. You see your report first.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => router.push("/")}
-                    className="mt-6 text-[13px] font-dm text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                    className="mt-6 text-[13px] font-dm text-ox-t2 border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
                   >
                     ← Back to site
                   </button>
@@ -1554,7 +1597,7 @@ export default function StartPage() {
                       <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
                         <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
                           <header className="space-y-3 pb-6">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] font-dm">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#0EA472] font-dm">
                               Conexa calibration
                             </p>
                             <h1
@@ -1563,7 +1606,7 @@ export default function StartPage() {
                             >
                               Three honest answers.
                             </h1>
-                            <p className="text-[13px] font-light text-[#5E6580] font-dm leading-relaxed">
+                            <p className="text-[13px] font-light text-ox-t2 font-dm leading-relaxed">
                               Conexa reads these literally. The more specific you are, the sharper your
                               report. Don&apos;t perform — this isn&apos;t a pitch. Each answer needs a minimum of{" "}
                               {CAL_MIN_SUBMIT_CHARS} characters (up to {CALIBRATION_STEPS[0].maxLen} each).
@@ -1572,7 +1615,7 @@ export default function StartPage() {
 
                           <div className="h-1 w-full max-w-full rounded-full bg-white/[0.06] overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#4338ca] transition-[width] duration-300 ease-in-out"
+                              className="h-full rounded-full bg-gradient-to-r from-[#0EA472] to-[#059669] transition-[width] duration-300 ease-in-out"
                               style={{
                                 width: `${
                                   (CALIBRATION_STEPS.filter(
@@ -1585,7 +1628,7 @@ export default function StartPage() {
                             />
                           </div>
 
-                          <p className="text-[11px] font-dm text-[#2E3347]">
+                          <p className="text-[11px] font-dm text-ox-t3">
                             Move through in order. Each answer needs at least {CAL_MIN_SUBMIT_CHARS}{" "}
                             characters before you can generate your report.
                           </p>
@@ -1635,7 +1678,7 @@ export default function StartPage() {
                             Generate my Conexa report
                           </button>
 
-                          <p className="text-[11px] font-dm text-[#2E3347] pt-2">
+                          <p className="text-[11px] font-dm text-ox-t3 pt-2">
                             <strong className="text-[#EAEFF8] font-semibold">
                               Your answers are private.
                             </strong>{" "}
@@ -1646,7 +1689,7 @@ export default function StartPage() {
                         <button
                           type="button"
                           onClick={() => setStep(3)}
-                          className="mt-6 text-[13px] font-dm text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                          className="mt-6 text-[13px] font-dm text-ox-t2 border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
                         >
                           ← Back
                         </button>
@@ -1661,9 +1704,9 @@ export default function StartPage() {
 
             {step === 5 && (
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
-            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+            <div className="w-full max-w-[min(92vw,52rem)] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#0EA472] mb-2">
                   Synthesis
                 </p>
                 <h1
@@ -1677,9 +1720,9 @@ export default function StartPage() {
           {synthLoading ? (
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center space-y-3">
               <div className="flex justify-center">
-                <span className="inline-block h-8 w-8 rounded-full border-2 border-[#4F46E5] border-t-transparent animate-spin" />
+                <span className="inline-block h-8 w-8 rounded-full border-2 border-[#0EA472] border-t-transparent animate-spin" />
               </div>
-              <p className="text-sm text-[#5E6580]">
+              <p className="text-sm text-ox-t2">
                 Generating your synthesis from your calibration answers… This usually takes a few seconds.
               </p>
             </div>
@@ -1702,12 +1745,12 @@ export default function StartPage() {
                       <span>
                         Insight {i + 1} of {Math.max(synthesis.length, 1)}
                       </span>
-                      <span className="text-xs font-medium text-[#4F46E5] shrink-0">
+                      <span className="text-xs font-medium text-[#0EA472] shrink-0">
                         {collapsed ? "Show" : "Hide"}
                       </span>
                     </button>
                     {!collapsed ? (
-                      <p className="text-sm text-[#5E6580] px-3 pb-3 whitespace-pre-wrap break-words">
+                      <p className="text-sm text-ox-t2 px-3 pb-3 whitespace-pre-wrap break-words">
                         {s}
                       </p>
                     ) : null}
@@ -1732,11 +1775,11 @@ export default function StartPage() {
             type="button"
             disabled={synthesis.length === 0 || synthShown < synthesis.length}
             onClick={editCalibrationFromSynthesis}
-            className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-[#5E6580] font-medium hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
+            className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-ox-t2 font-medium hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
           >
             Edit my answers
           </button>
-          <p className="text-[11px] text-center text-[#2E3347]">
+          <p className="text-[11px] text-center text-ox-t3">
             You&apos;ll return to the three Conexa calibration questions, then see a fresh synthesis.
           </p>
               </div>
@@ -1746,13 +1789,13 @@ export default function StartPage() {
 
             {step === 7 && !activation && (
               <div className="flex min-h-full w-full flex-col items-center justify-center py-16 px-4">
-            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] px-8 py-12 text-center">
-              <p className="text-[10px] font-semibold tracking-[0.13em] uppercase text-[#4F46E5] mb-3">
+            <div className="w-full max-w-[min(92vw,52rem)] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] px-8 py-12 text-center">
+              <p className="text-[10px] font-semibold tracking-[0.13em] uppercase text-[#0EA472] mb-3">
                 Conexa
               </p>
-              <p className="text-[15px] text-[#5E6580]">Preparing your execution read…</p>
+              <p className="text-[15px] text-ox-t2">Preparing your execution read…</p>
               <div className="flex justify-center py-8">
-                <span className="inline-block h-10 w-10 rounded-full border-2 border-[#4F46E5] border-t-transparent animate-spin" />
+                <span className="inline-block h-10 w-10 rounded-full border-2 border-[#0EA472] border-t-transparent animate-spin" />
               </div>
             </div>
           </div>
@@ -1760,9 +1803,9 @@ export default function StartPage() {
 
             {step === 7 && activation && (
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
-            <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+            <div className="w-full max-w-[min(92vw,52rem)] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#0EA472] mb-2">
                   Conexa · Execution intelligence
                 </p>
                 <h1
@@ -1771,7 +1814,7 @@ export default function StartPage() {
                 >
                   Your Day 0 read
                 </h1>
-                <p className="text-[13px] font-light text-[#5E6580] leading-relaxed mt-2">
+                <p className="text-[13px] font-light text-ox-t2 leading-relaxed mt-2">
                   Six tabs unlock as they&apos;re revealed.
                 </p>
               </div>
@@ -1797,13 +1840,13 @@ export default function StartPage() {
                       setActCollapsed((prev) => ({ ...prev, [i]: !collapsed }))
                     }
                   >
-                    <span className="font-semibold text-[#4F46E5]">{t}</span>
-                    <span className="text-xs font-medium text-[#4F46E5] shrink-0">
+                    <span className="font-semibold text-[#0EA472]">{t}</span>
+                    <span className="text-xs font-medium text-[#0EA472] shrink-0">
                       {collapsed ? "Show" : "Hide"}
                     </span>
                   </button>
                   {!collapsed ? (
-                    <p className="text-[#5E6580] px-3 pb-3 whitespace-pre-wrap break-words">
+                    <p className="text-ox-t2 px-3 pb-3 whitespace-pre-wrap break-words">
                       {String(b ?? "")}
                     </p>
                   ) : null}
@@ -1818,11 +1861,11 @@ export default function StartPage() {
                 type="button"
                 disabled={busy}
                 onClick={() => void editCalibrationFromActivation()}
-                className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-[#5E6580] font-medium hover:bg-white/[0.04] disabled:opacity-50"
+                className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-ox-t2 font-medium hover:bg-white/[0.04] disabled:opacity-50"
               >
                 Edit Conexa calibration answers
               </button>
-              <p className="text-[11px] text-[#2E3347]">
+              <p className="text-[11px] text-ox-t3">
                 Reopens the three questions, then synthesis, and this Conexa read runs again with your updates.
               </p>
               <button
@@ -1852,7 +1895,7 @@ export default function StartPage() {
                 >
                   Submit your first proof.
                 </h1>
-                <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
+                <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
                   Your record starts the moment you submit. Choose your path.
                 </p>
               </div>
@@ -1950,7 +1993,7 @@ export default function StartPage() {
           {firstPath === "verified" && (
             <div className="space-y-3">
               <input
-                className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[var(--fw)] placeholder:text-[var(--ca)]/80"
+                className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[var(--fw)] placeholder:text-[var(--ox-placeholder)]"
                 placeholder="https://…"
                 value={proofUrl}
                 onChange={(e) => setProofUrl(e.target.value)}
@@ -1971,7 +2014,7 @@ export default function StartPage() {
               </label>
               <div className="relative">
                 <textarea
-                  className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[var(--fw)] placeholder:text-[var(--ca)]/60 ${
+                  className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[var(--fw)] placeholder:text-[var(--ox-placeholder)] ${
                     decl.trim().length > 0 && decl.trim().length < 30
                       ? "border-amber-500/50"
                       : "border-white/10"
@@ -2029,7 +2072,7 @@ export default function StartPage() {
               </label>
               <div className="relative">
                 <textarea
-                  className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[var(--fw)] placeholder:text-[var(--ca)]/60 ${
+                  className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[var(--fw)] placeholder:text-[var(--ox-placeholder)] ${
                     uploadContext.trim().length > 0 && uploadContext.trim().length < 30
                       ? "border-amber-500/50"
                       : "border-white/10"

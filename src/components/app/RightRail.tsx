@@ -37,13 +37,14 @@ export function RightRail({
   const milestones = [
     { n: 1, label: "Day 1", done: exec >= 1 },
     { n: 21, label: "Day 21", done: exec >= 21 },
+    { n: 45, label: "Day 45", done: exec >= 45 },
     { n: 60, label: "Day 60", done: exec >= 60 },
     { n: 90, label: "Day 90", done: exec >= 90 },
   ];
   const currentIdx =
-    exec >= 90 ? 3 : exec >= 60 ? 2 : exec >= 21 ? 1 : exec >= 1 ? 0 : 0;
+    exec >= 90 ? 4 : exec >= 60 ? 3 : exec >= 45 ? 2 : exec >= 21 ? 1 : exec >= 1 ? 0 : 0;
 
-  const labelMuted = flyout ? "text-zinc-500" : "text-[var(--t3)]";
+  const labelMuted = flyout ? "text-zinc-400" : "text-[var(--t3)]";
   const textBody = flyout ? "text-zinc-300" : "text-[var(--t2)]";
   const textTitle = flyout ? "text-zinc-50" : "text-[var(--t1)]";
 
@@ -57,7 +58,7 @@ export function RightRail({
     ? "border-[#d9f50a]/90 bg-[#d9f50a]/90 text-zinc-950"
     : "border-[var(--ac)] bg-[var(--ac)] text-[var(--mi)]";
   const ringUpcoming = flyout
-    ? "border-white/10 text-zinc-500 bg-[#0c0f14]"
+    ? "border-white/10 text-zinc-400 bg-[#0c0f14]"
     : "border-[var(--bdr)] text-[var(--t3)] bg-[var(--sur)]";
 
   const unlockBox = flyout
@@ -82,7 +83,7 @@ export function RightRail({
           </p>
         ) : (
           <p className={`text-sm ${textBody}`}>
-            Conexa directive flow unlocks at Day 21. Your execution window closes at 23:59:59
+            Conexa directive flow unlocks at 21 days executed. Your execution window closes at 23:59:59
             UTC.
           </p>
         )}
@@ -104,7 +105,7 @@ export function RightRail({
                       : ringUpcoming
                 }`}
               >
-                {m.n === 1 ? 1 : m.n === 21 ? "21" : m.n === 60 ? "60" : "90"}
+                {String(m.n)}
               </div>
               <span className={`text-[10px] ${labelMuted} mt-1 text-center leading-tight`}>
                 {m.label}
@@ -117,27 +118,6 @@ export function RightRail({
             Day 21: Signal Score, Daily Directive, and 5 more Conexa tabs unlock.
           </div>
         ) : null}
-      </div>
-
-      <div className={mkCard(false)}>
-        <p className={`text-[10px] font-semibold ${labelMuted} uppercase tracking-widest mb-2`}>
-          Signal score
-        </p>
-        {day21 ? (
-          <p className={`${textBody} text-sm`}>
-            Unlocks with Builder tier after Day 21 gate. Score UI ships Month 2 per MVP scope.
-          </p>
-        ) : (
-          <>
-            <p className={`text-3xl font-bold ${labelMuted}`}>…</p>
-            <p className={`text-xs ${labelMuted} mt-2`}>
-              Unlocks at Day 21 · Operator tier required.
-            </p>
-            <p className={`text-xs ${textBody} mt-2`}>
-              You&apos;re on {exec} days executed · {Math.max(0, 21 - exec)} to go.
-            </p>
-          </>
-        )}
       </div>
 
       <div className={mkCard(false)}>
@@ -157,7 +137,7 @@ export function RightRail({
             >
               Day 45
             </span>
-            Unlocks when you hit 45 days executed.
+            Unlocks at 45 days executed.
           </p>
         )}
       </div>

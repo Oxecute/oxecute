@@ -28,15 +28,15 @@ export async function GET() {
     ).size;
 
     return NextResponse.json({
-      founders: combined > 0 ? combined : 125,
+      founders: combined > 0 ? combined : 128,
       countries: distinctCountries > 0 ? distinctCountries : 12,
-      spotsRemaining: 50,
+      spotsRemaining: 72,
     });
   } catch {
     return NextResponse.json({
-      founders: 125,
+      founders: 128,
       countries: 12,
-      spotsRemaining: 50,
+      spotsRemaining: 72,
     });
   }
 }

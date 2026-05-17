@@ -113,11 +113,11 @@ const FAQ_ITEMS: {
   },
 ];
 
-/** Hero ticker + CTA figures (brief): always 125 founders, 12 countries, 50 spots left. */
+/** Hero ticker + CTA figures (brief): founders, countries, spots remaining. */
 const MARKETING_HERO_STATS = {
-  founders: 125,
+  founders: 128,
   countries: 12,
-  spotsRemaining: 50,
+  spotsRemaining: 72,
 } as const;
 
 export function ExecutionIntelligenceLanding() {
@@ -214,35 +214,37 @@ export function ExecutionIntelligenceLanding() {
 
         <div className="hero-l">
           <div className="hero-ticker">
-            <div className="ticker-card ticker-card-live">
-              <div className="ticker-live">
-                <span className="ticker-live-stack">
-                  <span className="ticker-live-line">Beta</span>
-                  <span className="ticker-live-line">Live</span>
-                </span>
+            <div className="ticker-bar">
+              <div className="ticker-seg ticker-seg-live">
+                <div className="ticker-live">
+                  <span className="ticker-live-stack">
+                    <span className="ticker-live-line">Beta</span>
+                    <span className="ticker-live-line">Live</span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="ticker-card ticker-card-stats">
-              <div className="ticker-stat">
-                <span className="ticker-stat-value">{MARKETING_HERO_STATS.founders}</span>
-                <span className="ticker-stat-label">Founders</span>
+              <div className="ticker-seg ticker-seg-stats">
+                <div className="ticker-stat">
+                  <span className="ticker-stat-value">{MARKETING_HERO_STATS.founders}</span>
+                  <span className="ticker-stat-label">Founders</span>
+                </div>
+                <div className="ticker-stat">
+                  <span className="ticker-stat-value">{MARKETING_HERO_STATS.countries}</span>
+                  <span className="ticker-stat-label">Countries</span>
+                </div>
               </div>
-              <div className="ticker-stat">
-                <span className="ticker-stat-value">{MARKETING_HERO_STATS.countries}</span>
-                <span className="ticker-stat-label">Countries</span>
-              </div>
-            </div>
-            <div className="ticker-card ticker-card-spots">
-              <div className="ticker-spots">
-                <span className="ticker-spots-value">{MARKETING_HERO_STATS.spotsRemaining} Spots</span>
-                <span className="ticker-spots-label">Remaining</span>
+              <div className="ticker-seg ticker-seg-spots">
+                <div className="ticker-spots">
+                  <span className="ticker-spots-value">{MARKETING_HERO_STATS.spotsRemaining} Spots</span>
+                  <span className="ticker-spots-label">Remaining</span>
+                </div>
               </div>
             </div>
           </div>
 
           <h1 className={`hero-h1 ${heroReveal ? "vis" : ""}`}>
             <span className="hero-h1-line">You&apos;re building daily.</span>
-            <span className="hero-h1-accent">You can&apos;t tell if it&apos;s working.</span>
+            <span className="hero-h1-line">You can&apos;t tell if it&apos;s working.</span>
           </h1>
 
           <p className={`hero-body ${heroReveal ? "vis" : ""}`}>
@@ -623,7 +625,7 @@ export function ExecutionIntelligenceLanding() {
 
         <div className="arc-row rv d2">
           <div className="arc-card">
-            <div className="arc-day">Unlocks 1 day after</div>
+            <div className="arc-day">Unlocks at 1 day executed</div>
             <div className="arc-name">Commit</div>
             <div className="arc-features">
               {[
@@ -641,7 +643,7 @@ export function ExecutionIntelligenceLanding() {
             </div>
           </div>
           <div className="arc-card">
-            <div className="arc-day">Unlocks 21 days after</div>
+            <div className="arc-day">Unlocks at 21 days executed</div>
             <div className="arc-name">Builder</div>
             <div className="arc-features">
               {[
@@ -660,7 +662,7 @@ export function ExecutionIntelligenceLanding() {
           </div>
           <div className="arc-card">
             <div className="arc-coming">Coming soon</div>
-            <div className="arc-day">Unlocks 45 days after</div>
+            <div className="arc-day">Unlocks at 45 days executed</div>
             <div className="arc-name">Operator</div>
             <div className="arc-features">
               {[
@@ -678,7 +680,7 @@ export function ExecutionIntelligenceLanding() {
           </div>
           <div className="arc-card">
             <div className="arc-coming">Coming soon</div>
-            <div className="arc-day">Unlocks 60 days after</div>
+            <div className="arc-day">Unlocks at 60 days executed</div>
             <div className="arc-name">Signal</div>
             <div className="arc-features">
               {[
@@ -696,7 +698,7 @@ export function ExecutionIntelligenceLanding() {
           </div>
           <div className="arc-card">
             <div className="arc-coming">Coming soon</div>
-            <div className="arc-day">Unlocks 90 days after</div>
+            <div className="arc-day">Unlocks at 90 days executed</div>
             <div className="arc-name">Legacy</div>
             <div className="arc-features">
               {[
@@ -803,7 +805,7 @@ export function ExecutionIntelligenceLanding() {
 
       <footer>
         <Link href="/" className="ei-footer-logo" aria-label="Oxecute home">
-          <img src="/brand/logo-icon.svg" alt="" width={44} height={44} decoding="async" />
+          <img src="/brand/logo-icon.svg" alt="" width={40} height={48} className="h-12 w-10 object-contain" decoding="async" />
         </Link>
         <div className="f-links">
           <a className="f-link" href="#hiw">

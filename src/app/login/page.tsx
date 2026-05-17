@@ -73,7 +73,7 @@ export default function LoginPage() {
   }
 
   const inputCls =
-    "w-full rounded-[10px] bg-[#1C1F2A] border border-[rgba(255,255,255,0.055)] px-[14px] py-[10px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:ring-0";
+    "w-full rounded-[10px] bg-[#1C1F2A] border border-[rgba(255,255,255,0.055)] px-[14px] py-[10px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:ring-0 placeholder:text-[var(--ox-placeholder)]";
 
   return (
     <main
@@ -96,19 +96,19 @@ export default function LoginPage() {
             </div>
             <form onSubmit={(e) => void signIn(e)} className="space-y-3 px-6 py-5 md:px-8 md:py-6 md:pt-4">
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#2E3347]">Email</label>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ox-t3">Email</label>
                 <input
                   type="email"
                   required
                   autoComplete="email"
                   className={inputCls}
-                  placeholder="you@company.com"
+                  placeholder="you@startup.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#2E3347]">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ox-t3">
                   Password
                 </label>
                 <input
@@ -129,14 +129,14 @@ export default function LoginPage() {
               >
                 {loading ? "Signing in" : "Sign in"}
               </button>
-              <p className="text-center text-[13px] text-[#5E6580]">
+              <p className="text-center text-[13px] text-ox-t2">
                 <Link href="/auth/forgot-password" className="text-[#4F46E5] underline">
                   Forgot password
                 </Link>
               </p>
               <div className="flex items-center gap-3 py-0.5">
                 <div className="h-px flex-1 bg-white/[0.08]" />
-                <span className="text-[11px] text-[#2E3347]">or</span>
+                <span className="text-[11px] text-ox-t3">or</span>
                 <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
               <button
@@ -160,7 +160,7 @@ export default function LoginPage() {
 
           <div className="w-full space-y-3 pb-2">
             <AuthMobileHelp afterResetPath="/login" />
-            <p className="text-center text-[13px] text-[#5E6580]">
+            <p className="text-center text-[13px] text-ox-t2">
               New here?{" "}
               <Link href="/start" className="text-[#4F46E5] underline">
                 Create your account
@@ -169,7 +169,7 @@ export default function LoginPage() {
             <div className="flex justify-center">
               <Link
                 href="/"
-                className="rounded-[9px] border border-white/[0.11] px-4 py-2 text-[13px] text-[#5E6580] hover:bg-white/[0.04]"
+                className="rounded-[9px] border border-white/[0.11] px-4 py-2 text-[13px] text-ox-t2 hover:bg-white/[0.04]"
               >
                 Back to site
               </Link>

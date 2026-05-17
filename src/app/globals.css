@@ -15,9 +15,12 @@
   --card-hover: #20232f;
   --border: rgba(255, 255, 255, 0.055);
   --border-md: rgba(255, 255, 255, 0.09);
-  --text: #eaeff8;
-  --text-muted: #5e6580;
-  --text-hint: #2e3347;
+  --text: #f4f6fb;
+  /* Secondary copy: near-white for readability on dark surfaces */
+  --text-muted: #e2e6f0;
+  --text-hint: #c8cedd;
+  /** Input placeholder copy on dark surfaces */
+  --ox-placeholder: #72757b;
   --indigo: #4f46e5;
   --teal: #0ea472;
   --amber: #c2a478;
@@ -85,7 +88,8 @@ select {
   border-color: var(--border-md);
 }
 
-[data-onboarding-surface="true"] input:not([type="checkbox"]):not([type="radio"]),
+[data-onboarding-surface="true"]
+  input:not([type="checkbox"]):not([type="radio"]),
 [data-onboarding-surface="true"] textarea,
 [data-onboarding-surface="true"] select {
   color: var(--text);

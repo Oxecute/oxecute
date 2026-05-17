@@ -1,4 +1,6 @@
 import { AuthenticatedShell } from "@/components/app/AuthenticatedShell";
+import { COMING_SOON_PILL_CLASS } from "@/components/app/dashboard-nav-config";
+import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 
 type ToolDef = { name: string; Logo: () => JSX.Element };
 
@@ -100,11 +102,19 @@ function ToolCard({ name, Logo }: ToolDef) {
 
 export default function ToolsPage() {
   return (
-    <AuthenticatedShell breadcrumb="Tools / Connect Tools">
+    <AuthenticatedShell>
       <main className="max-w-4xl space-y-8">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--t1)]">
-          <span className="text-[var(--t3)] font-semibold">Coming Soon</span> Connect Tools
-        </h1>
+        <RecordPageHeader
+          title={
+            <h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8] flex flex-wrap items-center gap-2.5" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+              <span className={COMING_SOON_PILL_CLASS}>
+                <span className="w-1 h-1 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.4)] shrink-0" aria-hidden />
+                Coming soon
+              </span>
+              <span>Connect Tools</span>
+            </h1>
+          }
+        />
 
         <div className="space-y-10">
           {SECTIONS.map((sec) => (

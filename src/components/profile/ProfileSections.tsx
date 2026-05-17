@@ -176,7 +176,8 @@ export function ShareCardLocked({ daysExecuted, unlocked }: { daysExecuted: numb
     <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur2)] p-6 mt-8 text-center">
       <p className="text-sm font-semibold text-[var(--t1)]">Share card</p>
       <p className="text-sm text-[var(--t2)] mt-2">
-        Unlocks at 21 verified days executed - {toGo === 0 ? "finish remaining gates on your record." : `${toGo} to go.`}
+        Unlocks at 21 days executed —{" "}
+        {toGo === 0 ? "finish remaining gates on your record." : `${toGo} to go.`}
       </p>
     </div>
   );

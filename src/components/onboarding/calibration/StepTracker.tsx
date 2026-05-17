@@ -56,7 +56,7 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
           ) : startupActive ? (
             <span className="h-2.5 w-2.5 rounded-full bg-[#4F46E5] ring-4 ring-[#4F46E5]/20" />
           ) : (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#5E6580]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ox-t2" />
           )}
           <div className="w-px flex-1 min-h-[28px] bg-white/[0.08]" />
         </div>
@@ -67,12 +67,12 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
                 ? "text-[#EAEFF8]"
                 : startupComplete
                   ? "text-[#9194AB]"
-                  : "text-[#5E6580]"
+                  : "text-ox-t2"
             }`}
           >
             Your Startup
           </p>
-          <p className="text-[11px] font-dm text-[#5E6580] mt-0.5">
+          <p className="text-[11px] font-dm text-ox-t2 mt-0.5">
             {signupPhase
               ? "You’ll do this right after sign-up"
               : startupComplete
@@ -84,20 +84,20 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
       <div className="flex gap-3 items-start -mt-1">
         <div className="flex flex-col items-center w-[18px] shrink-0">
           {conexaActive ? (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#4F46E5] ring-4 ring-[#4F46E5]/20" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0EA472] ring-4 ring-[#0EA472]/20" />
           ) : (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#5E6580]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ox-t2" />
           )}
         </div>
         <div>
           <p
             className={`text-[13px] font-semibold leading-tight font-urbanist ${
-              conexaActive ? "text-[#EAEFF8]" : "text-[#5E6580]"
+              conexaActive ? "text-[#EAEFF8]" : "text-ox-t2"
             }`}
           >
             Conexa
           </p>
-          <p className="text-[11px] font-dm text-[#5E6580] mt-0.5">{row2Sub}</p>
+          <p className="text-[11px] font-dm text-ox-t2 mt-0.5">{row2Sub}</p>
         </div>
       </div>
     </div>

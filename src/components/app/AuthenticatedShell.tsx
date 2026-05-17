@@ -32,13 +32,11 @@ export function useShellUserRefresh(): () => void {
 
 export function AuthenticatedShell({
   children,
-  breadcrumb = "Dashboards / Founder Operating Record",
   refreshKey = 0,
   /** When set, replaces the whole shell (e.g. Day 21 full-screen gate). */
   fullscreenBlock,
 }: {
   children: ReactNode;
-  breadcrumb?: string;
   refreshKey?: number;
   fullscreenBlock?: (user: AppShellUser) => ReactNode | null;
 }) {
@@ -171,7 +169,6 @@ export function AuthenticatedShell({
         <ShellUserContext.Provider value={user}>
           <AppShell
             user={user}
-            breadcrumb={breadcrumb}
             unreadCount={inboxUnread}
             inlineRightRail={<DashboardRightRail />}
           >

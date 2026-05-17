@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
+import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 import { useCallback, useEffect, useState } from "react";
 
 type RequestRow = {
@@ -47,7 +48,7 @@ function statusStyle(status: string): { label: string; dot: string; box: string 
     };
   return {
     label: status.replace(/_/g, " "),
-    dot: "bg-[#5E6580]",
+    dot: "bg-ox-t2",
     box: "border-[rgba(255,255,255,0.12)] text-[#EAEFF8] bg-[rgba(255,255,255,0.06)]",
   };
 }
@@ -110,30 +111,36 @@ function BoardMain() {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Feature requests</h1>
-          <p className="text-sm text-[var(--t2)] mt-1.5 leading-relaxed max-w-xl">
+      <RecordPageHeader
+        title={
+          <h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+            Feature requests
+          </h1>
+        }
+        subtitle={
+          <p className="text-[12px] sm:text-[13px] text-ox-t2 leading-relaxed max-w-xl">
             Shape the product with your record. Upvotes unlock after Day 7; new requests open at Day 21.
           </p>
-        </div>
-        {day21 ? (
-          <button
-            type="button"
-            className="rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold px-5 py-2 text-sm shadow-sm"
-            title="Submit flow ships next - flag yourself on Discord for now."
-          >
-            + New request
-          </button>
-        ) : (
-          <span
-            className="text-xs text-[var(--t3)] border border-[var(--bdr)] rounded-full px-3 py-1.5 bg-[var(--sur2)]"
-            title="Unlocks at Day 21 executed"
-          >
-            + New request · Day 21
-          </span>
-        )}
-      </div>
+        }
+        extraActions={
+          day21 ? (
+            <button
+              type="button"
+              className="rounded-full bg-[#0EA472] text-white font-semibold px-4 py-2 text-[12px] shadow-sm hover:opacity-95"
+              title="Submit flow ships next - flag yourself on Discord for now."
+            >
+              + New request
+            </button>
+          ) : (
+            <span
+              className="text-[11px] text-ox-t2 border border-white/[0.08] rounded-full px-3 py-1.5 bg-[#1C1F2A]"
+              title="Unlocks at 21 days executed"
+            >
+              + New request · Day 21
+            </span>
+          )
+        }
+      />
 
       <div className="flex flex-wrap gap-2 text-sm">
         <button
@@ -247,7 +254,7 @@ function BoardMain() {
 
 export default function BoardPage() {
   return (
-    <AuthenticatedShell breadcrumb="Dashboards / Request Feature">
+    <AuthenticatedShell>
       <BoardMain />
     </AuthenticatedShell>
   );
