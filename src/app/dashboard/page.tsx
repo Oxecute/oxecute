@@ -13,7 +13,6 @@ import {
   uploadEntryDeclarationFiles,
   uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
-import { formatCountdown, getUtcWindowRemainingParts } from "@/components/app/utc-countdown";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -100,8 +99,6 @@ function DashboardMain() {
   }, []);
   void countdownTick;
 
-  const windowCountdown = formatCountdown(getUtcWindowRemainingParts());
-
   const loadEntries = useCallback(async () => {
     const {
       data: { session },
@@ -160,6 +157,11 @@ function DashboardMain() {
 
   const execCount = Number(user.execution_count ?? 0);
   const day21Reached = Boolean(user.day21_reached);
+  const foundingMember = Boolean(
+    (user as { founding_member?: boolean }).founding_member,
+  );
+  const headerDay = Math.max(1, execCount);
+  const headerSubtitle = `Day ${headerDay} · ${day21Reached ? "Builder" : "Record"} Tier · ${foundingMember ? "Founding" : "Free"}`;
   const beganDate =
     user.created_at != null
       ? new Date(user.created_at).toLocaleDateString("en-GB", {
@@ -243,14 +245,27 @@ function DashboardMain() {
   return (
     <>
       <section className="rounded-[28px] border border-white/[0.055] bg-[#13151C] text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20 shadow-[0_32px_80px_rgba(0,0,0,0.25)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.055] pb-4">
-          <div>
-            <h1 className="text-lg sm:text-[18px] font-bold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4 border-b border-white/[0.055] pb-5">
+          <div className="min-w-0">
+            <h1
+              className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]"
+              style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+            >
               Founder Operating Record
             </h1>
-            <p className="text-xs sm:text-[12px] text-[#5E6580] mt-1">Commit</p>
+            <p className="text-[12px] sm:text-[13px] text-[#5E6580] mt-1.5 leading-snug">{headerSubtitle}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 sm:shrink-0 sm:ml-auto">
+            <span className="inline-flex items-center rounded-full bg-[#1C1F2A] px-3.5 py-1.5 text-[12px] font-medium text-[#5E6580] ring-1 ring-white/[0.06]">
+              Today
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#1C1F2A] px-3.5 py-1.5 text-[12px] font-medium text-[#A8B0CC] tabular-nums ring-1 ring-white/[0.06]">
+              <svg className="w-[14px] h-[14px] shrink-0 text-[#5E6580]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" strokeLinecap="round" />
+              </svg>
+              {utcClock}
+            </span>
             <button
               type="button"
               onClick={() => {
@@ -263,24 +278,13 @@ function DashboardMain() {
                 setUploadProofFiles([]);
                 setModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0EA472] px-[18px] py-2 text-[12.5px] font-medium text-white shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-full bg-[#0EA472] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_16px_rgba(14,164,114,0.28)] hover:opacity-95"
             >
-              <span className="text-sm leading-none" aria-hidden>
+              <span className="text-base leading-none font-bold" aria-hidden>
                 +
               </span>
               Submit Entry
-              <span className="tabular-nums text-[11px] font-semibold opacity-90">{windowCountdown}</span>
             </button>
-            <span className="inline-flex items-center rounded-[10px] border border-white/[0.1] px-3 py-2 text-[12.5px] text-[#5E6580]">
-              Today
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-white/[0.1] px-3 py-2 text-[12.5px] text-[#5E6580] tabular-nums">
-              <svg className="w-[13px] h-[13px] shrink-0 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" strokeLinecap="round" />
-              </svg>
-              {utcClock}
-            </span>
           </div>
         </div>
 
