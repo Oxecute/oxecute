@@ -9,10 +9,13 @@ import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
 import {
   ENTRY_UPLOAD_ACCEPT,
+  FIRST_PROOF_ACCEPT,
   uploadEntryDeclarationFiles,
+  uploadFirstProofFiles,
 } from "@/lib/entry-uploads";
 import { formatCountdown, getUtcWindowRemainingParts } from "@/components/app/utc-countdown";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
@@ -45,7 +48,7 @@ function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
           onUnlock();
         }}
       >
-        Unlock what you earned →
+        Unlock what you earned
       </button>
       <button
         type="button"
@@ -65,21 +68,25 @@ function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-const FORM_FIELD =
-  "w-full rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] px-3 py-2 text-sm text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:ring-2 focus:ring-[var(--p)]/25";
+const ENTRY_LOCK_BUTTON =
+  "w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
 
 function DashboardMain() {
   const user = useShellUser();
   const refreshShellUser = useShellUserRefresh();
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Record<string, unknown>[]>([]);
+  const [breakDays, setBreakDays] = useState<number[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatText, setChatText] = useState("");
   const [chatLog, setChatLog] = useState<{ role: string; content: string }[]>([]);
+  const [chatSending, setChatSending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
   const [decl, setDecl] = useState("");
-  const [tab, setTab] = useState<"verified" | "declaration">("verified");
+  const [entryPath, setEntryPath] = useState<"verified" | "declaration" | "upload">("verified");
+  const [uploadContext, setUploadContext] = useState("");
+  const [uploadProofFiles, setUploadProofFiles] = useState<File[]>([]);
   const [cat, setCat] = useState<"product" | "distribution" | "ops">("product");
   const [dayDetail, setDayDetail] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -103,6 +110,7 @@ function DashboardMain() {
     const eRes = await fetch("/api/entries");
     const eJ = await eRes.json();
     setEntries(eJ.entries ?? []);
+    setBreakDays(eJ.break_days ?? []);
   }, [supabase.auth]);
 
   useEffect(() => {
@@ -141,6 +149,8 @@ function DashboardMain() {
     )
     .slice(0, 6);
 
+  const breakDaySet = useMemo(() => new Set(breakDays), [breakDays]);
+
   const byCat = { product: 0, distribution: 0, ops: 0 } as Record<string, number>;
   for (const e of entries) {
     const c = String(e.category ?? "");
@@ -170,223 +180,343 @@ function DashboardMain() {
         : null;
 
   const gridLegend = (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--t3)] mt-3">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#5E6580] mt-3.5">
       <span className="inline-flex items-center gap-1.5">
-        <span className="w-3 h-3 rounded-sm bg-[rgba(1,2,97,0.85)]" /> Verified Proof
+        <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0EA472]" /> Verified Proof
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-[var(--purple)]" /> Declaration
+        <span className="w-2.5 h-2.5 rounded-[2px] bg-[#7C64DC]" /> Declaration
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-[var(--orange)]" /> Upload
+        <span className="w-2.5 h-2.5 rounded-[2px] bg-[#C2A478]" /> Upload
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-[var(--red)]" /> Break
+        <span className="w-2.5 h-2.5 rounded-[2px] bg-[#E24B4A]" /> Break
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="w-3 h-3 rounded-sm border border-[var(--bdr)] bg-[var(--sur2)]" /> Future
+        <span className="w-2.5 h-2.5 rounded-[2px] border border-white/[0.08] bg-white/[0.03]" /> Future
       </span>
     </div>
   );
 
+  const utcClock = `${new Date().toISOString().slice(11, 19)} UTC`;
+
+  const ledgerRows = [...entries]
+    .sort(
+      (a, b) =>
+        new Date(String(b.created_at ?? 0)).getTime() - new Date(String(a.created_at ?? 0)).getTime(),
+    )
+    .slice(0, 6);
+
+  const sendConexa = useCallback(async () => {
+    const t = chatText.trim();
+    if (!t || chatSending) return;
+    setChatText("");
+    setChatLog((l) => [...l, { role: "user", content: t }]);
+    setChatSending(true);
+    try {
+      const res = await fetch("/api/conexa/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: t }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const reply =
+        typeof j.text === "string" && j.text.trim().length > 0
+          ? j.text.trim()
+          : typeof j.error === "string"
+            ? j.error
+            : res.ok
+              ? "Conexa returned an empty reply. Try again."
+              : "Could not reach Conexa. Check your connection and try again.";
+      setChatLog((l) => [...l, { role: "assistant", content: reply }]);
+    } catch {
+      setChatLog((l) => [
+        ...l,
+        { role: "assistant", content: "Network error. Check your connection and try again." },
+      ]);
+    } finally {
+      setChatSending(false);
+    }
+  }, [chatText, chatSending]);
+
   return (
     <>
-      <section className="space-y-8 pb-28 md:pb-24">
-        <div className="flex flex-wrap items-start justify-between gap-3 gap-y-2">
+      <section className="rounded-[28px] border border-white/[0.055] bg-[#13151C] text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20 shadow-[0_32px_80px_rgba(0,0,0,0.25)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.055] pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--t1)]">Founder Operating Record</h1>
-            <p className="text-sm text-[var(--t2)] mt-1">
-              Day {Math.max(1, execCount)} · Record Tier · Free
-            </p>
+            <h1 className="text-lg sm:text-[18px] font-bold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+              Founder Operating Record
+            </h1>
+            <p className="text-xs sm:text-[12px] text-[#5E6580] mt-1">Commit</p>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] px-3 py-1.5 text-[var(--t2)] text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitError(null);
+                setDeclFiles([]);
+                setEntryPath("verified");
+                setProofUrl("");
+                setDecl("");
+                setUploadContext("");
+                setUploadProofFiles([]);
+                setModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0EA472] px-[18px] py-2 text-[12.5px] font-medium text-white shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:opacity-90"
+            >
+              <span className="text-sm leading-none" aria-hidden>
+                +
+              </span>
+              Submit Entry
+              <span className="tabular-nums text-[11px] font-semibold opacity-90">{windowCountdown}</span>
+            </button>
+            <span className="inline-flex items-center rounded-[10px] border border-white/[0.1] px-3 py-2 text-[12.5px] text-[#5E6580]">
               Today
             </span>
-            <a
-              href={`/${user.username}`}
-              className="text-[var(--p)] text-xs font-medium underline-offset-2 hover:underline whitespace-nowrap"
-            >
-              Public profile
-            </a>
+            <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-white/[0.1] px-3 py-2 text-[12.5px] text-[#5E6580] tabular-nums">
+              <svg className="w-[13px] h-[13px] shrink-0 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" strokeLinecap="round" />
+              </svg>
+              {utcClock}
+            </span>
           </div>
         </div>
 
         {gapWarn ? (
-          <p className="text-sm rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100 p-3">
+          <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-[#5E6580]">
+            <span className="text-[#C2A478] shrink-0 mt-0.5" aria-hidden>
+              ⓘ
+            </span>
             {gapWarn}
-          </p>
+          </div>
         ) : null}
 
-        <div className="grid grid-cols-4 gap-2 sm:gap-2.5 min-w-0">
-          <div className="rounded-lg sm:rounded-xl border border-[var(--bdr)] p-2.5 sm:p-3 bg-[var(--sur)] min-w-0">
-            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
-              Days executed
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Days executed</p>
+            <p className="text-[30px] font-bold tabular-nums leading-none tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+              {String(execCount)}
             </p>
-            <div className="flex items-baseline gap-1 mt-0.5 sm:mt-1">
-              <p className="text-xl sm:text-2xl font-bold tabular-nums leading-none">{String(execCount)}</p>
-              <span className="text-[var(--green)] text-xs shrink-0" aria-hidden>
-                ↗
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-[var(--t2)] mt-1 leading-tight">
-              {execCount} of 30 days
-            </p>
+            <p className="text-[11px] text-[#2E3347] mt-1.5">{execCount} of 30 days</p>
           </div>
-          <div className="rounded-lg sm:rounded-xl border border-[var(--bdr)] p-2.5 sm:p-3 bg-[var(--sur)] min-w-0">
-            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
-              Total submissions
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Total submissions</p>
+            <p className="text-[30px] font-bold tabular-nums leading-none" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+              {entries.length}
             </p>
-            <p className="text-xl sm:text-2xl font-bold tabular-nums mt-0.5 sm:mt-1 leading-none">{entries.length}</p>
-            <p className="text-[10px] sm:text-[11px] text-[var(--t2)] mt-1 leading-tight tabular-nums">
-              {String(user.break_count ?? 0)} breaks
-            </p>
+            <p className="text-[11px] text-[#2E3347] mt-1.5 tabular-nums">{String(user.break_count ?? 0)} breaks</p>
           </div>
-          <div
-            className={`rounded-lg sm:rounded-xl border p-2.5 sm:p-3 min-w-0 ${
-              day21Reached
-                ? "border-[var(--bdr)] bg-[var(--sur)]"
-                : "border-[var(--bdr)] bg-[var(--sur2)]/80"
-            }`}
-          >
-            <p className="text-[9px] sm:text-[10px] text-[var(--t3)] uppercase tracking-wider leading-tight">
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">
               Directive completion
             </p>
             {day21Reached ? (
-              <p className="text-sm font-semibold text-[var(--t1)] mt-1.5">Unlocked</p>
+              <Link
+                href="/directive"
+                className="text-[12.5px] font-medium text-[#0EA472] hover:underline"
+              >
+                Open Daily Directive
+              </Link>
             ) : (
-              <div className="flex items-center gap-1.5 mt-1.5 text-[var(--t2)]">
-                <svg className="shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <p className="flex items-center gap-2 text-[12.5px] text-[#5E6580]">
+                <svg
+                  className="w-[14px] h-[14px] shrink-0 text-[#5E6580]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
                   <rect x="5" y="11" width="14" height="10" rx="2" />
-                  <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
+                  <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
                 </svg>
-                <span className="text-[10px] sm:text-[11px] leading-snug">Unlocks Day 21</span>
-              </div>
+                Unlocks Day 21
+              </p>
             )}
           </div>
           <div
-            className={`rounded-lg sm:rounded-xl border p-2.5 sm:p-3 min-w-0 ${
+            className={`rounded-[20px] bg-[#1C1F2A] p-5 min-w-0 ${
               day21Reached
-                ? "border-[var(--bdr)] bg-[var(--sur)]"
-                : "border-[var(--p)]/20 bg-[var(--p)] text-[var(--fw)]"
+                ? "border border-white/[0.055]"
+                : "border border-[rgba(124,100,220,0.45)] shadow-[0_0_28px_rgba(124,100,220,0.14)]"
             }`}
           >
-            <p
-              className={`text-[9px] sm:text-[10px] uppercase tracking-wider leading-tight ${
-                day21Reached ? "text-[var(--t3)]" : "text-[var(--ca)]/90"
-              }`}
-            >
-              Signal score
-            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2E3347] mb-2.5">Signal score</p>
             {day21Reached ? (
-              <p className="text-sm font-semibold mt-1.5 text-[var(--t1)]">Live</p>
+              <Link
+                href="/signal"
+                className="text-[12.5px] font-medium text-[#7C64DC] hover:underline"
+              >
+                View Signal Score
+              </Link>
             ) : (
-              <div className="flex items-center gap-1.5 mt-1.5 opacity-95">
-                <svg className="shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <p className="flex items-center gap-2 text-[12.5px] text-[#5E6580]">
+                <svg
+                  className="w-[14px] h-[14px] shrink-0 text-[#5E6580]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
                   <rect x="5" y="11" width="14" height="10" rx="2" />
-                  <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
+                  <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
                 </svg>
-                <span className="text-[10px] sm:text-[11px] leading-snug">Unlocks Day 21</span>
-              </div>
+                Unlocks Day 21
+              </p>
             )}
           </div>
         </div>
 
-        {entries[0]?.tier === "upload_unverified" && (
-          <p className="text-sm text-[var(--t2)] border border-[var(--bdr)] rounded-lg p-3 bg-[var(--sur)]">
-            File upload is on your record as unverified. Add a Verified Proof URL from the dashboard
-            within 30 days for full Signal weight.
+        {entries[0]?.tier === "upload_unverified" ? (
+          <p className="text-[12.5px] text-[#5E6580] border border-white/[0.055] rounded-[20px] p-4 bg-[#1C1F2A]">
+            File upload is on your record as unverified. Add a Verified Proof URL from the dashboard within 30 days for
+            full Signal weight.
           </p>
-        )}
+        ) : null}
 
-        {entries[0]?.tier === "signup_execution" && (
-          <p className="text-sm text-[var(--t2)] border border-[var(--bdr)] rounded-lg p-3 bg-[var(--sur)]">
-            Signing up was your Day 1 record. Submit your first verified proof today to build from here.
-          </p>
-        )}
-
-        <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-            <div>
-              <p className="font-semibold text-[var(--t1)]">30-Day Execution Grid</p>
-              {beganDate ? (
-                <p className="text-xs text-[var(--t2)] mt-0.5">Began: {beganDate}</p>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-[var(--t2)] tabular-nums">Total: {entries.length}</span>
-              <span className="text-[var(--t3)]">·</span>
-              <span className="text-[var(--t2)] tabular-nums">Breaks: {String(user.break_count ?? 0)}</span>
-              <span className="rounded-full bg-[var(--green)]/15 text-[var(--green)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                FOR visible
-              </span>
-            </div>
-          </div>
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {Array.from({ length: 30 }).map((_, i) => {
-              const day = i + 1;
-              const ent = entries.find((e) => Number(e.day_number) === day) as Record<
-                string,
-                string
-              > | undefined;
-              let cls = "border border-[var(--bdr)] bg-[var(--sur2)]";
-              if (ent?.tier === "verified_proof") cls = "bg-[rgba(1,2,97,0.85)] border border-transparent";
-              if (ent?.tier === "signup_execution") cls = "bg-[rgba(1,2,97,0.85)] border border-transparent";
-              if (ent?.tier === "declaration_pending") cls = "bg-[var(--purple)] border-transparent";
-              if (ent?.tier === "upload_unverified") cls = "bg-[var(--orange)]/90 border-transparent";
-              return (
-                <button
-                  type="button"
-                  key={day}
-                  className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-md ${cls} ${ent ? "cursor-pointer hover:ring-2 ring-[var(--ac)] ring-offset-1 ring-offset-[var(--sur)]" : "cursor-default opacity-60"}`}
-                  title={`Day ${day}`}
-                  onClick={() => (ent ? setDayDetail(ent as unknown as Record<string, unknown>) : undefined)}
-                />
-              );
-            })}
-          </div>
-          {gridLegend}
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-4 items-stretch">
-          <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5 flex flex-col min-h-[200px]">
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide">
-                Recent submissions
+        <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
+          {entries[0]?.tier === "signup_execution" ? (
+            <div className="px-[22px] py-3.5 border-b border-white/[0.055]">
+              <p className="text-[12.5px] text-[#5E6580] leading-snug">
+                Signing up was your Day 1 record. Submit your first verified proof today to build from here.
               </p>
             </div>
-            {recent.length > 0 ? (
-              <ul className="space-y-3 text-sm flex-1">
-                {recent.map((e, idx) => (
-                  <li
+          ) : null}
+          <div className="p-5 sm:p-[22px]">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-[14.5px] font-semibold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  30-Day Execution Grid
+                </p>
+                {beganDate ? <p className="text-[11.5px] text-[#2E3347] mt-0.5">Began {beganDate}</p> : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-[11.5px]">
+                <span className="text-[#5E6580] tabular-nums">
+                  Total: {entries.length} | Breaks: {String(user.break_count ?? 0)} |{" "}
+                  <span className="text-[11.5px] font-medium text-[#0EA472]">FOR visible</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 30 }).map((_, i) => {
+                const day = i + 1;
+                const ent = entries.find((e) => Number(e.day_number) === day) as Record<string, string> | undefined;
+                const isBreakDay = breakDaySet.has(day);
+                let cls = "border border-white/[0.055] bg-white/[0.025]";
+                if (ent?.tier === "verified_proof" || ent?.tier === "signup_execution") {
+                  cls = "bg-[#0EA472] border-[#0EA472] shadow-[0_2px_8px_rgba(14,164,114,0.3)]";
+                } else if (ent?.tier === "declaration_pending") {
+                  cls = "bg-[rgba(124,100,220,0.15)] border-[rgba(124,100,220,0.25)]";
+                } else if (ent?.tier === "upload_unverified") {
+                  cls = "bg-[rgba(194,164,120,0.15)] border-[rgba(194,164,120,0.25)]";
+                } else if (isBreakDay) {
+                  cls = "bg-[#E24B4A] border-[#E24B4A] shadow-[0_2px_8px_rgba(226,75,74,0.3)]";
+                }
+                const isFutureSlot = !ent && !isBreakDay;
+                return (
+                  <button
+                    type="button"
+                    key={day}
+                    className={`w-7 h-7 sm:w-[30px] sm:h-[30px] shrink-0 rounded-[6px] transition-transform hover:scale-105 ${cls} ${
+                      ent ? "cursor-pointer" : "cursor-default"
+                    } ${isFutureSlot ? "opacity-50" : ""}`}
+                    title={isBreakDay && !ent ? `Day ${day} · Break` : `Day ${day}`}
+                    onClick={() => (ent ? setDayDetail(ent as unknown as Record<string, unknown>) : undefined)}
+                  />
+                );
+              })}
+            </div>
+            {gridLegend}
+          </div>
+        </div>
+
+        <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-[22px] py-4 border-b border-white/[0.055]">
+            <div>
+              <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                Execution Ledger
+              </p>
+              <p className="text-[11.5px] text-[#2E3347] mt-0.5">Auto-captured · tamper-proof · append-only</p>
+            </div>
+          </div>
+          <div className="p-5 space-y-2">
+            {ledgerRows.length === 0 ? (
+              <p className="text-[12.5px] text-[#5E6580]">No ledger rows yet.</p>
+            ) : (
+              ledgerRows.map((e) => {
+                const tier = String(e.tier ?? "");
+                const ts = new Date(String(e.created_at ?? 0)).toLocaleString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                let rowCls = "border-[rgba(79,70,229,0.28)] bg-[rgba(79,70,229,0.12)]";
+                let badge = "Verified";
+                let badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
+                if (tier === "declaration_pending" || tier === "upload_unverified") {
+                  rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
+                  badge = "Declared";
+                  badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
+                }
+                if (tier === "verified_proof" || tier === "signup_execution") {
+                  rowCls = "border-[rgba(14,164,114,0.25)] bg-[rgba(14,164,114,0.1)]";
+                  badge = "Verified";
+                  badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
+                }
+                const title = submissionBrief(
+                  e as { tier?: string | null; url?: string | null; declaration_text?: string | null },
+                );
+                return (
+                  <div
                     key={String(e.id)}
-                    className="border-b border-[var(--bdr)]/60 pb-3 last:border-0 last:pb-0"
+                    className={`flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] border ${rowCls}`}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[var(--t1)] font-medium leading-snug">
-                          Day {String(e.day_number)}{" "}
-                          <span className="font-normal text-[var(--t2)]">
-                            {submissionBrief(
-                              e as {
-                                tier?: string | null;
-                                url?: string | null;
-                                declaration_text?: string | null;
-                              },
-                            )}
-                          </span>
-                        </p>
-                        <span className="inline-flex mt-1.5 rounded-md bg-[var(--p)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--fw)]">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-medium text-[#EAEFF8]">
+                        Day {String(e.day_number)} · {title}
+                      </p>
+                      <p className="text-[11px] text-[#5E6580] mt-0.5">{ts} UTC</p>
+                    </div>
+                    <span className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border shrink-0 ${badgeCls}`}>
+                      {badge}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3.5">
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
+            <div className="px-[22px] py-4 border-b border-white/[0.055]">
+              <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                Recent Submissions
+              </p>
+            </div>
+            <div className="p-5 pt-2">
+              {recent.length > 0 ? (
+                <ul className="divide-y divide-white/[0.055]">
+                  {recent.map((e, idx) => (
+                    <li key={String(e.id)} className="py-3.5 first:pt-0 last:pb-0">
+                      <p className="text-[13.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                        Day {String(e.day_number)}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-[10.5px] mt-1">
+                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wide bg-[rgba(79,70,229,0.15)] text-[#8B82F5] border border-[rgba(79,70,229,0.28)]">
                           {String(e.category)}
                         </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
                         {idx === 0 ? (
-                          <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--red)] whitespace-nowrap">
-                            Locked · Immutable
+                          <span className="inline-flex items-center gap-1 text-[#E24B4A] font-semibold">
+                            <span aria-hidden>🔒</span> Locked · Immutable
                           </span>
                         ) : null}
-                        <span className="text-[var(--t3)] text-[11px] tabular-nums">
+                        <span className="text-[#2E3347] tabular-nums ml-auto">
                           {new Date(String(e.created_at)).toLocaleString("en-GB", {
                             day: "2-digit",
                             month: "short",
@@ -395,68 +525,75 @@ function DashboardMain() {
                           })}
                         </span>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-[var(--t3)]">No submissions yet.</p>
-            )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[12.5px] text-[#5E6580] py-4">No submissions yet.</p>
+              )}
+            </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--bdr)] bg-[var(--sur)] p-4 sm:p-5">
-            <p className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide mb-4">Artifact breakdown</p>
-            {(["product", "distribution", "ops"] as const).map((k) => (
-              <div key={k} className="mb-3 last:mb-0">
-                <div className="flex justify-between text-xs text-[var(--t2)] mb-1">
-                  <span className="capitalize font-medium">{k}</span>
-                  <span className="tabular-nums">{Math.round((byCat[k] / totalCat) * 100)}%</span>
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
+            <div className="px-[22px] py-4 border-b border-white/[0.055]">
+              <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                Artifact Breakdown
+              </p>
+            </div>
+            <div className="p-5 space-y-3.5">
+              {(["product", "distribution", "ops"] as const).map((k) => (
+                <div key={k}>
+                  <div className="flex justify-between text-[12.5px] mb-1.5">
+                    <span className="text-[#5E6580] capitalize">{k}</span>
+                    <span className="font-medium text-[#EAEFF8] tabular-nums">{Math.round((byCat[k] / totalCat) * 100)}%</span>
+                  </div>
+                  <div className="h-1 rounded-sm bg-white/[0.06] overflow-hidden">
+                    <div
+                      className={`h-full rounded-sm ${k === "product" ? "bg-[#0EA472]" : k === "distribution" ? "bg-[#7C64DC]" : "bg-[#2E3347]"}`}
+                      style={{ width: `${(byCat[k] / totalCat) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 rounded-full bg-[var(--sur2)] overflow-hidden">
-                  <div
-                    className="h-full bg-[var(--p)] rounded-full transition-all"
-                    style={{ width: `${(byCat[k] / totalCat) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {report && visibleConexaTabs.length > 0 ? (
-          <div className="rounded-xl border border-[var(--bdr)] p-4 sm:p-5 bg-[var(--sur)] text-sm space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="font-semibold text-[var(--t1)]">
-                Conexa Intelligence · {visibleConexaTabs.length} tabs active from Day 1
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden text-[12.5px]">
+            <div className="flex flex-wrap items-start justify-between gap-2 px-[22px] py-4 border-b border-white/[0.055]">
+              <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                Conexa Intelligence{" "}
+                <span className="text-xs font-normal text-[#5E6580]">
+                  · {visibleConexaTabs.length} tabs active from Day 1
+                </span>
               </p>
-              <span className="text-[10px] uppercase tracking-wide text-[var(--purple)] font-medium">
-                Day 21 unlocks 5 more
-              </span>
             </div>
-            <p className="text-[var(--t2)] text-xs leading-relaxed">{String(report.personal_insight ?? "")}</p>
-            <div className="flex flex-wrap gap-2 border-b border-[var(--bdr)] pb-3">
+            <div className="flex gap-0.5 overflow-x-auto border-b border-white/[0.055] px-[22px] scrollbar-none">
               {visibleConexaTabs.map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setConexaTab(key)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                  className={`shrink-0 px-[13px] py-[11px] text-xs whitespace-nowrap border-b-2 transition-colors ${
                     activeConexaKey === key
-                      ? "border-[var(--p)] text-[var(--p)] bg-[var(--sur2)]"
-                      : "border-[var(--bdr)] text-[var(--t2)] hover:border-[var(--p)]/40"
+                      ? "text-[#EAEFF8] border-[#0EA472]"
+                      : "text-[#2E3347] border-transparent hover:text-[#5E6580]"
                   }`}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <div className="rounded-lg bg-[var(--sur2)] border border-[var(--bdr)] p-4">
-              <p className="font-semibold text-[var(--t1)] mb-2">
-                {CONEXA_TAB_ORDER.find((t) => t.key === activeConexaKey)?.label ?? ""}
-              </p>
-              <p className="text-[var(--t2)] leading-relaxed whitespace-pre-wrap">
-                {String(tabs[activeConexaKey] ?? "")}
-              </p>
+            <div className="p-5 sm:px-[22px] sm:pb-[22px]">
+              <div className="rounded-[14px] border border-white/[0.055] bg-white/[0.025] px-[18px] py-4">
+                <p className="text-[13.5px] font-semibold mb-2" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  {CONEXA_TAB_ORDER.find((t) => t.key === activeConexaKey)?.label ?? ""}
+                </p>
+                <p className="text-[12.5px] text-[#5E6580] leading-[1.75] whitespace-pre-wrap break-words">
+                  {String(tabs[activeConexaKey] ?? "")}
+                </p>
+              </div>
             </div>
           </div>
         ) : null}
@@ -465,215 +602,423 @@ function DashboardMain() {
       <button
         type="button"
         onClick={() => setChatOpen(true)}
-        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--p)] text-[var(--fw)] px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(max(0px,(100vw-1320px)/2)+240px)] lg:left-[calc(max(0px,(100vw-1320px)/2)+248px)] md:bottom-6"
+        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#4F46E5] text-white px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(max(0px,(100vw-1320px)/2)+240px)] lg:left-[calc(max(0px,(100vw-1320px)/2)+248px)] md:bottom-6"
       >
-        <span className="text-[var(--ac)] text-[8px] leading-none" aria-hidden>
+        <span className="text-[#c8f542] text-[8px] leading-none" aria-hidden>
           ●
         </span>
         CONEXA · Ask
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          setSubmitError(null);
-          setDeclFiles([]);
-          setModalOpen(true);
-        }}
-        className="fixed z-50 pointer-events-auto right-4 inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--ac)] text-[var(--mi)] px-3 py-2 text-[10px] sm:text-[11px] font-bold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:right-[calc(100vw-max(0px,(100vw-1320px)/2)-min(1320px,100vw)+320px)] lg:right-[calc(100vw-max(0px,(100vw-1320px)/2)-min(1320px,100vw)+328px)] md:bottom-6"
-      >
-        <span>+ Submit Entry</span>
-        <span className="tabular-nums text-[9px] font-semibold opacity-90">{windowCountdown}</span>
-      </button>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-[100]">
-          <div className="bg-[var(--sur)] rounded-2xl max-w-lg w-full p-6 space-y-4 text-[var(--t1)]">
-            <div>
-              <h2 className="text-lg font-semibold">
-                {tab === "verified" ? "Verified proof" : "Declaration"}
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-4 z-[100]">
+          <div className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] text-[#EEEEF2]">
+            <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8]">
+                {entries.length === 0 ? "First entry" : "Daily entry"}
+              </p>
+              <h2
+                className="text-[22px] sm:text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+              >
+                {entries.length === 0 ? "Submit your first proof." : "Submit today's proof."}
               </h2>
-              <p className="text-xs text-[var(--t2)] mt-1">
-                {tab === "verified"
-                  ? "Paste a public URL Conexa can validate (GitHub, Notion, etc.)."
-                  : "Short attestation of what you shipped - 30-140 characters after trimming."}
+              <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+                {entries.length === 0
+                  ? "Your record starts the moment you submit. Choose your path."
+                  : "One lock per UTC day. Choose how you are proving today's execution."}
               </p>
             </div>
-            <div className="flex gap-2 text-sm border-b border-[var(--bdr)] pb-2">
-              <button
-                type="button"
-                className={tab === "verified" ? "font-bold text-[var(--p)]" : "text-[var(--t2)]"}
-                onClick={() => {
-                  setTab("verified");
-                  setDeclFiles([]);
-                  setSubmitError(null);
-                }}
-              >
-                Verified
-              </button>
-              <button
-                type="button"
-                className={tab === "declaration" ? "font-bold text-[var(--p)]" : "text-[var(--t2)]"}
-                onClick={() => {
-                  setTab("declaration");
-                  setSubmitError(null);
-                }}
-              >
-                Declaration
-              </button>
-            </div>
-            {tab === "verified" ? (
-              <input
-                className={FORM_FIELD}
-                value={proofUrl}
-                onChange={(e) => {
-                  setProofUrl(e.target.value);
-                  setSubmitError(null);
-                }}
-                placeholder="https://…"
-              />
-            ) : (
-              <>
-                <textarea
-                  className={`${FORM_FIELD} min-h-[100px]`}
-                  value={decl}
-                  onChange={(e) => {
-                    setDecl(e.target.value);
+            <div className="px-6 md:px-8 py-7 space-y-5">
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryPath("verified");
+                    setDeclFiles([]);
+                    setUploadProofFiles([]);
+                    setUploadContext("");
                     setSubmitError(null);
                   }}
-                  placeholder="What shipped today - one or two tight sentences."
-                />
-                <p
-                  className={`text-xs ${
-                    decl.trim().length < 30 || decl.trim().length > 140
-                      ? "text-[var(--orange)]"
-                      : "text-[var(--t3)]"
+                  className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                    entryPath === "verified"
+                      ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                      : "border-white/10 bg-black/20 hover:border-white/20"
                   }`}
                 >
-                  {decl.trim().length} / 30-140 characters
-                </p>
-                <label className="block text-xs text-[var(--t2)]">
-                  Attach proof (optional) — up to 3 files, 5MB each (JPG, PNG, WebP, GIF, PDF)
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  accept={ENTRY_UPLOAD_ACCEPT}
-                  className={`${FORM_FIELD} file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--p)] file:px-3 file:py-2 file:text-[var(--fw)] file:text-xs`}
-                  onChange={(e) => {
-                    const files = e.target.files
-                      ? Array.from(e.target.files).slice(0, 3)
-                      : [];
-                    setDeclFiles(files);
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 text-[var(--ac)] shrink-0" aria-hidden>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span>
+                      <span className="block font-semibold text-[#EEEEF2]">Verified Proof</span>
+                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                        External URL · HEAD request validates immediately · Full Signal Score weight
+                      </span>
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryPath("declaration");
+                    setProofUrl("");
+                    setUploadProofFiles([]);
+                    setUploadContext("");
                     setSubmitError(null);
                   }}
-                />
-                {declFiles.length > 0 ? (
-                  <ul className="text-xs text-[var(--t3)] space-y-1 list-disc list-inside">
-                    {declFiles.map((f, i) => (
-                      <li key={`${f.name}-${i}`}>
-                        {f.name} ({Math.round(f.size / 1024)} KB)
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </>
-            )}
-            <select
-              className={`${FORM_FIELD} cursor-pointer`}
-              value={cat}
-              onChange={(e) => {
-                setCat(e.target.value as typeof cat);
-                setSubmitError(null);
-              }}
-            >
-              <option value="product">Product</option>
-              <option value="distribution">Distribution</option>
-              <option value="ops">Ops</option>
-            </select>
-            {submitError ? (
-              <p className="text-sm text-[var(--red)] rounded-lg bg-[var(--red)]/10 border border-[var(--red)]/25 px-3 py-2">
-                {submitError}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              className="w-full rounded-full bg-[var(--p)] text-[var(--fw)] py-2 font-semibold disabled:opacity-50"
-              disabled={
-                tab === "declaration" &&
-                (decl.trim().length < 30 || decl.trim().length > 140)
-              }
-              onClick={async () => {
-                let body: Record<string, unknown>;
-                if (tab === "verified") {
-                  body = { path: "verified", url: proofUrl.trim(), category: cat };
-                } else {
-                  const {
-                    data: { session },
-                  } = await supabase.auth.getSession();
-                  if (!session?.user) {
-                    setSubmitError("Your session expired. Sign in again.");
-                    return;
-                  }
-                  let upload_paths: string[] | undefined;
-                  if (declFiles.length > 0) {
-                    try {
-                      upload_paths = await uploadEntryDeclarationFiles(
-                        supabase,
-                        session.user.id,
-                        declFiles,
-                        "dash",
-                      );
-                    } catch (e) {
-                      setSubmitError(
-                        e instanceof Error
-                          ? e.message
-                          : "Upload failed. Ensure the entry-uploads bucket exists in Supabase.",
-                      );
+                  className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                    entryPath === "declaration"
+                      ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                      : "border-white/10 bg-black/20 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <span
+                      className="mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full border-2 border-[var(--ac)]"
+                      aria-hidden
+                    />
+                    <span>
+                      <span className="block font-semibold text-[#EEEEF2]">Declaration</span>
+                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                        Stated intent · 30–140 chars · Upgrade within 30 days
+                      </span>
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryPath("upload");
+                    setProofUrl("");
+                    setDecl("");
+                    setDeclFiles([]);
+                    setSubmitError(null);
+                  }}
+                  className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                    entryPath === "upload"
+                      ? "border-[var(--ac)] bg-[var(--ac)]/5"
+                      : "border-white/10 bg-black/20 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 text-[var(--ac)] shrink-0" aria-hidden>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+                        <circle cx="12" cy="12" r="3" fill="currentColor" />
+                      </svg>
+                    </span>
+                    <span>
+                      <span className="block font-semibold text-[#EEEEF2]">Upload</span>
+                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                        File upload · PDF, DOCX, PNG, PPTX, XLSX · Max 10MB each · Up to 3 files
+                      </span>
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              {entryPath === "verified" ? (
+                <div className="space-y-3">
+                  <input
+                    className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[#EEEEF2] placeholder:text-[#9194AB]/80 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30"
+                    value={proofUrl}
+                    onChange={(e) => {
+                      setProofUrl(e.target.value);
+                      setSubmitError(null);
+                    }}
+                    placeholder="https://…"
+                  />
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300 whitespace-nowrap">
+                      Verified proof · Live
+                    </span>
+                    <p className="text-xs text-[#9194AB]">Highest Signal weight when the URL validates.</p>
+                  </div>
+                </div>
+              ) : null}
+
+              {entryPath === "declaration" ? (
+                <div className="space-y-3">
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB] leading-relaxed">
+                    What are you building today? What will prove it&apos;s done? · 30–140 chars
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[#EEEEF2] placeholder:text-[#9194AB]/60 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30 ${
+                        decl.trim().length > 0 && decl.trim().length < 30
+                          ? "border-amber-500/50"
+                          : "border-white/10"
+                      }`}
+                      value={decl}
+                      maxLength={140}
+                      onChange={(e) => {
+                        setDecl(e.target.value);
+                        setSubmitError(null);
+                      }}
+                      placeholder="Be specific."
+                    />
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#52556A]">
+                      {decl.length}/140
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/35 bg-amber-950/40 px-3 py-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 whitespace-nowrap">
+                      Declaration · Pending
+                    </span>
+                    <p className="text-xs text-[#9194AB]">
+                      Upgrade within 30 days with a Verified Proof URL.
+                    </p>
+                  </div>
+                  <label className="block text-xs text-[#9194AB]">
+                    Attach proof (optional) — up to 3 files, 5MB each (JPG, PNG, WebP, GIF, PDF)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept={ENTRY_UPLOAD_ACCEPT}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EEEEF2] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
+                    onChange={(e) => {
+                      const files = e.target.files
+                        ? Array.from(e.target.files).slice(0, 3)
+                        : [];
+                      setDeclFiles(files);
+                      setSubmitError(null);
+                    }}
+                  />
+                  {declFiles.length > 0 ? (
+                    <ul className="text-xs text-[#9194AB] space-y-1 list-disc list-inside">
+                      {declFiles.map((f, i) => (
+                        <li key={`${f.name}-${i}`}>
+                          {f.name} ({Math.round(f.size / 1024)} KB)
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {entryPath === "upload" ? (
+                <div className="space-y-3">
+                  <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB]">
+                    Upload file
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept={FIRST_PROOF_ACCEPT}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EEEEF2] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
+                    onChange={(e) => {
+                      const files = e.target.files
+                        ? Array.from(e.target.files).slice(0, 3)
+                        : [];
+                      setUploadProofFiles(files);
+                      setSubmitError(null);
+                    }}
+                  />
+                  {uploadProofFiles.length > 0 ? (
+                    <ul className="text-xs text-[#9194AB] space-y-1 list-disc list-inside">
+                      {uploadProofFiles.map((f, i) => (
+                        <li key={`${f.name}-${i}`}>
+                          {f.name} ({Math.round(f.size / 1024)} KB)
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB] leading-relaxed">
+                    What was made? · 30–140 chars required
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[#EEEEF2] placeholder:text-[#9194AB]/60 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30 ${
+                        uploadContext.trim().length > 0 && uploadContext.trim().length < 30
+                          ? "border-amber-500/50"
+                          : "border-white/10"
+                      }`}
+                      placeholder="Context sentence…"
+                      maxLength={140}
+                      value={uploadContext}
+                      onChange={(e) => {
+                        setUploadContext(e.target.value);
+                        setSubmitError(null);
+                      }}
+                    />
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#52556A]">
+                      {uploadContext.length}/140
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-500/35 bg-violet-950/35 px-3 py-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-200 whitespace-nowrap">
+                      Submission · Unverified
+                    </span>
+                    <p className="text-xs text-[#9194AB]">
+                      Link a Verified Proof within 30 days for full Signal weight.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-[#9194AB]">
+                  Work type
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["product", "Product"] as const,
+                      ["distribution", "Distribution"] as const,
+                      ["ops", "Ops"] as const,
+                    ]
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setCat(id);
+                        setSubmitError(null);
+                      }}
+                      className={`rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
+                        cat === id
+                          ? "border-blue-400/50 bg-blue-950/80 text-white"
+                          : "border-white/20 text-[#9194AB] hover:border-[var(--ac)]/45"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {submitError ? (
+                <p className="text-sm text-amber-200 rounded-lg bg-amber-500/10 border border-amber-500/25 px-3 py-2">
+                  {submitError}
+                </p>
+              ) : null}
+
+              <button
+                type="button"
+                className={ENTRY_LOCK_BUTTON}
+                disabled={
+                  (entryPath === "verified" && proofUrl.trim().length < 8) ||
+                  (entryPath === "declaration" &&
+                    (decl.trim().length < 30 || decl.trim().length > 140)) ||
+                  (entryPath === "upload" &&
+                    (uploadProofFiles.length < 1 ||
+                      uploadContext.trim().length < 30 ||
+                      uploadContext.trim().length > 140))
+                }
+                onClick={async () => {
+                  let body: Record<string, unknown>;
+                  if (entryPath === "verified") {
+                    body = { path: "verified", url: proofUrl.trim(), category: cat };
+                  } else if (entryPath === "declaration") {
+                    const {
+                      data: { session },
+                    } = await supabase.auth.getSession();
+                    if (!session?.user) {
+                      setSubmitError("Your session expired. Sign in again.");
                       return;
                     }
+                    let upload_paths: string[] | undefined;
+                    if (declFiles.length > 0) {
+                      try {
+                        upload_paths = await uploadEntryDeclarationFiles(
+                          supabase,
+                          session.user.id,
+                          declFiles,
+                          "dash",
+                        );
+                      } catch (e) {
+                        setSubmitError(
+                          e instanceof Error
+                            ? e.message
+                            : "Upload failed. Ensure the entry-uploads bucket exists in Supabase.",
+                        );
+                        return;
+                      }
+                    }
+                    body = {
+                      path: "declaration",
+                      declaration_text: decl.trim(),
+                      category: cat,
+                      ...(upload_paths?.length ? { upload_paths } : {}),
+                    };
+                  } else {
+                    const {
+                      data: { session },
+                    } = await supabase.auth.getSession();
+                    if (!session?.user) {
+                      setSubmitError("Your session expired. Sign in again.");
+                      return;
+                    }
+                    let upload_paths: string[];
+                    try {
+                      upload_paths = await uploadFirstProofFiles(
+                        supabase,
+                        session.user.id,
+                        uploadProofFiles,
+                      );
+                    } catch (e) {
+                      setSubmitError(e instanceof Error ? e.message : "Upload failed.");
+                      return;
+                    }
+                    body = {
+                      path: "upload",
+                      context_text: uploadContext.trim(),
+                      category: cat,
+                      upload_paths,
+                    };
                   }
-                  body = {
-                    path: "declaration",
-                    declaration_text: decl.trim(),
-                    category: cat,
-                    ...(upload_paths?.length ? { upload_paths } : {}),
-                  };
-                }
-                const res = await fetch("/api/entries", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "same-origin",
-                  body: JSON.stringify(body),
-                });
-                const j = (await res.json().catch(() => ({}))) as { error?: string };
-                if (!res.ok) {
-                  setSubmitError(
-                    typeof j.error === "string" ? j.error : "Could not lock entry. Try again.",
-                  );
-                  return;
-                }
-                setSubmitError(null);
-                setModalOpen(false);
-                setProofUrl("");
-                setDecl("");
-                setDeclFiles([]);
-                refreshShellUser();
-                void loadEntries();
-              }}
-            >
-              Lock entry
-            </button>
-            <button
-              type="button"
-              className="text-sm text-[var(--t3)]"
-              onClick={() => {
-                setModalOpen(false);
-                setSubmitError(null);
-                setDeclFiles([]);
-              }}
-            >
-              Cancel
-            </button>
+                  const res = await fetch("/api/entries", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify(body),
+                  });
+                  const j = (await res.json().catch(() => ({}))) as { error?: string };
+                  if (!res.ok) {
+                    setSubmitError(
+                      typeof j.error === "string" ? j.error : "Could not lock entry. Try again.",
+                    );
+                    return;
+                  }
+                  setSubmitError(null);
+                  setModalOpen(false);
+                  setProofUrl("");
+                  setDecl("");
+                  setDeclFiles([]);
+                  setUploadContext("");
+                  setUploadProofFiles([]);
+                  setEntryPath("verified");
+                  refreshShellUser();
+                  void loadEntries();
+                }}
+              >
+                {entries.length === 0 ? "Start My record" : "Lock entry"}
+              </button>
+              <button
+                type="button"
+                className="text-sm text-[#9194AB] hover:text-[#EEEEF2]"
+                onClick={() => {
+                  setModalOpen(false);
+                  setSubmitError(null);
+                  setDeclFiles([]);
+                  setUploadProofFiles([]);
+                  setUploadContext("");
+                  setEntryPath("verified");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -719,39 +1064,76 @@ function DashboardMain() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/50"
             aria-label="Close"
             onClick={() => setChatOpen(false)}
           />
-          <div className="relative bg-[var(--sur)] rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-xl">
-            <header className="px-4 py-3 border-b font-semibold">CONEXA</header>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 text-sm">
+          <div className="relative rounded-2xl w-full max-w-md h-[70vh] max-h-[min(70vh,640px)] flex flex-col shadow-xl border border-white/[0.08] bg-[#13151C] text-[#EAEFF8]">
+            <header className="px-4 py-3 border-b border-white/[0.055] flex items-center justify-between gap-2">
+              <span className="font-semibold text-[15px] tracking-tight">CONEXA</span>
+              <button
+                type="button"
+                className="text-[12px] text-[#5E6580] hover:text-[#EAEFF8]"
+                onClick={() => setChatOpen(false)}
+              >
+                Close
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
+              {chatLog.length === 0 ? (
+                <p className="text-[13px] text-[#5E6580] leading-relaxed">
+                  Ask Conexa about your execution record, blockers, or what to ship next. Messages use your FOR context
+                  on the server.
+                </p>
+              ) : null}
               {chatLog.map((m, i) => (
-                <div key={i} className={m.role === "user" ? "text-right" : ""}>
-                  {m.content}
+                <div
+                  key={i}
+                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[88%] rounded-[12px] px-3 py-2.5 border ${
+                      m.role === "user"
+                        ? "bg-[#0EA472]/15 text-[#EAEFF8] border-[#0EA472]/25"
+                        : "bg-white/[0.04] text-[#C8D0E0] border-white/[0.06]"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-left">
+                      {m.content || (m.role === "assistant" ? "…" : "")}
+                    </p>
+                  </div>
                 </div>
               ))}
+              {chatSending ? (
+                <div className="flex justify-start">
+                  <div className="rounded-[12px] px-3 py-2.5 border border-white/[0.06] bg-white/[0.04] text-[#5E6580] text-[13px]">
+                    Thinking…
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div className="p-3 border-t flex gap-2">
+            <div className="p-3 border-t border-white/[0.055] flex gap-2 bg-[#1C1F2A]">
               <input
-                className={`flex-1 min-w-0 rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] px-3 py-2 text-sm text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:ring-2 focus:ring-[var(--p)]/25`}
+                className="flex-1 min-w-0 rounded-[10px] border border-white/[0.1] bg-[#13151C] px-3 py-2.5 text-sm text-[#EAEFF8] placeholder:text-[#5E6580] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30"
                 value={chatText}
+                placeholder="Message Conexa…"
+                disabled={chatSending}
                 onChange={(e) => setChatText(e.target.value)}
-                onKeyDown={async (e) => {
-                  if (e.key === "Enter") {
-                    const t = chatText;
-                    setChatText("");
-                    setChatLog((l) => [...l, { role: "user", content: t }]);
-                    const res = await fetch("/api/conexa/chat", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ message: t }),
-                    });
-                    const j = await res.json();
-                    setChatLog((l) => [...l, { role: "assistant", content: j.text ?? "" }]);
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendConexa();
                   }
                 }}
               />
+              <button
+                type="button"
+                disabled={chatSending || !chatText.trim()}
+                className="shrink-0 rounded-[10px] bg-[#6366f1] text-white px-4 py-2 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-95"
+                onClick={() => void sendConexa()}
+              >
+                Send
+              </button>
             </div>
           </div>
         </div>

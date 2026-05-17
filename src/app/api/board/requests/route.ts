@@ -2,6 +2,13 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
+/** Seeded rows use null submitter; show distinct demo founders in the board UI. */
+const DEMO_SUBMITTER_BY_TITLE: Record<string, string> = {
+  "Backfill Execution Record": "Abhi R, India",
+  "Conexa Context Refresh": "Emily Blundell, UK",
+  "Weekly Execution Summary Email": "Norris Blake, USA",
+};
+
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const {
@@ -53,10 +60,13 @@ export async function GET() {
   const enriched = (requests ?? []).map((r) => {
     const sid = r.submitter_user_id as string | null;
     const sub = sid ? submitterMap[sid] : null;
+    const titleStr = String(r.title ?? "");
+    const demoLabel = DEMO_SUBMITTER_BY_TITLE[titleStr];
     const submitterLabel =
-      !sid || !sub
+      demoLabel ??
+      (!sid || !sub
         ? "North River Labs"
-        : `Day ${sub.execution_count} · @${sub.username}`;
+        : `Day ${sub.execution_count} · @${sub.username}`);
     return {
       ...r,
       submitter_label: submitterLabel,

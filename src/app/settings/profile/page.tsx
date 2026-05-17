@@ -2,7 +2,6 @@
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
 import {
-  EmbedBadge,
   ExecutionGrid,
   ExecutionStats,
   ProfileHeader,
@@ -25,7 +24,7 @@ function ProfileSettingsMain() {
     const j = await res.json();
     const u = j.user as Record<string, unknown>;
     setBio(String(u.profile_bio ?? ""));
-    setProfilePublic(Boolean(u.profile_public ?? true));
+    setProfilePublic(Boolean(u.profile_public ?? false));
     setShowBreaks(Boolean(u.show_breaks ?? true));
     setShowSignal(Boolean(u.show_signal_score ?? false));
     setUsername(String(u.username ?? ""));
@@ -48,14 +47,25 @@ function ProfileSettingsMain() {
 
   const save = async () => {
     setMsg(null);
+    const usernameNorm = username
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "");
+    if (usernameNorm !== username.trim().toLowerCase()) {
+      setUsername(usernameNorm);
+    }
     const body: Record<string, unknown> = {
-      profile_bio: bio || null,
+      profile_bio: bio.trim() ? bio.trim() : null,
       profile_public: profilePublic,
       show_breaks: showBreaks,
       show_signal_score: showSignal,
     };
-    if (username && username !== shellUser.username) {
-      body.username = username;
+    if (usernameNorm && usernameNorm !== shellUser.username) {
+      if (usernameNorm.length < 3 || usernameNorm.length > 20) {
+        setMsg("Username must be 3–20 characters (letters, numbers, _ -).");
+        return;
+      }
+      body.username = usernameNorm;
     }
     const res = await fetch("/api/me", {
       method: "PATCH",
@@ -63,8 +73,18 @@ function ProfileSettingsMain() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      setMsg(typeof j.error === "string" ? j.error : "Could not save");
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        details?: { fieldErrors?: Record<string, string[]> };
+      };
+      const flat = j.details?.fieldErrors
+        ? Object.entries(j.details.fieldErrors)
+            .map(([k, v]) => `${k}: ${v?.join(", ")}`)
+            .join(" · ")
+        : "";
+      setMsg(
+        [typeof j.error === "string" ? j.error : "Could not save", flat].filter(Boolean).join(" "),
+      );
       return;
     }
     setMsg("Saved.");
@@ -79,9 +99,6 @@ function ProfileSettingsMain() {
     <div className="space-y-10 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold">My Profile</h1>
-        <p className="text-sm text-[var(--t2)] mt-1">
-          How you appear on your public record - same layout as your public URL with owner controls here.
-        </p>
       </div>
 
       <ProfileHeader
@@ -137,9 +154,6 @@ function ProfileSettingsMain() {
           >
             Save changes
           </button>
-          <a href={`/${shellUser.username}`} className="text-sm text-[var(--p)] self-center underline">
-            Open public page
-          </a>
         </div>
         {msg ? <p className="text-sm text-[var(--t2)]">{msg}</p> : null}
       </section>
@@ -153,8 +167,6 @@ function ProfileSettingsMain() {
       <ExecutionGrid entries={entries} />
 
       <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />
-
-      <EmbedBadge username={String(shellUser.username)} />
     </div>
   );
 }

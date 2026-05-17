@@ -1,13 +1,13 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import type { NavItem } from "./dashboard-nav-config";
 import {
-  NAV_DASHBOARD_ITEMS,
-  NAV_PAGE_ITEMS,
-  NAV_PROFILE_ITEMS,
+  NAV_NETWORK_ITEMS,
+  NAV_OVERVIEW_ITEMS,
   NAV_TOOL_ITEMS,
 } from "./dashboard-nav-config";
 
@@ -30,14 +30,110 @@ function showLockpill(item: NavItem, user: MeUser): string | null {
   if (item.href === "/signal" || item.href === "/directive") {
     if (!user.day21_reached) return item.lockLabel ?? "Day 21";
   }
-  if (item.href === "/community") {
-    if (!user.day45_reached) return item.lockLabel ?? "Day 45";
-  }
-  if (item.href === "/coaches" || item.href === "/angels") {
-    return item.lockLabel ?? "Day 60";
-  }
   return null;
 }
+
+function NavIcon({ href }: { href: string }) {
+  const common = "shrink-0 text-current opacity-90";
+  const s = "w-[18px] h-[18px]";
+  switch (href) {
+    case "/dashboard":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "/signal":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M13 2L4.09 12.5a2 2 0 001.64 3.2h5.09L11 22l8.91-10.5a2 2 0 00-1.64-3.2h-5.09L13 2z" strokeLinejoin="round" />
+        </svg>
+      );
+    case "/conexa":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M12 2l8.66 5v10L12 22l-8.66-5V7L12 2z" strokeLinejoin="round" />
+          <path d="M12 12l8.66-5M12 12v10M12 12L3.34 7" strokeLinejoin="round" />
+        </svg>
+      );
+    case "/directive":
+      return (
+        <span className={`${s} inline-flex items-center justify-center font-semibold text-[15px] leading-none ${common}`} aria-hidden>
+          @
+        </span>
+      );
+    case "/inbox":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M22 12h-6l-2 3H10L8 12H2" strokeLinejoin="round" />
+          <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" strokeLinejoin="round" />
+        </svg>
+      );
+    case "/community":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
+        </svg>
+      );
+    case "/angels":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    case "/coaches":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinejoin="round" />
+        </svg>
+      );
+    case "/tools":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" strokeLinecap="round" />
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" strokeLinecap="round" />
+        </svg>
+      );
+    case "/board":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinejoin="round" />
+          <path d="M12 8v6M9 11h6" strokeLinecap="round" />
+        </svg>
+      );
+    case "/settings/profile":
+      return (
+        <svg className={`${s} ${common}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    default:
+      return (
+        <span className={`${s} inline-block rounded bg-zinc-700 ${common}`} aria-hidden />
+      );
+  }
+}
+
+function LogOutIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={`shrink-0 w-[18px] h-[18px] ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const navRowBase =
+  "flex items-center gap-2.5 py-2 pl-2 pr-2 rounded-lg text-[13px] leading-snug border-l-[3px] transition-colors";
+const navRowActive = "border-l-[#c8f542] bg-[#c8f542]/12 text-white font-medium";
+const navRowIdle =
+  "border-l-transparent text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200";
+const navRowDisabled =
+  "border-l-transparent text-zinc-500 cursor-not-allowed hover:bg-transparent hover:text-zinc-500";
 
 function NavSection({
   title,
@@ -45,54 +141,67 @@ function NavSection({
   items,
   onNavigate,
   inboxUnread,
+  soonBadge,
+  forceDisabled,
 }: {
   title: string;
   user: MeUser;
   items: NavItem[];
   onNavigate?: () => void;
   inboxUnread: number;
+  soonBadge?: boolean;
+  forceDisabled?: boolean;
 }) {
   const pathname = usePathname();
   return (
-    <div className="mb-1">
-      <p className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.12em] px-2 mb-1.5">
-        {title}
-      </p>
+    <div className="mb-4 last:mb-0">
+      {soonBadge ? (
+        <div className="flex items-center gap-2 px-2 mb-1.5">
+          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.14em]">{title}</p>
+          <span className="text-[8px] font-semibold uppercase tracking-wider text-zinc-500 border border-zinc-600/90 rounded px-1 py-0.5">
+            Soon
+          </span>
+        </div>
+      ) : (
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.14em] px-2 mb-1.5">{title}</p>
+      )}
       <div className="space-y-0.5">
         {items.map((item) => {
           const active =
-            item.href === "/settings/profile"
+            !item.disabled &&
+            !forceDisabled &&
+            (item.href === "/settings/profile"
               ? pathname === "/settings/profile" || pathname.startsWith("/settings/")
-              : navActive(pathname, item.href);
+              : navActive(pathname, item.href));
           const pill = showLockpill(item, user);
           const isInbox = item.href === "/inbox";
+          const disabled = Boolean(item.disabled || forceDisabled);
+
+          if (disabled) {
+            return (
+              <div key={item.href} className={`${navRowBase} ${navRowDisabled}`}>
+                <NavIcon href={item.href} />
+                <span className="min-w-0">{item.label}</span>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`flex flex-wrap items-center gap-x-2 gap-y-1 py-2 px-2 rounded-lg text-[13px] leading-snug ${
-                active
-                  ? "bg-[var(--sur2)] text-[var(--p)] font-semibold"
-                  : "text-[var(--t2)] hover:bg-[var(--sur2)] hover:text-[var(--p)]"
-              }`}
+              className={`${navRowBase} ${active ? navRowActive : navRowIdle} flex`}
             >
-              <span className="min-w-0 inline-flex items-center gap-1.5">
-                {isInbox ? (
-                  <>
-                    <span>Inbox</span>
-                    {inboxUnread > 0 ? (
-                      <span className="text-[var(--red)] font-semibold tabular-nums">{inboxUnread}</span>
-                    ) : null}
-                  </>
-                ) : (
-                  item.label
-                )}
-              </span>
-              {pill ? (
-                <span className="text-[8px] font-medium tracking-wide text-[var(--t3)] normal-case">
-                  coming soon
+              <NavIcon href={item.href} />
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {isInbox && inboxUnread > 0 ? (
+                <span className="text-[10px] font-bold tabular-nums text-white bg-red-500/90 min-w-[1.25rem] h-5 px-1 rounded-md flex items-center justify-center shrink-0">
+                  {inboxUnread > 99 ? "99+" : inboxUnread}
                 </span>
+              ) : null}
+              {pill ? (
+                <span className="text-[8px] font-medium tracking-wide text-zinc-500 normal-case shrink-0">{pill}</span>
               ) : null}
             </Link>
           );
@@ -114,6 +223,10 @@ export function DashboardNav({
   className?: string;
   inboxUnread?: number;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const supabase = createClient();
+  const profileActive = pathname === "/settings/profile" || pathname.startsWith("/settings/");
   const initials = String(user.full_name ?? user.username ?? "?")
     .split(/\s+/)
     .map((s) => s[0])
@@ -123,44 +236,61 @@ export function DashboardNav({
 
   return (
     <nav className={`text-sm ${className}`}>
-      <NavSection
-        title="Profile"
-        user={user}
-        items={NAV_PROFILE_ITEMS}
-        onNavigate={onNavigate}
-        inboxUnread={inboxUnread}
-      />
-      <NavSection
-        title="Dashboards"
-        user={user}
-        items={NAV_DASHBOARD_ITEMS}
-        onNavigate={onNavigate}
-        inboxUnread={inboxUnread}
-      />
-      <NavSection
-        title="Pages"
-        user={user}
-        items={NAV_PAGE_ITEMS}
-        onNavigate={onNavigate}
-        inboxUnread={inboxUnread}
-      />
-      <NavSection
-        title="Tools"
-        user={user}
-        items={NAV_TOOL_ITEMS}
-        onNavigate={onNavigate}
-        inboxUnread={inboxUnread}
-      />
+      <Link href="/dashboard" className="flex items-center gap-2.5 px-2 py-3 mb-1" onClick={onNavigate}>
+        <img src="/brand/logo-icon.svg" alt="" width={32} height={32} className="h-8 w-8 shrink-0" decoding="async" />
+        <span className="font-semibold text-white tracking-tight text-[15px]">Oxecute</span>
+      </Link>
 
-      <div className="mt-6 pt-4 border-t border-[var(--bdr)] flex items-center gap-3 px-2">
-        <div className="w-9 h-9 rounded-full bg-[var(--p)] text-[var(--fw)] text-xs font-bold flex items-center justify-center shrink-0">
-          {initials}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-[var(--t1)] truncate">
-            {user.full_name ?? user.username}
-          </p>
-          <p className="text-[11px] text-[var(--t3)] truncate">@{user.username}</p>
+      <div className="border-t border-zinc-800/80 pt-3 mt-1">
+        <NavSection title="Overview" user={user} items={NAV_OVERVIEW_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
+        <NavSection
+          title="Network"
+          user={user}
+          items={NAV_NETWORK_ITEMS}
+          onNavigate={onNavigate}
+          inboxUnread={inboxUnread}
+          soonBadge
+          forceDisabled
+        />
+        <NavSection title="Tools" user={user} items={NAV_TOOL_ITEMS} onNavigate={onNavigate} inboxUnread={inboxUnread} />
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-zinc-800/80 space-y-3">
+        <Link
+          href="/settings/profile"
+          onClick={onNavigate}
+          className="flex items-center gap-3 px-2 py-1.5 -mx-1 rounded-lg hover:bg-white/[0.06] transition-colors min-w-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-[#6366F1] text-white text-xs font-bold flex items-center justify-center shrink-0">
+            {initials}
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-sm font-medium text-white truncate">{user.full_name ?? user.username}</p>
+            <p className="text-[11px] text-zinc-500 truncate">@{user.username}</p>
+          </div>
+        </Link>
+        <div className="space-y-0.5">
+          <Link
+            href="/settings/profile"
+            onClick={onNavigate}
+            className={`${navRowBase} ${profileActive ? navRowActive : navRowIdle} flex`}
+          >
+            <NavIcon href="/settings/profile" />
+            Profile
+          </Link>
+          <button
+            type="button"
+            className={`${navRowBase} w-full text-left flex items-center border-l-transparent text-red-400/90 hover:text-red-400 hover:bg-red-500/10 hover:border-l-transparent`}
+            onClick={async () => {
+              onNavigate?.();
+              await supabase.auth.signOut();
+              router.push("/login");
+              router.refresh();
+            }}
+          >
+            <LogOutIcon className="opacity-90" />
+            Log out
+          </button>
         </div>
       </div>
     </nav>

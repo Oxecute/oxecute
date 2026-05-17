@@ -143,8 +143,15 @@ export function AppShell({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <Link href="/" className="font-bold text-[var(--p)] shrink-0">
-          O<span className="text-[var(--ac)]">x</span>ecute
+        <Link href="/" className="shrink-0 flex items-center" aria-label="Oxecute home">
+          <img
+            src="/brand/logo-icon.svg"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8"
+            decoding="async"
+          />
         </Link>
         <span className="hidden sm:inline text-[var(--t3)] truncate text-xs md:text-sm">
           {breadcrumb}
@@ -260,34 +267,13 @@ export function AppShell({
             aria-label="Close menu"
             onClick={() => setMobileNav(false)}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[var(--sur)] border-r border-[var(--bdr)] p-4 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto min-h-0">
+          <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[#0c0e14] border-r border-zinc-800/70 p-3 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto min-h-0 scrollbar-none">
               <DashboardNav
                 user={user}
                 inboxUnread={unreadCount}
                 onNavigate={() => setMobileNav(false)}
               />
-            </div>
-            <div className="shrink-0 pt-3 mt-3 border-t border-[var(--bdr)] space-y-1">
-              <Link
-                href="/settings/profile"
-                className="block py-2 px-2 rounded-lg text-sm text-[var(--t1)] hover:bg-[var(--sur2)]"
-                onClick={() => setMobileNav(false)}
-              >
-                Profile
-              </Link>
-              <button
-                type="button"
-                className="w-full text-left py-2 px-2 rounded-lg text-sm text-[var(--t1)] hover:bg-[var(--sur2)]"
-                onClick={async () => {
-                  setMobileNav(false);
-                  await supabase.auth.signOut();
-                  router.push("/login");
-                  router.refresh();
-                }}
-              >
-                Log out
-              </button>
             </div>
           </aside>
         </div>
@@ -314,7 +300,7 @@ export function AppShell({
             : "max-w-5xl md:grid-cols-[200px_1fr]"
         }`}
       >
-        <aside className="hidden md:block space-y-2">
+        <aside className="hidden md:block rounded-xl bg-[#0c0e14] border border-zinc-800/70 p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
           <DashboardNav user={user} inboxUnread={unreadCount} />
         </aside>
         <div className="min-w-0">{children}</div>

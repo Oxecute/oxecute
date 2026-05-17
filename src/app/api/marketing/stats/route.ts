@@ -28,13 +28,13 @@ export async function GET() {
     ).size;
 
     return NextResponse.json({
-      founders: combined > 0 ? combined : 127,
+      founders: combined > 0 ? combined : 125,
       countries: distinctCountries > 0 ? distinctCountries : 12,
       spotsRemaining: 50,
     });
   } catch {
     return NextResponse.json({
-      founders: 127,
+      founders: 125,
       countries: 12,
       spotsRemaining: 50,
     });

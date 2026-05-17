@@ -21,6 +21,7 @@ async function urlNotDuplicateExcept(
 }
 
 const declarationUploadPaths = z.array(z.string().min(1).max(512)).max(3).optional();
+const uploadPathListRequired = z.array(z.string().min(1).max(512)).min(1).max(3);
 
 const postSchema = z.discriminatedUnion("path", [
   z.object({
@@ -37,6 +38,15 @@ const postSchema = z.discriminatedUnion("path", [
     category: z.enum(["product", "distribution", "ops"]),
     upload_paths: declarationUploadPaths,
   }),
+  z.object({
+    path: z.literal("upload"),
+    context_text: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() : v),
+      z.string().min(30).max(140),
+    ),
+    category: z.enum(["product", "distribution", "ops"]),
+    upload_paths: uploadPathListRequired,
+  }),
 ]);
 
 export async function GET() {
@@ -46,12 +56,30 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const admin = createServiceRoleClient();
-  const { data } = await admin
-    .from("entries")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("entry_number", { ascending: true });
-  return NextResponse.json({ entries: data ?? [] });
+  const [{ data }, { data: breakRows }, { data: breakNotifs }] = await Promise.all([
+    admin
+      .from("entries")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("entry_number", { ascending: true }),
+    admin.from("break_marks").select("day_number").eq("user_id", user.id),
+    admin
+      .from("notifications")
+      .select("title")
+      .eq("user_id", user.id)
+      .ilike("title", "Break mark written%"),
+  ]);
+  const fromMarks = (breakRows ?? [])
+    .map((r: { day_number: number }) => Number(r.day_number))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const fromTitles = (breakNotifs ?? [])
+    .map((row: { title: string | null }) => {
+      const m = /Break mark written\s*-\s*Day\s*(\d+)/i.exec(String(row.title ?? ""));
+      return m ? Number(m[1]) : NaN;
+    })
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const break_days = [...new Set([...fromMarks, ...fromTitles])];
+  return NextResponse.json({ entries: data ?? [], break_days });
 }
 
 export async function POST(request: Request) {
@@ -70,19 +98,33 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const hint =
-      first?.path.join(".") === "declaration_text"
+      first?.path.join(".") === "declaration_text" || first?.path.join(".") === "context_text"
         ? "Declaration must be 30–140 characters (after trimming spaces)."
         : (first?.message ?? "Invalid input");
     return NextResponse.json({ error: hint }, { status: 400 });
   }
 
   let declarationUploadPathsResolved: string[] | null = null;
+  let uploadProofPathsResolved: string[] | null = null;
   if (parsed.data.path === "declaration") {
     try {
       declarationUploadPathsResolved = assertValidUploadPathsForUser(
         parsed.data.upload_paths,
         user.id,
       );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Invalid attachments";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  } else if (parsed.data.path === "upload") {
+    try {
+      uploadProofPathsResolved = assertValidUploadPathsForUser(parsed.data.upload_paths, user.id);
+      if (!uploadProofPathsResolved?.length) {
+        return NextResponse.json(
+          { error: "At least one uploaded file is required." },
+          { status: 400 },
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Invalid attachments";
       return NextResponse.json({ error: msg }, { status: 400 });
@@ -156,6 +198,30 @@ export async function POST(request: Request) {
         })
         .eq("id", daySlot.id);
       if (error) insertError = error;
+    } else if (parsed.data.path === "upload") {
+      tier = "upload_unverified";
+      source_type = "file_upload";
+      declaration_text = parsed.data.context_text;
+      const hash = await sha256Hex(
+        (uploadProofPathsResolved ?? []).join("|") + declaration_text + createdAtIso,
+      );
+      const { error } = await admin
+        .from("entries")
+        .update({
+          category,
+          source_type,
+          tier,
+          declaration_text,
+          context_sentence: parsed.data.context_text,
+          upload_paths: uploadProofPathsResolved,
+          url: null,
+          validation_hash: hash,
+          url_resolved_status: null,
+          url_content_type: null,
+          execution_day: true,
+        })
+        .eq("id", daySlot.id);
+      if (error) insertError = error;
     } else {
       url = parsed.data.url;
       if (!(await urlNotDuplicateExcept(admin, user.id, url, daySlot.id))) {
@@ -215,6 +281,27 @@ export async function POST(request: Request) {
       tier,
       declaration_text,
       upload_paths: declarationUploadPathsResolved,
+      validation_hash: hash,
+      execution_day: true,
+    });
+    if (error) insertError = error;
+  } else if (parsed.data.path === "upload") {
+    tier = "upload_unverified";
+    source_type = "file_upload";
+    declaration_text = parsed.data.context_text;
+    const hash = await sha256Hex(
+      (uploadProofPathsResolved ?? []).join("|") + declaration_text + createdAtIso,
+    );
+    const { error } = await admin.from("entries").insert({
+      user_id: user.id,
+      entry_number: nextEntry,
+      day_number: dayNum,
+      category,
+      source_type,
+      tier,
+      declaration_text,
+      context_sentence: parsed.data.context_text,
+      upload_paths: uploadProofPathsResolved,
       validation_hash: hash,
       execution_day: true,
     });

@@ -1,4 +1,4 @@
-/** Shorter, readable Conexa surfaces (Changes.pdf: no long dashes, ~4-5 lines). */
+/** Shorter, readable Conexa surfaces (Changes.pdf: no long dashes). Tab bodies clamp loosely so dashboard copy is not cut mid-sentence. */
 
 export const CONEXA_MISSING_TAB_PLACEHOLDER =
   "More context needed. Keep building your record.";
@@ -8,11 +8,11 @@ export function normalizeConexaDashes(s: string): string {
   return s.replace(/\u2014/g, "-").replace(/\u2013/g, "-");
 }
 
-/** Cap tab body length for predictable UI (default ~5 lines). */
+/** Cap tab body length for predictable UI (avoid mid-sentence cuts in dashboard reads). */
 export function clampConexaTabBody(
   text: string,
-  maxLines = 5,
-  maxChars = 480,
+  maxLines = 80,
+  maxChars = 12000,
 ): string {
   const t = normalizeConexaDashes(text).trim();
   if (!t) return CONEXA_MISSING_TAB_PLACEHOLDER;

@@ -256,12 +256,7 @@ export function DashboardRightRail({ variant = "full" }: { variant?: "full" | "n
 
       <Section title="Journey milestone" tight={tight}>
         <MilestoneRings milestones={milestones} currentIdx={currentIdx} tight={tight} />
-        <p className="text-xs text-[var(--t2)] leading-relaxed mt-3">
-          <span className="text-[var(--p)]" aria-hidden>
-            →{" "}
-          </span>
-          Day 21: Directives, Signal Score, +5 Conexa tabs.
-        </p>
+        <p className="text-xs text-[var(--t2)] leading-relaxed mt-3">Day 21: Directives and Signal Score.</p>
       </Section>
 
       <Section title="Signal score" tight={tight}>

@@ -8,7 +8,6 @@ import {
 } from "@/lib/entry-uploads";
 import "@/app/execution-intelligence.css";
 import { AuthMobileHelp } from "@/components/auth-mobile-help";
-import { OnboardingTopNav } from "@/components/onboarding/OnboardingTopNav";
 import {
   CalibrationLoadingState,
   CalibrationQuestionCard,
@@ -67,6 +66,11 @@ const CAL_LEGACY_EMPTY = { q2: "", q4: "" } as const;
 const CAL_MIN_SUBMIT_CHARS = 10;
 /** Min length on the previous answer before the next card becomes editable (avoid blocking on silent 10-char rule). */
 const CAL_UNLOCK_CHARS = 1;
+
+/** Day 0 activation read: tab 0 open; tabs 1–5 collapsed until the user expands them. */
+function defaultDay0TabsCollapsed(): Record<number, boolean> {
+  return { 1: true, 2: true, 3: true, 4: true, 5: true };
+}
 
 function onboardingFlowPhase(step: number): OnboardingFlowPhase {
   if (step === 2) return "signup";
@@ -231,7 +235,7 @@ export default function StartPage() {
 
   const [synthesis, setSynthesis] = useState<string[]>([]);
   const [synthShown, setSynthShown] = useState(0);
-  /** Collapsed synthesis cards are `false`; open when `true` or unset. */
+  /** When `synthCollapsed[i] === true`, insight i is collapsed; unset/false = expanded. */
   const [synthCollapsed, setSynthCollapsed] = useState<Record<number, boolean>>({});
   const [synthLoading, setSynthLoading] = useState(false);
 
@@ -241,7 +245,7 @@ export default function StartPage() {
     personal_insight: string;
   } | null>(null);
   const [actShown, setActShown] = useState(0);
-  /** Same as synthesis: `true` means section is collapsed. */
+  /** Day 0 accordion: `true` = collapsed. */
   const [actCollapsed, setActCollapsed] = useState<Record<number, boolean>>({});
 
   const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "upload">(
@@ -336,7 +340,7 @@ export default function StartPage() {
       setBlocker(String(u.blocker_text ?? ""));
 
       const desc = String(u.startup_description ?? "");
-      if (desc.trim().length < 15) {
+      if (desc.trim().length < 50) {
         setStep(3);
         return;
       }
@@ -368,13 +372,7 @@ export default function StartPage() {
             const j = await syn.json();
             const stmts: string[] = j.statements ?? [];
             setSynthesis(stmts);
-            setSynthCollapsed(
-              stmts.length <= 1
-                ? {}
-                : Object.fromEntries(
-                    Array.from({ length: stmts.length - 1 }, (_, k) => [k + 1, true]),
-                  ),
-            );
+            setSynthCollapsed({});
             let i = 0;
             const iv = setInterval(() => {
               i += 1;
@@ -388,6 +386,7 @@ export default function StartPage() {
               "Your answers are saved — use “Edit my answers” or refresh.",
               "",
             ]);
+            setSynthCollapsed({});
             setSynthShown(3);
           } finally {
             setSynthLoading(false);
@@ -430,6 +429,7 @@ export default function StartPage() {
               tabs: j.tabs ?? {},
               personal_insight: String(j.personal_insight ?? ""),
             });
+            setActCollapsed(defaultDay0TabsCollapsed());
             setActShown(6);
             day0ActivationHydrateDoneRef.current = true;
           } catch {
@@ -438,6 +438,7 @@ export default function StartPage() {
               personal_insight:
                 "Conexa could not load this read. Check your connection and refresh this page.",
             });
+            setActCollapsed(defaultDay0TabsCollapsed());
             setActShown(6);
           } finally {
             day0ActivationHydrateInFlightRef.current = false;
@@ -777,12 +778,12 @@ export default function StartPage() {
       return;
     }
     const len = description.trim().length;
-    if (len < 15 || len > 50) {
+    if (len < 50 || len > 500) {
       setContextTooShort(true);
       window.alert(
-        len > 50
-          ? `Keep this to 50 characters max (you have ${len}). One tight line on what you are building.`
-          : `Add at least 15 characters (you have ${len}). What are you building, in one line?`,
+        len > 500
+          ? `Keep this to 500 characters max (you have ${len}).`
+          : `Add at least 50 characters (you have ${len}). Describe what you are building and who it is for.`,
       );
       return;
     }
@@ -862,13 +863,7 @@ export default function StartPage() {
       }
       while (stmts.length < 3) stmts.push("");
       setSynthesis(stmts);
-      setSynthCollapsed(
-        stmts.length <= 1
-          ? {}
-          : Object.fromEntries(
-              Array.from({ length: stmts.length - 1 }, (_, k) => [k + 1, true]),
-            ),
-      );
+      setSynthCollapsed({});
       let i = 0;
       const iv = setInterval(() => {
         i += 1;
@@ -882,7 +877,7 @@ export default function StartPage() {
         "Your answers are saved — use “Edit my answers” or refresh.",
         "",
       ]);
-      setSynthCollapsed({ 1: true, 2: true });
+      setSynthCollapsed({});
       setSynthShown(3);
     } finally {
       calibrationSubmitInFlightRef.current = false;
@@ -932,6 +927,7 @@ export default function StartPage() {
           tabs: j.tabs ?? {},
           personal_insight: String(j.personal_insight ?? ""),
         });
+        setActCollapsed(defaultDay0TabsCollapsed());
         let i = 0;
         const iv = setInterval(() => {
           i += 1;
@@ -945,6 +941,7 @@ export default function StartPage() {
           personal_insight:
             "Conexa could not load this read. Check your connection and refresh this page.",
         });
+        setActCollapsed(defaultDay0TabsCollapsed());
         setActShown(6);
       }
     } finally {
@@ -1179,8 +1176,8 @@ export default function StartPage() {
   );
   const startupStepReady =
     Boolean(startupName.trim()) &&
-    description.trim().length >= 15 &&
-    description.trim().length <= 50 &&
+    description.trim().length >= 50 &&
+    description.trim().length <= 500 &&
     STAGE_TILES.some((t) => t.stage === stage && t.mrr === mrr) &&
     Boolean(blocker.trim());
 
@@ -1193,15 +1190,14 @@ export default function StartPage() {
           : "min-h-screen bg-black text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
       }
     >
-      {useFlowChrome ? <OnboardingTopNav /> : null}
-
-      <div
-        className={
-          useFlowChrome
-            ? `flex flex-1 min-h-0 w-full pt-[58px] ${wideOnboarding ? "flex-col md:flex-row" : "flex-col"}`
-            : "min-h-screen"
-        }
-      >
+      {useFlowChrome ? (
+        <div
+          className={
+            wideOnboarding
+              ? "flex flex-1 min-h-0 w-full flex-col md:flex-row"
+              : "flex flex-1 min-h-0 w-full flex-col"
+          }
+        >
       {(step >= 2 && step <= 8) && (
         <>
           <CalibrationSidebar
@@ -1229,7 +1225,7 @@ export default function StartPage() {
                     <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
                       {hasAuthSession
                         ? "Add the details below so we can create your Oxecute profile."
-                        : "Next: your startup, then Conexa — calibration through your first proof."}
+                        : "Your startup, then Conexa calibration through your first proof."}
                     </p>
                   </div>
                   <div className="px-6 md:px-8 py-7 space-y-4">
@@ -1411,8 +1407,8 @@ export default function StartPage() {
                           width: `${
                             (Number(Boolean(startupName.trim())) +
                               Number(
-                                description.trim().length >= 15 &&
-                                  description.trim().length <= 50,
+                                description.trim().length >= 50 &&
+                                  description.trim().length <= 500,
                               ) +
                               Number(
                                 STAGE_TILES.some(
@@ -1443,21 +1439,21 @@ export default function StartPage() {
                           What are you building and who is it for?
                         </label>
                         <textarea
-                          className={`w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A] ${
+                          className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A] ${
                             description.trim().length > 0 &&
-                            (description.trim().length < 15 ||
-                              description.trim().length > 50)
+                            (description.trim().length < 50 ||
+                              description.trim().length > 500)
                               ? "border-amber-500/50"
                               : "border-white/[0.11]"
                           }`}
-                          maxLength={50}
-                          placeholder="e.g. Execution intelligence for solo founders who can't get warm intros"
+                          maxLength={500}
+                          placeholder="Oxecute is the verified execution record that turns how a founder builds into something that speaks for them."
                           value={description}
                           onChange={(e) => {
                             setDescription(e.target.value);
                             if (
-                              e.target.value.trim().length >= 15 &&
-                              e.target.value.trim().length <= 50
+                              e.target.value.trim().length >= 50 &&
+                              e.target.value.trim().length <= 500
                             ) {
                               setContextTooShort(false);
                             }
@@ -1465,11 +1461,11 @@ export default function StartPage() {
                         />
                         {contextTooShort ? (
                           <p className="text-xs text-amber-300 mt-1" role="alert">
-                            15–50 characters required (API).
+                            50–500 characters required.
                           </p>
                         ) : null}
                         <p className="text-[11px] font-dm text-[#52556A] mt-1">
-                          {description.length}/50 · one line for your record
+                          {description.length}/500
                         </p>
                       </div>
                       <div>
@@ -1531,7 +1527,7 @@ export default function StartPage() {
                           : "opacity-45 cursor-not-allowed"
                       }`}
                     >
-                      Next — Conexa calibration →
+                      Next — Conexa calibration
                     </button>
                     <p className="text-[11px] font-dm text-[#52556A] text-center">
                       No account yet. You see your report first.
@@ -1552,7 +1548,7 @@ export default function StartPage() {
                 {!calSubmitting ? (
                       <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
                         <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
-                          <header className="space-y-3 border-b border-white/[0.06] pb-6">
+                          <header className="space-y-3 pb-6">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] font-dm">
                               Conexa calibration
                             </p>
@@ -1629,7 +1625,7 @@ export default function StartPage() {
                                 : "opacity-45 cursor-not-allowed"
                             }`}
                           >
-                            Generate my Conexa report →
+                            Generate my Conexa report
                           </button>
 
                           <p className="text-[11px] font-dm text-[#52556A] pt-2">
@@ -1669,9 +1665,6 @@ export default function StartPage() {
                 >
                   Your calibration read
                 </h1>
-                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed mt-2">
-                  Five insights from Conexa before your Day 0 report.
-                </p>
               </div>
               <div className="px-6 md:px-8 py-7 space-y-4">
           {synthLoading ? (
@@ -1726,7 +1719,7 @@ export default function StartPage() {
             onClick={() => void confirmSynthesis()}
             className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50 transition-all"
           >
-            Yes, continue →
+            Yes, continue
           </button>
           <button
             type="button"
@@ -1830,7 +1823,7 @@ export default function StartPage() {
                 onClick={persistActivationAndGo}
                 className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
               >
-                Start my record →
+                Start my record
               </button>
             </>
           )}
@@ -1957,7 +1950,7 @@ export default function StartPage() {
               />
               <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300 whitespace-nowrap">
-                  ◆ Verified proof · Live
+                  Verified proof · Live
                 </span>
                 <p className="text-xs text-[var(--ca)]">Highest Signal weight when the URL validates.</p>
               </div>
@@ -1987,7 +1980,7 @@ export default function StartPage() {
               </div>
               <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/35 bg-amber-950/40 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 whitespace-nowrap">
-                  ◦ Declaration · Pending
+                  Declaration · Pending
                 </span>
                 <p className="text-xs text-[var(--ca)]">
                   Upgrade within 30 days with a Verified Proof URL.
@@ -2046,7 +2039,7 @@ export default function StartPage() {
 
               <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-500/35 bg-violet-950/35 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-200 whitespace-nowrap">
-                  ◆ Submission · Unverified
+                  Submission · Unverified
                 </span>
                 <p className="text-xs text-[var(--ca)]">
                   Link a Verified Proof within 30 days for full Signal weight.
@@ -2100,7 +2093,7 @@ export default function StartPage() {
             onClick={() => void submitFirst()}
             className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
-            Lock Entry → Start My Record
+            Start My record
           </button>
               </div>
             </div>
@@ -2110,7 +2103,8 @@ export default function StartPage() {
           </div>
         </>
       )}
-      </div>
+    </div>
+  ) : null}
     </main>
   );
 }

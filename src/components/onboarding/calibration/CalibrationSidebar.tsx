@@ -39,13 +39,20 @@ type SidebarProps = {
 
 export function CalibrationSidebar({ phase, conexaSubtitle }: SidebarProps) {
   return (
-    <aside className="hidden md:flex w-[240px] shrink-0 flex-col bg-[#0D0F1A] border-r border-white/[0.06] min-h-[calc(100dvh-58px)] px-5 py-6">
+    <aside className="hidden md:flex w-[240px] shrink-0 flex-col bg-[#0D0F1A] border-r border-white/[0.06] min-h-[100dvh] px-5 py-6">
       <Link
         href="/"
-        className="text-[17px] font-extrabold tracking-[-0.04em] bg-gradient-to-br from-[#C7D2FE] via-[#A5B4FC] to-[#7C3AED] bg-clip-text text-transparent"
-        style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif", fontWeight: 800 }}
+        className="block w-9 h-9 shrink-0"
+        aria-label="Oxecute home"
       >
-        oxecute
+        <img
+          src="/brand/logo-icon.svg"
+          alt=""
+          width={36}
+          height={36}
+          className="w-9 h-9"
+          decoding="async"
+        />
       </Link>
       <div className="pt-8 shrink-0">
         <StepTracker phase={phase} conexaSubtitle={conexaSubtitle} />

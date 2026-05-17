@@ -1,6 +1,7 @@
 "use client";
 
 import { AmbientParticles } from "@/components/marketing/AmbientParticles";
+import { MarketingSiteNav } from "@/components/marketing/MarketingSiteNav";
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
 import Link from "next/link";
@@ -112,11 +113,15 @@ const FAQ_ITEMS: {
   },
 ];
 
+/** Hero ticker + CTA figures (brief): always 125 founders, 12 countries, 50 spots left. */
+const MARKETING_HERO_STATS = {
+  founders: 125,
+  countries: 12,
+  spotsRemaining: 50,
+} as const;
+
 export function ExecutionIntelligenceLanding() {
   const router = useRouter();
-  const navRef = useRef<HTMLElement | null>(null);
-  const [h1Text, setH1Text] = useState("");
-  const [showCursor, setShowCursor] = useState(true);
   const [heroReveal, setHeroReveal] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -128,11 +133,6 @@ export function ExecutionIntelligenceLanding() {
   const [leavingIdx, setLeavingIdx] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [faqOpen, setFaqOpen] = useState(0);
-  const [mStats, setMStats] = useState({
-    founders: 127,
-    countries: 12,
-    spotsRemaining: 50,
-  });
 
   const labels = ["Capture", "Compound", "Convert"];
 
@@ -147,10 +147,6 @@ export function ExecutionIntelligenceLanding() {
     goCarousel((carouselIdx + 1) % 3);
   }, [carouselIdx, goCarousel]);
 
-  const prevSlide = useCallback(() => {
-    goCarousel((carouselIdx + 2) % 3);
-  }, [carouselIdx, goCarousel]);
-
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(nextSlide, 5000);
@@ -160,51 +156,8 @@ export function ExecutionIntelligenceLanding() {
   }, [nextSlide]);
 
   useEffect(() => {
-    const full = "Hello Founder";
-    let i = 0;
-    const timeouts: number[] = [];
-    const tick = () => {
-      if (i <= full.length) {
-        setH1Text(full.slice(0, i));
-        const delay = i === 0 ? 500 : 75;
-        i += 1;
-        timeouts.push(window.setTimeout(tick, delay));
-      } else {
-        timeouts.push(
-          window.setTimeout(() => {
-            setShowCursor(false);
-            setHeroReveal(true);
-          }, 700),
-        );
-      }
-    };
-    tick();
-    return () => timeouts.forEach((t) => window.clearTimeout(t));
-  }, []);
-
-  useEffect(() => {
-    void fetch("/api/marketing/stats", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j: { founders?: number; countries?: number; spotsRemaining?: number }) => {
-        setMStats((s) => ({
-          founders: typeof j.founders === "number" ? j.founders : s.founders,
-          countries: typeof j.countries === "number" ? j.countries : s.countries,
-          spotsRemaining:
-            typeof j.spotsRemaining === "number" ? j.spotsRemaining : s.spotsRemaining,
-        }));
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const nav = navRef.current;
-      if (!nav) return;
-      nav.style.background =
-        window.scrollY > 30 ? "rgba(8,9,16,0.96)" : "rgba(8,9,16,0.8)";
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const t = window.setTimeout(() => setHeroReveal(true), 400);
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -253,30 +206,7 @@ export function ExecutionIntelligenceLanding() {
   return (
     <div className="ei-root">
       <AmbientParticles />
-      <nav ref={navRef} style={{ background: "rgba(8, 9, 16, 0.8)" }}>
-        <Link href="/" className="logo">
-          oxecute
-        </Link>
-        <div className="nav-mid">
-          <a className="nl" href="#hiw">
-            How it Works
-          </a>
-          <a className="nl" href="#investors">
-            Angels
-          </a>
-          <a className="nl" href="#FAQ">
-            FAQ
-          </a>
-        </div>
-        <div className="nav-right">
-          <Link href="/login" className="btn-ghost">
-            Log in
-          </Link>
-          <Link href="/start" className="btn-primary">
-            Sign Up
-          </Link>
-        </div>
-      </nav>
+      <MarketingSiteNav page="landing" />
 
       <section className="hero">
         <div className="hero-glow-l" aria-hidden />
@@ -284,39 +214,50 @@ export function ExecutionIntelligenceLanding() {
 
         <div className="hero-l">
           <div className="hero-ticker">
-            <div className="ticker-live">Beta Live</div>
-            <span className="ticker-sep">
-              ·
-            </span>
-            <div className="ticker-stat">
-              <span>{mStats.founders}</span> Founders
+            <div className="ticker-live">
+              <span className="ticker-live-stack">
+                <span className="ticker-live-line">Beta</span>
+                <span className="ticker-live-line">Live</span>
+              </span>
             </div>
             <span className="ticker-sep">
               ·
             </span>
             <div className="ticker-stat">
-              <span>{mStats.countries}</span> Countries
+              <span className="ticker-stat-value">{MARKETING_HERO_STATS.founders}</span>
+              <span className="ticker-stat-label">Founders</span>
             </div>
             <span className="ticker-sep">
               ·
             </span>
-            <div className="ticker-spots">{mStats.spotsRemaining} Spots Remaining</div>
+            <div className="ticker-stat">
+              <span className="ticker-stat-value">{MARKETING_HERO_STATS.countries}</span>
+              <span className="ticker-stat-label">Countries</span>
+            </div>
+            <span className="ticker-sep">
+              ·
+            </span>
+            <div className="ticker-spots">
+              <span className="ticker-spots-value">{MARKETING_HERO_STATS.spotsRemaining} Spots</span>
+              <span className="ticker-spots-label">Remaining</span>
+            </div>
           </div>
 
-          <h1 className="hero-h1">
-            {h1Text}
-            {showCursor ? <span className="cursor" /> : null}
+          <h1 className={`hero-h1 ${heroReveal ? "vis" : ""}`}>
+            <span className="hero-h1-line">You&apos;re building daily.</span>
+            <span className="hero-h1-accent">You can&apos;t tell if it&apos;s working.</span>
           </h1>
 
           <p className={`hero-body ${heroReveal ? "vis" : ""}`}>
-            You&apos;re building daily.
+            Your execution is real. The problem is it&apos;s invisible to investors, to the market,
+            to anyone who didn&apos;t watch you build.
             <br />
-            <strong className="hero-body-line-lg">You can&apos;t tell if it&apos;s working.</strong>
+            <br />
+            Oxecute turns what you actually do into a verified record.
             <br />
             <br />
-            Log what you shipped today. Conexa reads the pattern and tells you what&apos;s working,
-            what you&apos;re avoiding, and what to do next. Every day you execute, the record
-            builds.
+            Conexa reads the pattern and tells you what&apos;s working, what you&apos;re circling,
+            and what to move on next. Every day you execute, the record builds.
           </p>
 
           <div className={`hero-form ${heroReveal ? "vis" : ""}`}>
@@ -349,17 +290,24 @@ export function ExecutionIntelligenceLanding() {
               onChange={(e) => setPassword(e.target.value)}
             />
             <button type="button" className="btn-cta" onClick={storePrefillAndStart}>
-              Join the Founding Cohort <span className="cta-arrow">→</span>
+              Join the founding cohort
             </button>
             <div className="or-row">or</div>
             <button type="button" className="btn-google" onClick={() => void googleStart()}>
-              <span className="g-icon" />
+              <img
+                src="/brand/google-g.svg"
+                alt=""
+                width={18}
+                height={18}
+                className="g-icon-img"
+                decoding="async"
+              />
               Continue with Google
             </button>
           </div>
 
           <div className={`trust-row ${heroReveal ? "vis" : ""}`}>
-            <div className="trust-item">* Free to start. Pay when you&apos;re ready.</div>
+            <div className="trust-item">Commit when you&apos;re ready. No card to start.</div>
           </div>
         </div>
 
@@ -609,13 +557,13 @@ export function ExecutionIntelligenceLanding() {
                           choose.
                         </div>
                       </div>
-                      <div className="prof-head">
+                        <div className="prof-head">
                         <div className="prof-av">AR</div>
                         <div>
-                          <div className="prof-name">Ashwini Rathod</div>
-                          <div className="prof-role">Founder · Oxecute · Goa, IN</div>
+                          <div className="prof-name">Abhi R</div>
+                          <div className="prof-role">Founder · India</div>
                         </div>
-                        <div className="verified-badge">✓ Verified Signal</div>
+                        <div className="verified-badge">Verified Signal</div>
                       </div>
                       <div className="metric-grid">
                         <div className="mc">
@@ -633,15 +581,15 @@ export function ExecutionIntelligenceLanding() {
                       </div>
                       <div className="ev-list">
                         <div className="ev">
-                          <span className="ev-ck">✓</span> Shipping cadence · 4.2 commits/week
+                          Shipping cadence · 4.2 commits/week
                           <span className="ev-tag">auto-captured</span>
                         </div>
                         <div className="ev">
-                          <span className="ev-ck">✓</span> Revenue signal · 3 Stripe events
+                          Revenue signal · 3 Stripe events
                           <span className="ev-tag">verified</span>
                         </div>
                         <div className="ev">
-                          <span className="ev-ck">✓</span> Investor calls · 6 logged
+                          Investor calls · 6 logged
                           <span className="ev-tag">declared</span>
                         </div>
                       </div>
@@ -662,14 +610,6 @@ export function ExecutionIntelligenceLanding() {
                 ))}
               </div>
               <div className="c-label">{labels[carouselIdx]}</div>
-              <div className="c-arrows">
-                <button type="button" className="c-arr" onClick={prevSlide} aria-label="Previous">
-                  ←
-                </button>
-                <button type="button" className="c-arr" onClick={nextSlide} aria-label="Next">
-                  →
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -678,56 +618,54 @@ export function ExecutionIntelligenceLanding() {
       <section className="hiw" id="hiw">
         <div className="section-eye rv">Execution Arc</div>
         <h2 className="section-h rv d1">
-          Execution compounds.
-          <br />
-          Most founders quit before it shows.
+          Most founders quit before it compounds.
         </h2>
         <p className="section-p rv d2">
-          Oxecute is built around the days when building actually starts to pay off. Log what you
-          execute every day. The record compounds. Founding cohort pricing locks at sign-up —
-          whatever changes later, you keep these terms forever.
+          Oxecute is built around what happens when you don&apos;t. The longer you execute, the more
+          the record says without you having to say anything. Founding cohort pricing locks at
+          sign-up. Whatever changes later, your terms don&apos;t.
         </p>
 
         <div className="arc-row rv d2">
           <div className="arc-card">
-            <div className="arc-day">Day 1 of Execution</div>
-            <div className="arc-name">Free</div>
+            <div className="arc-day">Unlocks 1 day after</div>
+            <div className="arc-name">Commit</div>
             <div className="arc-features">
               {[
                 "Private execution journal",
                 "Paste a link. It locks. Forever.",
-                "Conexa reads your pattern from day 1",
+                "Conexa reads your pattern from your entries",
                 "Tamper-proof, append-only ledger",
                 "Signal Score starts building",
               ].map((t) => (
                 <div key={t} className="af">
-                  <div className="af-ck">✓</div>
+                  <span className="af-dot" aria-hidden />
                   {t}
                 </div>
               ))}
             </div>
           </div>
           <div className="arc-card">
-            <div className="arc-day">21 Days of Execution</div>
+            <div className="arc-day">Unlocks 21 days after</div>
             <div className="arc-name">Builder</div>
             <div className="arc-features">
               {[
                 "Full Conexa intelligence",
                 "Daily Directive: one move, every day",
                 "Complete submission history",
-                "Breaks don't reset your score",
+                "Breaks don&apos;t reset your score",
                 "Export your record",
               ].map((t) => (
                 <div key={t} className="af">
-                  <div className="af-ck">✓</div>
+                  <span className="af-dot" aria-hidden />
                   {t}
                 </div>
               ))}
             </div>
           </div>
           <div className="arc-card">
-            <div className="arc-coming">Coming Soon</div>
-            <div className="arc-day">45 Days of Execution</div>
+            <div className="arc-coming">Coming soon</div>
+            <div className="arc-day">Unlocks 45 days after</div>
             <div className="arc-name">Operator</div>
             <div className="arc-features">
               {[
@@ -737,34 +675,34 @@ export function ExecutionIntelligenceLanding() {
                 "Learn from execution patterns, not claims",
               ].map((t) => (
                 <div key={t} className="af">
-                  <div className="af-ck">✓</div>
+                  <span className="af-dot" aria-hidden />
                   {t}
                 </div>
               ))}
             </div>
           </div>
           <div className="arc-card">
-            <div className="arc-coming">Coming Soon</div>
-            <div className="arc-day">60 Days of Execution</div>
+            <div className="arc-coming">Coming soon</div>
+            <div className="arc-day">Unlocks 60 days after</div>
             <div className="arc-name">Signal</div>
             <div className="arc-features">
               {[
                 "Browse investor profiles",
-                "VERIFIED SIGNAL badge",
+                "Verified Signal badge",
                 "Founder profile goes public — your terms",
                 "Hiring integrations",
               ].map((t) => (
                 <div key={t} className="af">
-                  <div className="af-ck">✓</div>
+                  <span className="af-dot" aria-hidden />
                   {t}
                 </div>
               ))}
             </div>
           </div>
           <div className="arc-card">
-            <div className="arc-coming">Coming Soon</div>
-            <div className="arc-day">90 Days of Execution</div>
-            <div className="arc-name">Permanent</div>
+            <div className="arc-coming">Coming soon</div>
+            <div className="arc-day">Unlocks 90 days after</div>
+            <div className="arc-name">Legacy</div>
             <div className="arc-features">
               {[
                 "Fund matchmaking",
@@ -773,7 +711,7 @@ export function ExecutionIntelligenceLanding() {
                 "Permanent record. Yours forever.",
               ].map((t) => (
                 <div key={t} className="af">
-                  <div className="af-ck">✓</div>
+                  <span className="af-dot" aria-hidden />
                   {t}
                 </div>
               ))}
@@ -820,8 +758,7 @@ export function ExecutionIntelligenceLanding() {
             <div className="section-eye rv">Questions</div>
             <div className="faq-intro-h rv d1">Frequently asked questions.</div>
             <p className="faq-intro-p rv d2">
-              If it&apos;s not here, ask Conexa directly — it reads your ledger and gives you
-              something real.
+              Short answers to how the record, Conexa, and privacy work.
             </p>
           </div>
           <div className="faq-list">
@@ -846,37 +783,36 @@ export function ExecutionIntelligenceLanding() {
         <h2 className="cta-h rv">
           Your work is already real.
           <br />
-          Make it visible <span className="g">on your terms.</span>
+          Now make it undeniable.
         </h2>
         <p className="cta-p rv d1">
-          {mStats.founders} founders waitlisted. Founding cohort pricing locks at sign-up — forever.
+          {MARKETING_HERO_STATS.founders} founders on the waitlist. Founding cohort pricing locks at sign-up.
         </p>
         <div className="cta-btns rv d2">
           <button type="button" className="btn-cta-lg" onClick={storePrefillAndStart}>
-            Join the Founding Cohort <span className="cta-arrow">→</span>
+            Join the founding cohort
           </button>
-          <a className="btn-ghost" style={{ padding: "12px 22px", fontSize: 14 }} href="#hiw">
-            How it Works
-          </a>
         </div>
         <div className="cta-trust rv d3">
-          <span>
-            <span className="ct-ck">✓</span> No credit card
+          <span>No credit card</span>
+          <span className="cta-trust-sep" aria-hidden>
+            ·
           </span>
-          <span>
-            <span className="ct-ck">✓</span> Private by default
+          <span>Private by default</span>
+          <span className="cta-trust-sep" aria-hidden>
+            ·
           </span>
-          <span>
-            <span className="ct-ck">✓</span> Founding terms locked at sign-up
-          </span>
+          <span>Founding terms locked at sign-up</span>
         </div>
       </section>
 
       <footer>
-        <div className="f-logo">oxecute</div>
+        <Link href="/" className="ei-footer-logo" aria-label="Oxecute home">
+          <img src="/brand/logo-wordmark.svg" alt="" width={120} height={22} decoding="async" />
+        </Link>
         <div className="f-links">
           <a className="f-link" href="#hiw">
-            How it Works
+            How it works
           </a>
           <a className="f-link" href="#investors">
             Angels
@@ -888,7 +824,7 @@ export function ExecutionIntelligenceLanding() {
             Terms
           </Link>
         </div>
-        <div className="f-legal">© 2026 Oxecute · House of ATAH Pvt. Ltd.</div>
+        <div className="f-legal">© 2026 Oxecute</div>
       </footer>
     </div>
   );
@@ -901,8 +837,8 @@ function InvRecordGrid() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="irc-av">AR</div>
           <div>
-            <div className="irc-name">Ashwini Rathod</div>
-            <div className="irc-sub">oxecute.com/ashwinni &nbsp;·&nbsp; Building since Mar 2026</div>
+            <div className="irc-name">Emily Blundell</div>
+            <div className="irc-sub">oxecute.com/emily · United Kingdom</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -911,7 +847,7 @@ function InvRecordGrid() {
             VERIFIED · DAY 53
           </div>
           <button type="button" className="irc-save">
-            ↓ Save record
+            Save record
           </button>
         </div>
       </div>

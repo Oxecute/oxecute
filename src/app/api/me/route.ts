@@ -12,7 +12,7 @@ const patchSchema = z
     full_name: z.string().min(1).max(200).optional(),
     first_name: z.string().max(120).optional(),
     last_name: z.string().max(120).optional(),
-    startup_description: z.string().min(15).max(50).optional(),
+    startup_description: z.string().min(50).max(500).optional(),
     cal_q1_shipped: z.string().max(250).optional(),
     cal_q2_customers: z.string().max(250).optional(),
     cal_q3_didnt_work: z.string().max(250).optional(),
@@ -29,7 +29,7 @@ const patchSchema = z
       .regex(/^[a-zA-Z0-9_-]{3,20}$/)
       .optional(),
     profile_public: z.boolean().optional(),
-    profile_bio: z.string().max(160).optional(),
+    profile_bio: z.string().max(160).nullish(),
     show_breaks: z.boolean().optional(),
     show_signal_score: z.boolean().optional(),
     day21_unlocked: z.boolean().optional(),
@@ -130,13 +130,22 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (p.conexa_day1_report && typeof p.conexa_day1_report === "object") {
-    const rep = p.conexa_day1_report as { personal_insight?: string };
-    await admin.from("notifications").insert({
-      user_id: user.id,
-      type: "system",
-      title: "Conexa has read your baseline",
-      body: rep.personal_insight ?? "",
-    });
+    const { data: existingBaseline } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("title", "Conexa has read your baseline")
+      .limit(1)
+      .maybeSingle();
+    if (!existingBaseline) {
+      const rep = p.conexa_day1_report as { personal_insight?: string };
+      await admin.from("notifications").insert({
+        user_id: user.id,
+        type: "system",
+        title: "Conexa has read your baseline",
+        body: rep.personal_insight ?? "",
+      });
+    }
   }
 
   if (p.stage && p.mrr && p.startup_description) {

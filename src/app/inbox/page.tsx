@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
+import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
 import { useCallback, useEffect, useState } from "react";
 
 type Notif = {
@@ -15,6 +15,7 @@ type Notif = {
 
 function InboxMain() {
   const user = useShellUser();
+  const refreshShellUser = useShellUserRefresh();
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,21 +31,31 @@ function InboxMain() {
   }, [load]);
 
   const markOne = async (id: string) => {
-    await fetch("/api/inbox", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [id] }),
-    });
-    void load();
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    try {
+      await fetch("/api/inbox", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      refreshShellUser();
+    } catch {
+      await load();
+    }
   };
 
   const markAll = async () => {
-    await fetch("/api/inbox", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mark_all_read: true }),
-    });
-    void load();
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await fetch("/api/inbox", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mark_all_read: true }),
+      });
+      refreshShellUser();
+    } catch {
+      await load();
+    }
   };
 
   return (
@@ -90,7 +101,7 @@ function InboxMain() {
             <div className="flex flex-wrap gap-3 mt-3">
               {n.action_url ? (
                 <a href={n.action_url} className="text-[var(--p)] text-sm font-medium">
-                  Open →
+                  Open
                 </a>
               ) : null}
               {!n.read ? (
