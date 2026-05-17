@@ -6,6 +6,7 @@ import {
   useShellUserRefresh,
 } from "@/components/app/AuthenticatedShell";
 import { RecordPageHeader } from "@/components/app/RecordPageHeader";
+import { useShellLHeaderSetter } from "@/components/app/shell-l-header-context";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
 import {
@@ -17,7 +18,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
   return (
@@ -73,6 +74,7 @@ const ENTRY_LOCK_BUTTON =
   "w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
 
 function DashboardMainInner() {
+  const setShellLHeader = useShellLHeaderSetter();
   const user = useShellUser();
   const refreshShellUser = useShellUserRefresh();
   const router = useRouter();
@@ -157,6 +159,27 @@ function DashboardMainInner() {
     lastSub && lastSub !== today
       ? `No submission logged for UTC today yet. Last lock: ${lastSub}.`
       : null;
+
+  useLayoutEffect(() => {
+    if (!setShellLHeader) return;
+    setShellLHeader(
+      <RecordPageHeader
+        compact
+        title={
+          <h1
+            className="text-[18px] sm:text-[20px] font-extrabold tracking-[-0.02em] text-[#EAEFF8] leading-none sm:leading-tight"
+            style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+          >
+            Founder Operating Record
+          </h1>
+        }
+        subtitle={
+          <p className="text-[11px] sm:text-[12px] font-medium text-[#4F46E5] leading-tight">Commit</p>
+        }
+      />,
+    );
+    return () => setShellLHeader(null);
+  }, [setShellLHeader]);
 
   const recent = [...entries]
     .sort(
@@ -258,20 +281,6 @@ function DashboardMainInner() {
   return (
     <>
       <section className="text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
-        <RecordPageHeader
-          title={
-            <h1
-              className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]"
-              style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
-            >
-              Founder Operating Record
-            </h1>
-          }
-          subtitle={
-            <p className="text-[12px] sm:text-[13px] font-medium text-[#4F46E5] leading-snug">Commit</p>
-          }
-        />
-
         {gapWarn ? (
           <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
             <span className="text-[#C2A478] shrink-0 mt-0.5" aria-hidden>

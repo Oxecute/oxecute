@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import { AppShell, type AppShellUser } from "./AppShell";
 import { DashboardRightRail } from "./DashboardRightRail";
+import { ShellLHeaderSetterContext } from "./shell-l-header-context";
 
 export const InboxUnreadContext = createContext<number>(0);
 export const ShellUserContext = createContext<AppShellUser | null>(null);
@@ -121,6 +122,7 @@ export function AuthenticatedShell({
   }, [router, supabase.auth]);
 
   const refreshShellUser = useCallback(() => setUserReloadNonce((n) => n + 1), []);
+  const [shellLHeader, setShellLHeader] = useState<ReactNode | null>(null);
 
   useEffect(() => {
     void load();
@@ -167,13 +169,16 @@ export function AuthenticatedShell({
     <InboxUnreadContext.Provider value={inboxUnread}>
       <ShellUserRefreshContext.Provider value={refreshShellUser}>
         <ShellUserContext.Provider value={user}>
-          <AppShell
-            user={user}
-            unreadCount={inboxUnread}
-            inlineRightRail={<DashboardRightRail />}
-          >
-            {children}
-          </AppShell>
+          <ShellLHeaderSetterContext.Provider value={setShellLHeader}>
+            <AppShell
+              user={user}
+              unreadCount={inboxUnread}
+              inlineRightRail={<DashboardRightRail />}
+              lHeader={shellLHeader}
+            >
+              {children}
+            </AppShell>
+          </ShellLHeaderSetterContext.Provider>
         </ShellUserContext.Provider>
       </ShellUserRefreshContext.Provider>
     </InboxUnreadContext.Provider>

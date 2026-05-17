@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { DashboardNav, type MeUser } from "./DashboardNav";
+import { DashboardNav, DashboardNavLogo, type MeUser } from "./DashboardNav";
 
 export type AppShellUser = MeUser & {
   full_name?: string;
@@ -24,21 +24,153 @@ const COL_RAIL =
   "rounded-2xl border border-[var(--bdr)] shadow-[0_10px_40px_rgba(0,0,0,0.35)] min-h-0 max-h-[calc(100dvh-1.75rem)] overflow-y-auto scrollbar-none";
 const COL_STICKY = "sticky top-4 md:top-5 self-start w-full min-w-0";
 
+const COLS_WITH_RAIL =
+  "md:grid-cols-[minmax(232px,260px)_minmax(0,1fr)_minmax(288px,360px)] lg:grid-cols-[minmax(248px,280px)_minmax(0,1fr)_minmax(300px,380px)]";
+
+/** L-layout: tighter rail so the center column reads as primary. */
+const COLS_WITH_RAIL_L =
+  "md:grid-cols-[minmax(228px,252px)_minmax(0,1fr)_minmax(248px,288px)] lg:grid-cols-[minmax(236px,260px)_minmax(0,1fr)_minmax(260px,300px)]";
+
+/** L-shell: row 1 = logo | record header (one band); row 2 = nav links | main | rail. */
+const HAIRLINE_V = "md:border-r md:border-white/[0.09]";
+const LSHAPE_GRID = `grid-rows-[auto_minmax(0,1fr)] md:grid-rows-[72px_minmax(0,1fr)] ${COLS_WITH_RAIL_L} gap-0`;
+
+/** One connected surface: soft outer rim, no gutters between regions. */
+const L_UNIFIED_SHELL =
+  "rounded-[22px] sm:rounded-[26px] md:rounded-[28px] border border-white/[0.06] bg-[var(--shell-bg)] shadow-[0_2px_28px_rgba(0,0,0,0.38)] overflow-hidden";
+
 export function AppShell({
   user,
   children,
   inlineRightRail,
+  /** When set with `inlineRightRail`, spans columns 2–3 in row 1; main and rail sit in row 2 (L-shaped shell). */
+  lHeader,
   unreadCount = 0,
 }: {
   user: AppShellUser;
   children: React.ReactNode;
   inlineRightRail?: React.ReactNode;
+  lHeader?: React.ReactNode;
   unreadCount?: number;
 }) {
   const [mobileNav, setMobileNav] = useState(false);
+  const useLShape = Boolean(lHeader && inlineRightRail);
+
+  const outerGridClass =
+    inlineRightRail
+      ? `max-w-[1920px] px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7 grid mx-auto ${
+          useLShape ? "" : `${COLS_WITH_RAIL} ${COL_GAP}`
+        }`
+      : `max-w-5xl px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7 grid ${COL_GAP} mx-auto md:grid-cols-[minmax(228px,260px)_minmax(0,1fr)]`;
+
+  const navAside = !useLShape ? (
+    <aside
+      className={`hidden md:flex pt-5 pb-5 px-5 lg:pt-6 lg:pb-6 lg:px-6 bg-[var(--sur2)] ${COL_STICKY} ${COL_NAV_PANEL} min-w-0`}
+    >
+      <DashboardNav
+        user={user}
+        inboxUnread={unreadCount}
+        className="flex-1 min-h-0"
+        sidebarScroll
+      />
+    </aside>
+  ) : null;
+
+  /** Row 1 col 1: wordmark only — aligns with record title row; links start row 2. */
+  const logoBandL = useLShape ? (
+    <div
+      className={
+        "hidden md:flex flex-row items-start self-stretch min-w-0 min-h-0 h-[72px] max-h-[72px] " +
+        "bg-[var(--nav-surface)] border-b border-white/[0.085] " +
+        "px-5 lg:px-6 pt-2.5 " +
+        `${HAIRLINE_V} md:col-start-1 md:row-start-1`
+      }
+    >
+      <DashboardNavLogo />
+    </div>
+  ) : null;
+
+  const navLinksAsideL = useLShape ? (
+    <aside
+      className={
+        "hidden md:flex flex-col min-w-0 min-h-0 h-full max-h-full overflow-hidden " +
+        "bg-[var(--nav-surface)] px-5 pb-5 pt-2 lg:px-6 lg:pb-6 " +
+        `${HAIRLINE_V} md:col-start-1 md:row-start-2`
+      }
+    >
+      <DashboardNav
+        user={user}
+        inboxUnread={unreadCount}
+        className="flex-1 min-h-0"
+        hideLogo
+        sidebarScroll={false}
+      />
+    </aside>
+  ) : null;
+
+  const headerCell =
+    useLShape && lHeader ? (
+      <div
+        className={
+          "min-w-0 min-h-0 h-[72px] max-h-[72px] shrink-0 col-span-full md:col-span-2 md:col-start-2 md:row-start-1 " +
+          "border-0 shadow-none rounded-none bg-[var(--shell-bg)] px-5 sm:px-7 pt-2.5 pb-1.5 " +
+          "flex flex-col justify-start overflow-hidden"
+        }
+      >
+        {lHeader}
+      </div>
+    ) : null;
+
+  /** L-shape: only the main column scrolls; nav, header, rail stay fixed in the shell. */
+  const mainCol = (
+    <div
+      className={
+        useLShape
+          ? `min-w-0 min-h-0 h-full max-h-full border-0 shadow-none rounded-none bg-[var(--shell-bg)] overflow-y-auto overscroll-y-contain overflow-x-hidden scrollbar-none md:col-start-2 md:row-start-2 ${HAIRLINE_V}`
+          : `min-w-0 ${COL_STICKY} ${COL_MAIN} bg-[var(--shell-bg)]`
+      }
+    >
+      {children}
+    </div>
+  );
+
+  const railAside = inlineRightRail ? (
+    <aside
+      className={
+        useLShape
+          ? "hidden md:flex flex-col min-w-0 min-h-0 h-full border-0 shadow-none rounded-none bg-[var(--shell-bg)] pl-4 pr-4 pt-4 pb-4 lg:pl-5 lg:pr-5 md:col-start-3 md:row-start-2 overflow-hidden"
+          : `hidden md:block ${COL_STICKY} ${COL_RAIL} bg-[var(--sur2)] p-5 lg:p-[22px]`
+      }
+    >
+      {inlineRightRail}
+    </aside>
+  ) : null;
+
+  const gridBody = useLShape ? (
+    <>
+      {logoBandL}
+      {headerCell}
+      {navLinksAsideL}
+      {mainCol}
+      {railAside}
+    </>
+  ) : (
+    <>
+      {navAside}
+      {headerCell}
+      {mainCol}
+      {railAside}
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-[var(--mi)] text-[var(--t1)]">
+    <div
+      className={
+        useLShape
+          ? "h-dvh max-h-dvh min-h-0 overflow-hidden flex flex-col bg-[var(--mi)] text-[var(--t1)]"
+          : "min-h-screen bg-[var(--mi)] text-[var(--t1)]"
+      }
+    >
       <button
         type="button"
         className="md:hidden fixed left-3 top-3 z-30 p-2.5 rounded-xl border border-[var(--bdr)] bg-[var(--sur2)] text-[var(--t2)] shadow-lg"
@@ -69,25 +201,17 @@ export function AppShell({
         </div>
       ) : null}
 
-      <div
-        className={`w-full min-w-0 max-w-[100vw] px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7 grid ${COL_GAP} mx-auto ${
-          inlineRightRail
-            ? `max-w-[1920px] md:grid-cols-[minmax(232px,260px)_minmax(0,1fr)_minmax(288px,360px)] lg:grid-cols-[minmax(248px,280px)_minmax(0,1fr)_minmax(300px,380px)]`
-            : "max-w-5xl md:grid-cols-[minmax(228px,260px)_minmax(0,1fr)]"
-        }`}
-      >
-        <aside
-          className={`hidden md:flex ${COL_STICKY} ${COL_NAV_PANEL} bg-[var(--sur2)] p-5 lg:p-[22px]`}
-        >
-          <DashboardNav user={user} inboxUnread={unreadCount} className="flex-1 min-h-0" />
-        </aside>
-        <div className={`min-w-0 ${COL_STICKY} ${COL_MAIN} bg-[var(--shell-bg)]`}>{children}</div>
-        {inlineRightRail ? (
-          <aside className={`hidden md:block ${COL_STICKY} ${COL_RAIL} bg-[var(--sur2)] p-5 lg:p-[22px]`}>
-            {inlineRightRail}
-          </aside>
-        ) : null}
-      </div>
+      {useLShape ? (
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7">
+          <div
+            className={`max-w-[1920px] mx-auto w-full h-full min-h-0 grid ${LSHAPE_GRID} ${L_UNIFIED_SHELL}`}
+          >
+            {gridBody}
+          </div>
+        </div>
+      ) : (
+        <div className={`w-full min-w-0 max-w-[100vw] ${outerGridClass}`}>{gridBody}</div>
+      )}
     </div>
   );
 }

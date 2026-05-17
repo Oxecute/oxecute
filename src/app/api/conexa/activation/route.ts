@@ -1,4 +1,8 @@
-import { clampConexaPersonalInsight, clampConexaTabBody, limitSentences } from "@/lib/conexa/format-conexa-output";
+import {
+  clampConexaPersonalInsight,
+  clampConexaTabBody,
+  limitSentences,
+} from "@/lib/conexa/format-conexa-output";
 import { parseActivationResponse } from "@/lib/conexa/prompts";
 import { conexaActivation } from "@/lib/conexa/anthropic";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -10,10 +14,15 @@ export async function POST() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createServiceRoleClient();
-  const { data: u } = await admin.from("users").select("*").eq("id", user.id).single();
+  const { data: u } = await admin
+    .from("users")
+    .select("*")
+    .eq("id", user.id)
+    .single();
   if (!u) return NextResponse.json({ error: "No user" }, { status: 404 });
 
   const fullName = String(u.full_name ?? "").split(" ")[0] || "founder";
@@ -72,7 +81,10 @@ export async function POST() {
     `Conexa has read your baseline, ${fullName}. Your execution window opens at midnight.`;
   const personal_insight = clampConexaPersonalInsight(
     personalRaw
-      .replace(/your first directive generates at midnight/gi, "your execution window opens at midnight")
+      .replace(
+        /your first directive generates at midnight/gi,
+        "your execution window opens at midnight",
+      )
       .trim(),
   );
 
