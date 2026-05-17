@@ -173,7 +173,10 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 40px 40px 36px 56px;
+  justify-self: center;
+  width: min(100%, 520px);
+  box-sizing: border-box;
+  padding: 40px 32px 36px;
   position: relative;
   z-index: 2;
   min-height: 0;
@@ -1714,6 +1717,7 @@
     padding-top: 112px;
   }
   .ei-root .hero-l {
+    justify-self: stretch;
     padding: 28px 20px 32px;
     min-width: 0;
     width: 100%;
