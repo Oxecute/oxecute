@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useContext } from "react";
-
-import { InboxUnreadContext, useShellUser } from "./AuthenticatedShell";
+import { useShellUser } from "./AuthenticatedShell";
 
 function Section({
   title,
@@ -25,53 +22,6 @@ function Section({
       </h3>
       {children}
     </section>
-  );
-}
-
-function IconBox({
-  children,
-  className = "",
-  tight,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  tight: boolean;
-}) {
-  const sz = tight ? "w-6 h-6" : "w-8 h-8";
-  return (
-    <span
-      className={`shrink-0 ${sz} rounded-full flex items-center justify-center border border-[var(--bdr)] bg-[var(--sur2)] text-[var(--t2)] [&_svg]:shrink-0 ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function NotifyRow({
-  icon,
-  title,
-  meta,
-  tight,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  meta: string;
-  tight: boolean;
-}) {
-  return (
-    <li className={`flex ${tight ? "gap-2" : "gap-3"}`}>
-      {icon}
-      <div className="min-w-0">
-        <p
-          className={`font-medium text-[var(--t1)] leading-snug ${
-            tight ? "text-[11px] line-clamp-2" : "text-[13px]"
-          }`}
-        >
-          {title}
-        </p>
-        <p className={`text-[var(--t3)] ${tight ? "text-[10px] mt-0.5" : "text-[11px] mt-0.5"}`}>{meta}</p>
-      </div>
-    </li>
   );
 }
 
@@ -120,102 +70,9 @@ function MilestoneRings({
   );
 }
 
-function NotificationsSection({ tight }: { tight: boolean }) {
+/** Sticky right rail on desktop (no notifications block). */
+export function DashboardRightRail() {
   const user = useShellUser();
-  const inboxUnread = useContext(InboxUnreadContext);
-  const exec = Number(user.execution_count ?? 0);
-  const day21 = Boolean(user.day21_reached);
-  const nextDay = Math.max(1, exec + 1);
-  const iw = tight ? 13 : 15;
-  const iw2 = tight ? 14 : 16;
-
-  return (
-    <Section title="Notifications" tight={tight}>
-      <ul className={tight ? "space-y-2" : "space-y-3.5"}>
-        <NotifyRow
-          tight={tight}
-          icon={
-            <IconBox tight={tight} className="text-amber-600 dark:text-amber-400">
-              <svg width={iw2} height={iw2} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M18 7h3v3a3 3 0 01-3 3h-1M6 7H3v3a3 3 0 003 3h1M12 8c-1.66 0-3 1.34-3 3v2h6v-2c0-1.66-1.34-3-3-3z" strokeLinecap="round" />
-                <path d="M12 16v4M8 22h8" strokeLinecap="round" />
-              </svg>
-            </IconBox>
-          }
-          title={`Record started · Day ${Math.max(1, exec)}`}
-          meta="Just now"
-        />
-        <NotifyRow
-          tight={tight}
-          icon={
-            <IconBox tight={tight} className="text-[var(--p)]">
-              <span className={tight ? "text-[8px] font-bold" : "text-[10px] font-bold"}>Ox</span>
-            </IconBox>
-          }
-          title="Welcome to Oxecute"
-          meta="Just now"
-        />
-        {!day21 ? (
-          <NotifyRow
-            tight={tight}
-            icon={
-              <IconBox tight={tight}>
-                <svg width={iw} height={iw} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <path d="M16 2v4M8 2v4M3 10h18" />
-                </svg>
-              </IconBox>
-            }
-            title={`Day ${nextDay} directive · midnight UTC`}
-            meta="Automated"
-          />
-        ) : (
-          <NotifyRow
-            tight={tight}
-            icon={
-              <IconBox tight={tight}>
-                <svg width={iw} height={iw} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </IconBox>
-            }
-            title="Daily Directive is live"
-            meta="Nav"
-          />
-        )}
-      </ul>
-      {inboxUnread > 0 ? (
-        <Link
-          href="/inbox"
-          className={`inline-flex font-medium hover:underline gap-1.5 items-baseline mt-3 ${
-            tight ? "text-[11px] mt-2" : "text-xs"
-          }`}
-        >
-          <span className="text-[var(--p)]">Inbox</span>
-          <span className="text-[var(--red)] font-semibold tabular-nums">{inboxUnread}</span>
-          <span className="text-[var(--t2)] font-normal">unread</span>
-        </Link>
-      ) : null}
-    </Section>
-  );
-}
-
-/** Bell / mobile sheet: notifications list only (matches product reference). */
-export function BellNotificationsPanel() {
-  return (
-    <nav aria-label="Notifications" className="text-sm">
-      <NotificationsSection tight />
-    </nav>
-  );
-}
-
-/** Full sticky right rail on desktop. */
-export function DashboardRightRail({ variant = "full" }: { variant?: "full" | "notifications" }) {
-  const user = useShellUser();
-
-  if (variant === "notifications") {
-    return <BellNotificationsPanel />;
-  }
 
   const exec = Number(user.execution_count ?? 0);
   const day21 = Boolean(user.day21_reached);
@@ -226,8 +83,6 @@ export function DashboardRightRail({ variant = "full" }: { variant?: "full" | "n
 
   return (
     <nav aria-label="Dashboard summary" className="divide-y divide-[var(--bdr)] pr-1 -mr-1 text-sm">
-      <NotificationsSection tight={false} />
-
       <Section title="Conexa directive" tight={tight}>
         <div className="rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] flex gap-2 p-3">
           <svg

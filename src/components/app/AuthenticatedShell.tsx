@@ -173,7 +173,6 @@ export function AuthenticatedShell({
             user={user}
             breadcrumb={breadcrumb}
             unreadCount={inboxUnread}
-            summaryPanel={<DashboardRightRail variant="notifications" />}
             inlineRightRail={<DashboardRightRail />}
           >
             {children}
