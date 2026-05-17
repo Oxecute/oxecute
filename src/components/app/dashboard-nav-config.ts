@@ -1,6 +1,6 @@
 /** Teal “Coming soon” pill — Network header + Connect Tools (fixed size; no text-sm inheritance). */
 export const COMING_SOON_PILL_CLASS =
-  "inline-flex h-5 items-center gap-0.5 rounded-full border border-[rgba(14,164,114,0.5)] px-1.5 py-0 !text-[8px] !leading-none font-semibold uppercase tracking-[0.05em] text-[#a7f3d0] bg-[rgba(14,164,114,0.14)] shrink-0 whitespace-nowrap box-border";
+  "inline-flex h-4 min-h-4 items-center gap-0.5 rounded-full border border-[rgba(14,164,114,0.45)] px-1 py-0 !text-[7px] !leading-none font-semibold uppercase tracking-[0.06em] text-[#a7f3d0] bg-[rgba(14,164,114,0.12)] shrink-0 whitespace-nowrap box-border";
 
 /** Authenticated sidebar - brief + lock labels */
 export type NavItem = {

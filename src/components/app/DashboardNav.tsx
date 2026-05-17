@@ -31,7 +31,7 @@ export function DashboardNavLogo({ onNavigate }: { onNavigate?: () => void }) {
       onClick={onNavigate}
     >
       <img
-        src="/brand/Logo-04.svg?v=5"
+        src="/brand/Logo-04.svg?v=6"
         alt="Oxecute"
         width={400}
         height={102}
@@ -287,7 +287,7 @@ function NavSection({
             title={`${title} — coming soon`}
           >
             <span
-              className="w-1 h-1 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.4)] shrink-0"
+              className="w-0.5 h-0.5 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.35)] shrink-0"
               aria-hidden
             />
             Coming soon
@@ -323,6 +323,33 @@ function NavSection({
             );
           }
 
+          /** Dedicated row: forced gap between label and pill (flex-1 label was collapsing spacing). */
+          if (item.href === "/tools") {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                className={`${navRowBase} ${active ? navRowActive : navRowIdle} flex flex-nowrap !gap-6`}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <NavIcon href={item.href} />
+                  <span className="min-w-0 whitespace-nowrap">{item.label}</span>
+                </span>
+                <span
+                  className={`${COMING_SOON_PILL_CLASS} shrink-0`}
+                  title="Connect Tools — coming soon"
+                >
+                  <span
+                    className="w-0.5 h-0.5 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.35)] shrink-0"
+                    aria-hidden
+                  />
+                  Coming soon
+                </span>
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -331,23 +358,7 @@ function NavSection({
               className={`${navRowBase} ${active ? navRowActive : navRowIdle} flex`}
             >
               <NavIcon href={item.href} />
-              <span
-                className={`min-w-0 flex-1 ${item.href === "/tools" ? "whitespace-nowrap" : ""}`}
-              >
-                {item.label}
-              </span>
-              {item.href === "/tools" ? (
-                <span
-                  className={`${COMING_SOON_PILL_CLASS} ml-2`}
-                  title="Connect Tools — coming soon"
-                >
-                  <span
-                    className="w-1 h-1 rounded-full bg-[#34d399] shadow-[0_0_0_1px_rgba(14,164,114,0.4)] shrink-0"
-                    aria-hidden
-                  />
-                  Coming soon
-                </span>
-              ) : null}
+              <span className="min-w-0 flex-1">{item.label}</span>
               {isInbox && inboxUnread > 0 ? (
                 <span className="text-[10px] font-bold tabular-nums text-white bg-red-500/90 min-w-[1.25rem] h-5 px-1 rounded-md flex items-center justify-center shrink-0">
                   {inboxUnread > 99 ? "99+" : inboxUnread}

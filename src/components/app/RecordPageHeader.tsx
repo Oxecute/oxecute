@@ -53,11 +53,27 @@ export function RecordPageHeader({
     (compact ? "px-2.5 py-1 text-[10px]" : "px-3 py-1.5 text-[11px]");
   const iconS = compact ? "w-3 h-3" : "w-[14px] h-[14px]";
 
+  const rowClass = compact
+    ? "flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 sm:gap-3"
+    : `flex flex-wrap items-center justify-between ${rowGap}`;
+
+  const titleBlock =
+    compact && subtitle != null ? (
+      <div className="flex min-w-0 flex-[1_1_0%] items-center gap-x-2.5 overflow-hidden">
+        <div className="min-w-0 shrink leading-none [&_h1]:m-0 [&_h1]:p-0 [&_h1]:leading-none">{title}</div>
+        <div className="min-w-0 shrink leading-none [&>*]:leading-none">{subtitle}</div>
+      </div>
+    ) : (
+      <div className="min-w-0 shrink">{title}</div>
+    );
+
   return (
     <div className={`flex flex-col min-h-0 min-w-0 ${gap} border-b border-white/[0.04] ${pad} ${className}`}>
-      <div className={`flex flex-wrap items-center justify-between ${rowGap}`}>
-        <div className="min-w-0 shrink">{title}</div>
-        <div className={`flex flex-wrap items-center justify-end shrink-0 ${compact ? "gap-1.5" : "gap-2 sm:gap-2.5"}`}>
+      <div className={rowClass}>
+        {titleBlock}
+        <div
+          className={`flex shrink-0 flex-nowrap items-center justify-end ${compact ? "gap-1.5" : "gap-2 sm:gap-2.5"}`}
+        >
           <span className={pill}>
             <svg className={`${iconS} shrink-0 text-ox-t2`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <circle cx="12" cy="12" r="9" />
@@ -89,7 +105,7 @@ export function RecordPageHeader({
           </button>
         </div>
       </div>
-      {subtitle != null ? (
+      {subtitle != null && !compact ? (
         <div className={`min-w-0 max-w-2xl ${compact ? "leading-tight" : ""}`}>{subtitle}</div>
       ) : null}
     </div>

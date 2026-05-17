@@ -31,9 +31,10 @@ const COLS_WITH_RAIL =
 const COLS_WITH_RAIL_L =
   "md:grid-cols-[minmax(228px,252px)_minmax(0,1fr)_minmax(248px,288px)] lg:grid-cols-[minmax(236px,260px)_minmax(0,1fr)_minmax(260px,300px)]";
 
-/** L-shell: row 1 = logo | record header (one band); row 2 = nav links | main | rail. */
 const HAIRLINE_V = "md:border-r md:border-white/[0.09]";
-const LSHAPE_GRID = `grid-rows-[auto_minmax(0,1fr)] md:grid-rows-[72px_minmax(0,1fr)] ${COLS_WITH_RAIL_L} gap-0`;
+
+/** L-shell: row 1 = logo above nav | record header above main; row 2 = nav | main | rail. */
+const LSHAPE_GRID = `grid-rows-[auto_minmax(0,1fr)] md:grid-rows-[auto_minmax(0,1fr)] ${COLS_WITH_RAIL_L} gap-0`;
 
 /** One connected surface: soft outer rim, no gutters between regions. */
 const L_UNIFIED_SHELL =
@@ -43,7 +44,7 @@ export function AppShell({
   user,
   children,
   inlineRightRail,
-  /** When set with `inlineRightRail`, spans columns 2–3 in row 1; main and rail sit in row 2 (L-shaped shell). */
+  /** When set with `inlineRightRail`, row 1 is logo (col 1) + header (cols 2–3); row 2 is nav | main | rail. */
   lHeader,
   unreadCount = 0,
 }: {
@@ -76,13 +77,13 @@ export function AppShell({
     </aside>
   ) : null;
 
-  /** Row 1 col 1: wordmark only — aligns with record title row; links start row 2. */
+  /** Row 1 col 1: Logo-04 only — shares bottom edge with record header; title starts col 2 after nav/main divider. */
   const logoBandL = useLShape ? (
     <div
       className={
-        "hidden md:flex flex-row items-start self-stretch min-w-0 min-h-0 h-[72px] max-h-[72px] " +
-        "bg-[var(--nav-surface)] border-b border-white/[0.085] " +
-        "px-5 lg:px-6 pt-2.5 " +
+        "hidden md:flex flex-row items-center self-stretch min-w-0 min-h-0 " +
+        "bg-[#0B0F14] border-b border-[#1F2430] " +
+        "px-5 lg:px-6 py-4 " +
         `${HAIRLINE_V} md:col-start-1 md:row-start-1`
       }
     >
@@ -112,9 +113,8 @@ export function AppShell({
     useLShape && lHeader ? (
       <div
         className={
-          "min-w-0 min-h-0 h-[72px] max-h-[72px] shrink-0 col-span-full md:col-span-2 md:col-start-2 md:row-start-1 " +
-          "border-0 shadow-none rounded-none bg-[var(--shell-bg)] px-5 sm:px-7 pt-2.5 pb-1.5 " +
-          "flex flex-col justify-start overflow-hidden"
+          "min-w-0 min-h-0 shrink-0 col-span-full md:col-span-2 md:col-start-2 md:row-start-1 " +
+          "border-0 shadow-none rounded-none bg-transparent p-0 flex items-stretch overflow-hidden"
         }
       >
         {lHeader}

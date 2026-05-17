@@ -5,7 +5,7 @@ import {
   useShellUser,
   useShellUserRefresh,
 } from "@/components/app/AuthenticatedShell";
-import { RecordPageHeader } from "@/components/app/RecordPageHeader";
+import { DashboardOperatingRecordHeader } from "@/components/app/DashboardOperatingRecordHeader";
 import { useShellLHeaderSetter } from "@/components/app/shell-l-header-context";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
@@ -160,24 +160,11 @@ function DashboardMainInner() {
       ? `No submission logged for UTC today yet. Last lock: ${lastSub}.`
       : null;
 
+  const execCount = Number(user.execution_count ?? 0);
+  const day21Reached = Boolean(user.day21_reached);
   useLayoutEffect(() => {
     if (!setShellLHeader) return;
-    setShellLHeader(
-      <RecordPageHeader
-        compact
-        title={
-          <h1
-            className="text-[18px] sm:text-[20px] font-extrabold tracking-[-0.02em] text-[#EAEFF8] leading-none sm:leading-tight"
-            style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
-          >
-            Founder Operating Record
-          </h1>
-        }
-        subtitle={
-          <p className="text-[11px] sm:text-[12px] font-medium text-[#4F46E5] leading-tight">Commit</p>
-        }
-      />,
-    );
+    setShellLHeader(<DashboardOperatingRecordHeader />);
     return () => setShellLHeader(null);
   }, [setShellLHeader]);
 
@@ -198,8 +185,6 @@ function DashboardMainInner() {
   }
   const totalCat = byCat.product + byCat.distribution + byCat.ops || 1;
 
-  const execCount = Number(user.execution_count ?? 0);
-  const day21Reached = Boolean(user.day21_reached);
   const beganDate =
     user.created_at != null
       ? new Date(user.created_at).toLocaleDateString("en-GB", {
@@ -280,7 +265,7 @@ function DashboardMainInner() {
 
   return (
     <>
-      <section className="text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
+      <section id="oxe-dashboard-today" className="text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
         {gapWarn ? (
           <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
             <span className="text-[#C2A478] shrink-0 mt-0.5" aria-hidden>
