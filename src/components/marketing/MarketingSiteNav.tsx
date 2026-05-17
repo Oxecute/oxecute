@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 type Page = "landing" | "login";
 
 /**
- * Shared top nav: brand, section links (desktop inline / mobile sheet), auth CTAs.
+ * Shared top nav: logo + hamburger (small screens, left), section links (lg+ only), auth on the right.
+ * Section anchors exist only in the sheet below lg — not duplicated in the bar.
  */
 export function MarketingSiteNav({ page }: { page: Page }) {
   const navRef = useRef<HTMLElement | null>(null);
@@ -45,37 +46,16 @@ export function MarketingSiteNav({ page }: { page: Page }) {
   return (
     <>
       <nav ref={navRef} style={{ background: "rgba(24, 27, 36, 0.88)" }}>
-        <Link href="/" className="ei-logo-link" aria-label="Oxecute home">
-          <img
-            src="/brand/logo-icon.svg"
-            alt=""
-            className="h-10 w-10 md:h-11 md:w-11"
-            width={44}
-            height={44}
-            decoding="async"
-          />
-        </Link>
-        <div className="nav-mid max-lg:hidden">
-          <a className="nl" href={`${ap}#hiw`}>
-            How it works
-          </a>
-          <a className="nl" href={`${ap}#investors`}>
-            Angels
-          </a>
-          <a className="nl" href={`${ap}#FAQ`}>
-            FAQ
-          </a>
-        </div>
-        <div className="nav-right">
-          <Link
-            href="/login"
-            className={loginBtn}
-            aria-current={page === "login" ? "page" : undefined}
-          >
-            Log in
-          </Link>
-          <Link href="/start" className={signupBtn}>
-            Sign up
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/" className="ei-logo-link" aria-label="Oxecute home">
+            <img
+              src="/brand/logo-icon.svg"
+              alt=""
+              className="h-10 w-10 md:h-11 md:w-11"
+              width={44}
+              height={44}
+              decoding="async"
+            />
           </Link>
           <button
             type="button"
@@ -88,6 +68,31 @@ export function MarketingSiteNav({ page }: { page: Page }) {
             <span className="ei-nav-menu-bar" />
             <span className="ei-nav-menu-bar" />
           </button>
+        </div>
+
+        <div className="nav-mid hidden lg:flex">
+          <a className="nl" href={`${ap}#hiw`}>
+            How it works
+          </a>
+          <a className="nl" href={`${ap}#investors`}>
+            Angels
+          </a>
+          <a className="nl" href={`${ap}#FAQ`}>
+            FAQ
+          </a>
+        </div>
+
+        <div className="nav-right">
+          <Link
+            href="/login"
+            className={loginBtn}
+            aria-current={page === "login" ? "page" : undefined}
+          >
+            Log in
+          </Link>
+          <Link href="/start" className={signupBtn}>
+            Sign up
+          </Link>
         </div>
       </nav>
 

@@ -37,7 +37,7 @@ export function OnboardingTopNav() {
           decoding="async"
         />
       </Link>
-      <div className="nav-mid">
+      <div className="nav-mid flex">
         <Link className="nl" href="/#hiw">
           How it Works
         </Link>

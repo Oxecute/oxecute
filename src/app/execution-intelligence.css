@@ -131,7 +131,6 @@
   flex-shrink: 0;
 }
 .ei-root .nav-mid {
-  display: flex;
   gap: 2px;
 }
 .ei-root .nl {
