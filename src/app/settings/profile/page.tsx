@@ -18,6 +18,7 @@ function ProfileSettingsMain() {
   const [username, setUsername] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [entries, setEntries] = useState<{ day_number: number; tier: string | null }[]>([]);
+  const [breakDays, setBreakDays] = useState<number[]>([]);
 
   const sync = useCallback(async () => {
     const res = await fetch("/api/me", { credentials: "same-origin" });
@@ -32,6 +33,11 @@ function ProfileSettingsMain() {
     const eJ = await eRes.json();
     const list = (eJ.entries ?? []) as { day_number: number; tier: string }[];
     setEntries(list.map((e) => ({ day_number: e.day_number, tier: e.tier })));
+    setBreakDays(
+      Array.isArray(eJ.break_days)
+        ? (eJ.break_days as unknown[]).map((n) => Number(n)).filter((n) => n > 0)
+        : [],
+    );
   }, []);
 
   useEffect(() => {
@@ -164,7 +170,7 @@ function ProfileSettingsMain() {
         showBreaks={showBreaks}
       />
 
-      <ExecutionGrid entries={entries} />
+      <ExecutionGrid entries={entries} breakDays={breakDays} />
 
       <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />
     </div>

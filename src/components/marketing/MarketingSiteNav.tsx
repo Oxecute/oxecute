@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type Page = "landing" | "login";
 
 /**
- * Shared top nav: wordmark or icon (never both), mid anchors, auth CTAs.
+ * Shared top nav: brand icon, mid anchors, auth CTAs.
  * On `/login`, Log in is primary; on landing, Sign up is primary on large screens.
  */
 export function MarketingSiteNav({ page }: { page: Page }) {
@@ -19,7 +19,7 @@ export function MarketingSiteNav({ page }: { page: Page }) {
       const nav = navRef.current;
       if (!nav) return;
       nav.style.background =
-        window.scrollY > 30 ? "rgba(8,9,16,0.96)" : "rgba(8,9,16,0.8)";
+        window.scrollY > 30 ? "rgba(24,27,36,0.96)" : "rgba(24,27,36,0.88)";
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -35,20 +35,12 @@ export function MarketingSiteNav({ page }: { page: Page }) {
 
   return (
     <>
-      <nav ref={navRef} style={{ background: "rgba(8, 9, 16, 0.8)" }}>
+      <nav ref={navRef} style={{ background: "rgba(24, 27, 36, 0.88)" }}>
         <Link href="/" className="ei-logo-link" aria-label="Oxecute home">
-          <img
-            src="/brand/logo-wordmark.svg"
-            alt=""
-            className="hidden h-[38px] w-auto md:block"
-            width={168}
-            height={38}
-            decoding="async"
-          />
           <img
             src="/brand/logo-icon.svg"
             alt=""
-            className="h-11 w-11 md:hidden"
+            className="h-10 w-10 md:h-11 md:w-11"
             width={44}
             height={44}
             decoding="async"

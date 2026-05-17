@@ -21,32 +21,53 @@ function formatVotes(n: number): string {
   return String(n);
 }
 
+function normStatus(status: string): string {
+  return status.toLowerCase().replace(/\s+/g, "_");
+}
+
 function statusStyle(status: string): { label: string; dot: string; box: string } {
-  const s = status.toLowerCase().replace(/\s+/g, "_");
+  const s = normStatus(status);
   if (s.includes("progress"))
     return {
       label: status.replace(/_/g, " "),
-      dot: "bg-violet-500",
-      box: "border-violet-400/50 text-violet-700 dark:text-violet-200 bg-violet-500/10",
+      dot: "bg-[#0EA472]",
+      box: "border-[rgba(14,164,114,0.5)] text-[#6ee7b7] bg-[rgba(14,164,114,0.12)]",
     };
   if (s.includes("review"))
     return {
       label: status.replace(/_/g, " "),
-      dot: "bg-orange-500",
-      box: "border-orange-400/50 text-orange-800 dark:text-orange-200 bg-orange-500/10",
+      dot: "bg-[#fb923c]",
+      box: "border-[rgba(251,146,60,0.55)] text-[#fed7aa] bg-[rgba(251,146,60,0.14)]",
     };
   if (s.includes("pending") || s.includes("planned"))
     return {
       label: status.replace(/_/g, " "),
-      dot: "bg-amber-400",
-      box: "border-amber-500/40 text-amber-900 dark:text-amber-100 bg-amber-500/10",
+      dot: "bg-[#7C64DC]",
+      box: "border-[rgba(124,100,220,0.55)] text-[#ddd6fe] bg-[rgba(124,100,220,0.16)]",
     };
   return {
     label: status.replace(/_/g, " "),
-    dot: "bg-[var(--t3)]",
-    box: "border-[var(--bdr)] text-[var(--t2)] bg-[var(--sur2)]",
+    dot: "bg-[#5E6580]",
+    box: "border-[rgba(255,255,255,0.12)] text-[#EAEFF8] bg-[rgba(255,255,255,0.06)]",
   };
 }
+
+/** Active tab styles for status filters (dark UI only; distinct from "All"). */
+function statusFilterSelectedClass(status: string): string {
+  const s = normStatus(status);
+  if (s.includes("review"))
+    return "border-[#fb923c] text-[#ffedd5] bg-[rgba(251,146,60,0.22)] shadow-[inset_0_0_0_1px_rgba(251,146,60,0.35)]";
+  if (s.includes("planned") || s.includes("pending"))
+    return "border-[#7C64DC] text-[#ede9fe] bg-[rgba(124,100,220,0.28)] shadow-[inset_0_0_0_1px_rgba(124,100,220,0.4)]";
+  if (s.includes("progress"))
+    return "border-[#0EA472] text-[#ccfbf1] bg-[rgba(14,164,114,0.22)] shadow-[inset_0_0_0_1px_rgba(14,164,114,0.35)]";
+  return "border-[#4F46E5] text-white bg-[#4F46E5] shadow-[0_4px_14px_rgba(79,70,229,0.35)]";
+}
+
+const FILTER_BASE =
+  "rounded-full px-3 py-1.5 border text-xs font-medium capitalize transition-colors";
+const FILTER_IDLE =
+  "border-[rgba(255,255,255,0.12)] text-[#EAEFF8] bg-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.08)]";
 
 function initialsFromLabel(label: string): string {
   const parts = label.replace(/^Day\s+\d+\s+·\s+@/, "").trim().split(/\s+/);
@@ -117,10 +138,10 @@ function BoardMain() {
       <div className="flex flex-wrap gap-2 text-sm">
         <button
           type="button"
-          className={`rounded-full px-3 py-1.5 border text-xs font-medium transition-colors ${
+          className={`${FILTER_BASE} ${
             tab === "all"
-              ? "border-[var(--p)] text-[var(--p)] bg-[var(--sur2)]"
-              : "border-[var(--bdr)] text-[var(--t2)] hover:border-[var(--bdr2)]"
+              ? "border-[#0EA472] bg-[#0EA472] text-white font-semibold shadow-[0_4px_14px_rgba(14,164,114,0.3)]"
+              : FILTER_IDLE
           }`}
           onClick={() => setTab("all")}
         >
@@ -130,11 +151,7 @@ function BoardMain() {
           <button
             type="button"
             key={s}
-            className={`rounded-full px-3 py-1.5 border text-xs font-medium capitalize transition-colors ${
-              tab === s
-                ? "border-[var(--p)] text-[var(--p)] bg-[var(--sur2)]"
-                : "border-[var(--bdr)] text-[var(--t2)] hover:border-[var(--bdr2)]"
-            }`}
+            className={`${FILTER_BASE} ${tab === s ? statusFilterSelectedClass(s) : FILTER_IDLE}`}
             onClick={() => setTab(s)}
           >
             {s.replace(/_/g, " ")}

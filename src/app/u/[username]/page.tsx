@@ -5,6 +5,7 @@ import {
   ProfileHeader,
   ShareCardLocked,
 } from "@/components/profile/ProfileSections";
+import { mergeBreakDayNumbers } from "@/lib/break-days";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import type { Metadata } from "next";
 
@@ -39,11 +40,23 @@ export default async function PublicProfilePage(props: {
     );
   }
 
-  const { data: entries } = await admin
-    .from("entries")
-    .select("day_number, tier")
-    .eq("user_id", user.id)
-    .order("day_number", { ascending: true });
+  const [{ data: entries }, { data: breakRows }, { data: breakNotifs }] = await Promise.all([
+    admin
+      .from("entries")
+      .select("day_number, tier")
+      .eq("user_id", user.id)
+      .order("day_number", { ascending: true }),
+    admin.from("break_marks").select("day_number").eq("user_id", user.id),
+    admin
+      .from("notifications")
+      .select("title")
+      .eq("user_id", user.id)
+      .ilike("title", "Break mark written%"),
+  ]);
+
+  const showBreaksPublic = Boolean(user.show_breaks ?? true);
+
+  const breakDaysPublic = showBreaksPublic ? mergeBreakDayNumbers(breakRows, breakNotifs) : [];
 
   const exec = Number(user.execution_count ?? 0);
   const badges = [
@@ -72,7 +85,7 @@ export default async function PublicProfilePage(props: {
           <ExecutionStats
             executionCount={exec}
             breakCount={Number(user.break_count ?? 0)}
-            showBreaks={Boolean(user.show_breaks)}
+            showBreaks={showBreaksPublic}
           />
 
           {showSignal ? (
@@ -88,6 +101,7 @@ export default async function PublicProfilePage(props: {
               day_number: e.day_number,
               tier: e.tier,
             }))}
+            breakDays={breakDaysPublic}
           />
 
           <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />

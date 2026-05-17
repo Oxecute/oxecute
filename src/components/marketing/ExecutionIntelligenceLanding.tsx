@@ -45,13 +45,13 @@ const IRC_GRID_TYPES = [
 ] as const;
 
 const IRC_COLORS: Record<string, string> = {
-  build: "rgba(99,102,241,0.7)",
-  strategy: "rgba(139,92,246,0.65)",
-  external: "rgba(16,185,129,0.7)",
-  audit: "rgba(245,158,11,0.7)",
-  spec: "rgba(99,102,241,0.35)",
+  build: "rgba(79,70,229,0.7)",
+  strategy: "rgba(124,100,220,0.65)",
+  external: "rgba(14,164,114,0.7)",
+  audit: "rgba(194,164,120,0.7)",
+  spec: "rgba(79,70,229,0.35)",
   break: "rgba(255,255,255,0.04)",
-  launch: "linear-gradient(135deg,#10B981,#6366F1)",
+  launch: "linear-gradient(135deg,#0EA472,#4F46E5)",
 };
 
 /** FAQ copy matches v2 HTML reference (Onboarding & Landing brief). */
@@ -370,8 +370,8 @@ export function ExecutionIntelligenceLanding() {
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              background: "rgba(99,102,241,0.14)",
-                              color: "#818CF8",
+                              background: "rgba(79,70,229,0.14)",
+                              color: "#A5B4FC",
                               flexShrink: 0,
                             }}
                           >
@@ -497,8 +497,8 @@ export function ExecutionIntelligenceLanding() {
                             />
                             <defs>
                               <linearGradient id="ei-rg" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#6366F1" />
-                                <stop offset="100%" stopColor="#8B5CF6" />
+                                <stop offset="0%" stopColor="#4F46E5" />
+                                <stop offset="100%" stopColor="#7C64DC" />
                               </linearGradient>
                             </defs>
                           </svg>
@@ -515,7 +515,7 @@ export function ExecutionIntelligenceLanding() {
                                   className="bar-fill"
                                   style={{
                                     width: "78%",
-                                    background: "linear-gradient(90deg,#6366F1,#8B5CF6)",
+                                    background: "linear-gradient(90deg,#4F46E5,#7C64DC)",
                                   }}
                                 />
                               </div>
@@ -808,7 +808,7 @@ export function ExecutionIntelligenceLanding() {
 
       <footer>
         <Link href="/" className="ei-footer-logo" aria-label="Oxecute home">
-          <img src="/brand/logo-wordmark.svg" alt="" width={120} height={22} decoding="async" />
+          <img src="/brand/logo-icon.svg" alt="" width={44} height={44} decoding="async" />
         </Link>
         <div className="f-links">
           <a className="f-link" href="#hiw">
@@ -857,7 +857,7 @@ function InvRecordGrid() {
           <div
             className="irc-sv"
             style={{
-              background: "linear-gradient(135deg,#A5B4FC,#818CF8)",
+              background: "linear-gradient(135deg,#A5B4FC,#4F46E5)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -898,8 +898,8 @@ function InvRecordGrid() {
         <svg width="100%" height="54" viewBox="0 0 480 54" preserveAspectRatio="none">
           <defs>
             <linearGradient id="ei-cg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366F1" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
+              <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#4F46E5" stopOpacity="0" />
             </linearGradient>
           </defs>
           <path
@@ -909,12 +909,12 @@ function InvRecordGrid() {
           <path
             d="M0,42 L60,36 L120,30 L180,38 L240,18 L300,22 L360,10 L420,6 L480,4"
             fill="none"
-            stroke="#818CF8"
+            stroke="#A5B4FC"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <circle cx="480" cy="4" r="3.5" fill="#818CF8" />
+          <circle cx="480" cy="4" r="3.5" fill="#A5B4FC" />
         </svg>
         <div className="irc-chart-weeks">
           {["Mar", "Apr W1", "Apr W2", "Apr W3", "Apr W4", "May W1", "May W2", "Now"].map((w) => (
@@ -953,7 +953,7 @@ function InvRecordGrid() {
           <div className="iev-tag">logged</div>
         </div>
         <div className="iev" style={{ marginTop: 6 }}>
-          <div className="iev-ico" style={{ background: "rgba(99,102,241,0.14)", color: "#818CF8" }}>
+          <div className="iev-ico" style={{ background: "rgba(79,70,229,0.14)", color: "#A5B4FC" }}>
             $
           </div>
           <div className="iev-txt">3 revenue events · Builder plan</div>

@@ -2,46 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Oxecute UI.pdf — strict tokens (dark product shell).
+ * Page bg #111318 · App #13151C · Nav #181B24 · Card #1C1F2A · borders/text per brief.
+ */
 :root {
-  --p: #010261;
-  --p2: #0d1480;
-  --ca: #ccccdf;
-  --na: #343581;
-  --mi: #00000a;
-  --wa: #33333b;
-  --fw: #fbfeff;
-  --ac: #def408;
-  --bg: #f2f2f8;
-  --sur: #ffffff;
-  --sur2: #ebebf4;
-  --bdr: rgba(1, 2, 97, 0.09);
-  --bdr2: rgba(1, 2, 97, 0.16);
-  --t1: #0a0a1a;
-  --t2: #5a5a7a;
-  --t3: #9898b8;
-  --green: #16a34a;
-  --orange: #ea580c;
-  --red: #dc2626;
-  --purple: #7c3aed;
-}
+  color-scheme: dark;
+  --page-bg: #111318;
+  --shell-bg: #13151c;
+  --nav-surface: #181b24;
+  --card-bg: #1c1f2a;
+  --card-hover: #20232f;
+  --border: rgba(255, 255, 255, 0.055);
+  --border-md: rgba(255, 255, 255, 0.09);
+  --text: #eaeff8;
+  --text-muted: #5e6580;
+  --text-hint: #2e3347;
+  --indigo: #4f46e5;
+  --teal: #0ea472;
+  --amber: #c2a478;
+  --purple: #7c64dc;
+  --brand-red: #e24b4a;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #08080f;
-    --sur: #0f0f1a;
-    --sur2: #1a1a2a;
-    --bdr: rgba(204, 204, 223, 0.08);
-    --bdr2: rgba(204, 204, 223, 0.16);
-    --t1: #fbfeff;
-    --t2: #a0a0c0;
-    --t3: #6a6a8a;
-  }
+  /* Legacy names used across components */
+  --bg: var(--page-bg);
+  --sur: var(--card-bg);
+  --sur2: var(--nav-surface);
+  --bdr: var(--border);
+  --bdr2: var(--border-md);
+  --t1: var(--text);
+  --t2: var(--text-muted);
+  --t3: var(--text-hint);
+  --p: var(--indigo);
+  --p2: #4338ca;
+  --ca: #a5b4fc;
+  --na: #4338ca;
+  --mi: #08080f;
+  --wa: var(--text-muted);
+  --fw: #ffffff;
+  --ac: var(--teal);
+  --green: var(--teal);
+  --orange: var(--amber);
+  --red: var(--brand-red);
 }
 
 body {
-  font-family: var(--font-urbanist), sans-serif;
+  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+  font-weight: 400;
   background: var(--bg);
   color: var(--t1);
+}
+
+/* Always use dark themed scrollbars / form baselines in supporting browsers. */
+html.dark {
+  color-scheme: dark;
 }
 
 /* Native form controls often ignore inherited color; keep text readable on themed surfaces. */
@@ -49,39 +63,38 @@ input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 select {
   color: var(--t1);
-  background-color: var(--sur2);
+  background-color: var(--sur);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(204, 204, 223, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-md);
   backdrop-filter: blur(12px);
 }
 
 /**
- * Onboarding (start flow) is always dark per brief. Browsers often force light form
- * foreground/background when prefers-color-scheme: light — this keeps fields readable.
+ * Onboarding (start flow) uses PDF page bg. DM Sans for body per brief.
  */
 [data-onboarding-surface="true"] {
   color-scheme: dark;
-  background-color: #000000;
+  background-color: var(--page-bg);
 }
 
 [data-onboarding-surface="true"] .glass-card {
   background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-md);
 }
 
 [data-onboarding-surface="true"] input:not([type="checkbox"]):not([type="radio"]),
 [data-onboarding-surface="true"] textarea,
 [data-onboarding-surface="true"] select {
-  color: var(--fw);
-  background-color: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  background-color: var(--card-bg);
 }
 
 [data-onboarding-surface="true"] select option {
-  background-color: var(--mi);
-  color: var(--fw);
+  background-color: var(--shell-bg);
+  color: var(--text);
 }
 
 /* Scroll areas: keep overflow scroll without showing a track (WebKit + Firefox). */
@@ -103,13 +116,18 @@ select {
   font-family: var(--font-dm-sans), "DM Sans", sans-serif;
 }
 
+/* Urbanist: headings, titles, stats, logo only (PDF). */
+.font-urbanist-heading {
+  font-family: var(--font-urbanist), "Urbanist", sans-serif;
+}
+
 @keyframes pulse-ring {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(222, 244, 8, 0.35);
+    box-shadow: 0 0 0 0 rgba(14, 164, 114, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(222, 244, 8, 0);
+    box-shadow: 0 0 0 6px rgba(14, 164, 114, 0);
   }
 }
 

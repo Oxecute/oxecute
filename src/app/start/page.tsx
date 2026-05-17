@@ -1186,7 +1186,7 @@ export default function StartPage() {
       data-onboarding-surface="true"
       className={
         useFlowChrome
-          ? "ei-root min-h-screen bg-[#080910] text-[#EEEEF2] flex flex-col"
+          ? "ei-root min-h-screen bg-[#111318] text-[#EAEFF8] flex flex-col"
           : "min-h-screen bg-black text-[var(--fw)] px-4 py-10 max-w-lg mx-auto"
       }
     >
@@ -1205,7 +1205,7 @@ export default function StartPage() {
             conexaSubtitle={conexaSectionSubtitle(step)}
           />
 
-          <div className="flex flex-1 flex-col min-w-0 min-h-0 bg-[#080910]">
+          <div className="flex flex-1 flex-col min-w-0 min-h-0 bg-[#111318]">
             <MobileStepPills phase={onboardingFlowPhase(step)} />
 
             <div className="flex-1 min-h-0 overflow-y-auto w-full">
@@ -1213,16 +1213,16 @@ export default function StartPage() {
               <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
                 <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
                   <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
                       {hasAuthSession ? "Account" : "Identity"}
                     </p>
                     <h1
-                      className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] mb-2"
+                      className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em] mb-2"
                       style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                     >
                       {hasAuthSession ? "Finish your profile" : "Create your account"}
                     </h1>
-                    <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+                    <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
                       {hasAuthSession
                         ? "Add the details below so we can create your Oxecute profile."
                         : "Your startup, then Conexa calibration through your first proof."}
@@ -1230,28 +1230,28 @@ export default function StartPage() {
                   </div>
                   <div className="px-6 md:px-8 py-7 space-y-4">
                     {hasAuthSession ? (
-                      <p className="text-[13px] text-[#9194AB]">
+                      <p className="text-[13px] text-[#5E6580]">
                         You&apos;re signed in. Complete your profile to continue.
                       </p>
                     ) : null}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">
+                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">
                           First name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                           placeholder="First name"
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">
+                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">
                           Last name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                           placeholder="Last name"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
@@ -1259,9 +1259,9 @@ export default function StartPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Email</label>
+                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Email</label>
                       <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] disabled:opacity-60"
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 disabled:opacity-60"
                         placeholder="you@company.com"
                         type="email"
                         value={email}
@@ -1271,9 +1271,9 @@ export default function StartPage() {
                     </div>
                     {!hasAuthSession ? (
                       <div>
-                        <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Password</label>
+                        <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Password</label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                           placeholder="••••••••"
                           type="password"
                           value={password}
@@ -1282,25 +1282,25 @@ export default function StartPage() {
                       </div>
                     ) : null}
                     <div>
-                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Country</label>
+                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Country</label>
                       <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                         placeholder="Country"
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-[#9194AB] mb-1.5">Startup name</label>
+                      <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Startup name</label>
                       <input
-                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                        className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                         placeholder="e.g. Oxecute"
                         value={startupName}
                         onChange={(e) => setStartupName(e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-[#9194AB] mb-2">How did you find us?</label>
+                      <label className="block text-[11px] font-medium text-[#5E6580] mb-2">How did you find us?</label>
                       <div className="flex flex-wrap gap-2">
                         {FOUND_US.map((f) => (
                           <button
@@ -1308,8 +1308,8 @@ export default function StartPage() {
                             type="button"
                             className={`text-xs px-3 py-2 rounded-full border transition-colors ${
                               foundUs === f
-                                ? "border-[rgba(99,102,241,0.45)] bg-[rgba(99,102,241,0.08)] text-[#EEEEF2]"
-                                : "border-white/[0.11] text-[#9194AB] hover:border-white/20"
+                                ? "border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.1)] text-[#EAEFF8]"
+                                : "border-white/[0.11] text-[#5E6580] hover:border-white/20"
                             }`}
                             onClick={() => setFoundUs(f)}
                           >
@@ -1323,7 +1323,7 @@ export default function StartPage() {
                       type="button"
                       disabled={busy}
                       onClick={runIdentity}
-                      className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50 transition-all"
+                      className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-50 transition-all"
                     >
                       Continue
                     </button>
@@ -1331,7 +1331,7 @@ export default function StartPage() {
                       <>
                         <div className="flex items-center gap-3 py-1">
                           <div className="h-px flex-1 bg-white/[0.08]" />
-                          <span className="text-[11px] text-[#52556A]">or</span>
+                          <span className="text-[11px] text-[#2E3347]">or</span>
                           <div className="h-px flex-1 bg-white/[0.08]" />
                         </div>
                         <button
@@ -1345,8 +1345,8 @@ export default function StartPage() {
                         </button>
                       </>
                     ) : (
-                      <p className="text-center text-xs text-[#52556A]">
-                        <button type="button" onClick={() => void signOutAndReset()} className="text-[#818CF8] underline">
+                      <p className="text-center text-xs text-[#2E3347]">
+                        <button type="button" onClick={() => void signOutAndReset()} className="text-[#4F46E5] underline">
                           Use a different account
                         </button>
                       </p>
@@ -1355,15 +1355,15 @@ export default function StartPage() {
                 </div>
                 <div className="w-full max-w-[560px] mt-6 space-y-4">
                   <AuthMobileHelp afterResetPath="/start" />
-                  <p className="text-[13px] text-center text-[#9194AB]">
+                  <p className="text-[13px] text-center text-[#5E6580]">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-[#818CF8] underline">
+                    <Link href="/login" className="text-[#4F46E5] underline">
                       Sign in
                     </Link>
                     {!hasAuthSession ? (
                       <>
                         {" · "}
-                        <Link href="/auth/forgot-password" className="text-[#818CF8] underline">
+                        <Link href="/auth/forgot-password" className="text-[#4F46E5] underline">
                           Forgot password
                         </Link>
                       </>
@@ -1372,7 +1372,7 @@ export default function StartPage() {
                   <div className="flex justify-center">
                     <Link
                       href="/"
-                      className="text-[13px] text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
+                      className="text-[13px] text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
                     >
                       ← Back to site
                     </Link>
@@ -1385,16 +1385,16 @@ export default function StartPage() {
                 <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
                   <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
                     <header className="space-y-3 border-b border-white/[0.06] pb-6">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] font-dm">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] font-dm">
                         Tell us about your startup
                       </p>
                       <h1
-                        className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] font-urbanist leading-tight"
+                        className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em] font-urbanist leading-tight"
                         style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                       >
                         What are you building?
                       </h1>
-                      <p className="text-[13px] font-light text-[#9194AB] font-dm leading-relaxed">
+                      <p className="text-[13px] font-light text-[#5E6580] font-dm leading-relaxed">
                         Three quick questions. No pitch required. Conexa uses this to give you
                         something real, not generic advice.
                       </p>
@@ -1402,7 +1402,7 @@ export default function StartPage() {
 
                     <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#7C3AED] transition-[width] duration-300 ease-in-out"
+                        className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#4338ca] transition-[width] duration-300 ease-in-out"
                         style={{
                           width: `${
                             (Number(Boolean(startupName.trim())) +
@@ -1424,22 +1424,22 @@ export default function StartPage() {
 
                     <div className="space-y-5">
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
                           Startup name
                         </label>
                         <input
-                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]"
+                          className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                           placeholder="e.g. Oxecute"
                           value={startupName}
                           onChange={(e) => setStartupName(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
                           What are you building and who is it for?
                         </label>
                         <textarea
-                          className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A] ${
+                          className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347] ${
                             description.trim().length > 0 &&
                             (description.trim().length < 50 ||
                               description.trim().length > 500)
@@ -1464,12 +1464,12 @@ export default function StartPage() {
                             50–500 characters required.
                           </p>
                         ) : null}
-                        <p className="text-[11px] font-dm text-[#52556A] mt-1">
+                        <p className="text-[11px] font-dm text-[#2E3347] mt-1">
                           {description.length}/500
                         </p>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-2">
+                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-2">
                           What stage are you at?
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1485,16 +1485,16 @@ export default function StartPage() {
                                 }}
                                 className={`rounded-[10px] border px-3 py-3 text-left transition font-dm ${
                                   sel
-                                    ? "border-[rgba(99,102,241,0.45)] bg-[rgba(99,102,241,0.08)] text-[#EEEEF2]"
-                                    : "border-white/[0.11] bg-white/[0.02] text-[#9194AB] hover:border-white/20"
+                                    ? "border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.1)] text-[#EAEFF8]"
+                                    : "border-white/[0.11] bg-white/[0.02] text-[#5E6580] hover:border-white/20"
                                 }`}
                               >
                                 <div
-                                  className={`text-[13px] font-medium ${sel ? "text-[#EEEEF2]" : "text-[#9194AB]"}`}
+                                  className={`text-[13px] font-medium ${sel ? "text-[#EAEFF8]" : "text-[#5E6580]"}`}
                                 >
                                   {t.title}
                                 </div>
-                                <div className="text-[10px] text-[#52556A] mt-0.5">
+                                <div className="text-[10px] text-[#2E3347] mt-0.5">
                                   {t.sub}
                                 </div>
                               </button>
@@ -1503,11 +1503,11 @@ export default function StartPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium font-dm text-[#9194AB] mb-1.5">
+                        <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
                           What&apos;s your biggest blocker right now?
                         </label>
                         <textarea
-                          className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)] placeholder:text-[#52556A]"
+                          className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347]"
                           placeholder="Be honest. Conexa reads this literally."
                           value={blocker}
                           onChange={(e) => setBlocker(e.target.value)}
@@ -1521,22 +1521,22 @@ export default function StartPage() {
                         if (!startupStepReady) return;
                         void trySaveContext();
                       }}
-                      className={`startup-next-btn mt-2 w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold font-dm text-white relative overflow-hidden transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#6366F1] to-[#7C3AED] ${
+                      className={`startup-next-btn mt-2 w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold font-dm text-white relative overflow-hidden transition-all duration-200 flex items-center justify-center gap-2 bg-[#0EA472] ${
                         startupStepReady
-                          ? "ready opacity-100 cursor-pointer shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+                          ? "ready opacity-100 cursor-pointer shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)]"
                           : "opacity-45 cursor-not-allowed"
                       }`}
                     >
                       Next — Conexa calibration
                     </button>
-                    <p className="text-[11px] font-dm text-[#52556A] text-center">
+                    <p className="text-[11px] font-dm text-[#2E3347] text-center">
                       No account yet. You see your report first.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => router.push("/")}
-                    className="mt-6 text-[13px] font-dm text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                    className="mt-6 text-[13px] font-dm text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
                   >
                     ← Back to site
                   </button>
@@ -1549,16 +1549,16 @@ export default function StartPage() {
                       <div className="flex min-h-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-8 md:pb-10">
                         <div className="w-full max-w-[560px] md:mx-auto shrink-0 space-y-6">
                           <header className="space-y-3 pb-6">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] font-dm">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] font-dm">
                               Conexa calibration
                             </p>
                             <h1
-                              className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em] font-urbanist leading-tight"
+                              className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em] font-urbanist leading-tight"
                               style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                             >
                               Three honest answers.
                             </h1>
-                            <p className="text-[13px] font-light text-[#9194AB] font-dm leading-relaxed">
+                            <p className="text-[13px] font-light text-[#5E6580] font-dm leading-relaxed">
                               Conexa reads these literally. The more specific you are, the sharper your
                               report. Don&apos;t perform — this isn&apos;t a pitch.
                             </p>
@@ -1566,7 +1566,7 @@ export default function StartPage() {
 
                           <div className="h-1 w-full max-w-full rounded-full bg-white/[0.06] overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#7C3AED] transition-[width] duration-300 ease-in-out"
+                              className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#4338ca] transition-[width] duration-300 ease-in-out"
                               style={{
                                 width: `${
                                   (CALIBRATION_STEPS.filter(
@@ -1579,7 +1579,7 @@ export default function StartPage() {
                             />
                           </div>
 
-                          <p className="text-[11px] font-dm text-[#52556A]">
+                          <p className="text-[11px] font-dm text-[#2E3347]">
                             Move through in order. Each answer needs at least {CAL_MIN_SUBMIT_CHARS}{" "}
                             characters before you can generate your report.
                           </p>
@@ -1619,17 +1619,17 @@ export default function StartPage() {
                               if (!calibrationAnswersComplete) return;
                               void submitCalibrationReport();
                             }}
-                            className={`calibration-submit-btn mt-2 w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#6366F1] to-[#7C3AED] ${
+                            className={`calibration-submit-btn mt-2 w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 bg-[#0EA472] ${
                               calibrationAnswersComplete
-                                ? "ready opacity-100 cursor-pointer shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+                                ? "ready opacity-100 cursor-pointer shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)]"
                                 : "opacity-45 cursor-not-allowed"
                             }`}
                           >
                             Generate my Conexa report
                           </button>
 
-                          <p className="text-[11px] font-dm text-[#52556A] pt-2">
-                            <strong className="text-[#EEEEF2] font-semibold">
+                          <p className="text-[11px] font-dm text-[#2E3347] pt-2">
+                            <strong className="text-[#EAEFF8] font-semibold">
                               Your answers are private.
                             </strong>{" "}
                             Conexa uses them to generate your Day 0 report.
@@ -1639,7 +1639,7 @@ export default function StartPage() {
                         <button
                           type="button"
                           onClick={() => setStep(3)}
-                          className="mt-6 text-[13px] font-dm text-[#9194AB] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
+                          className="mt-6 text-[13px] font-dm text-[#5E6580] border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
                         >
                           ← Back
                         </button>
@@ -1656,11 +1656,11 @@ export default function StartPage() {
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
             <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
                   Synthesis
                 </p>
                 <h1
-                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
                   style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                 >
                   Your calibration read
@@ -1670,9 +1670,9 @@ export default function StartPage() {
           {synthLoading ? (
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center space-y-3">
               <div className="flex justify-center">
-                <span className="inline-block h-8 w-8 rounded-full border-2 border-[#6366F1] border-t-transparent animate-spin" />
+                <span className="inline-block h-8 w-8 rounded-full border-2 border-[#4F46E5] border-t-transparent animate-spin" />
               </div>
-              <p className="text-sm text-[#9194AB]">
+              <p className="text-sm text-[#5E6580]">
                 Generating your synthesis from your calibration answers… This usually takes a few seconds.
               </p>
             </div>
@@ -1684,7 +1684,7 @@ export default function StartPage() {
                   <div key={i} className="border border-white/[0.08] rounded-lg bg-white/[0.02] overflow-hidden">
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-semibold text-[#EEEEF2] hover:bg-white/[0.04]"
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-semibold text-[#EAEFF8] hover:bg-white/[0.04]"
                       onClick={() =>
                         setSynthCollapsed((prev) => ({
                           ...prev,
@@ -1695,12 +1695,12 @@ export default function StartPage() {
                       <span>
                         Insight {i + 1} of {Math.max(synthesis.length, 1)}
                       </span>
-                      <span className="text-xs font-medium text-[#818CF8] shrink-0">
+                      <span className="text-xs font-medium text-[#4F46E5] shrink-0">
                         {collapsed ? "Show" : "Hide"}
                       </span>
                     </button>
                     {!collapsed ? (
-                      <p className="text-sm text-[#9194AB] px-3 pb-3 whitespace-pre-wrap break-words">
+                      <p className="text-sm text-[#5E6580] px-3 pb-3 whitespace-pre-wrap break-words">
                         {s}
                       </p>
                     ) : null}
@@ -1717,7 +1717,7 @@ export default function StartPage() {
               synthShown < synthesis.length
             }
             onClick={() => void confirmSynthesis()}
-            className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50 transition-all"
+            className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-50 transition-all"
           >
             Yes, continue
           </button>
@@ -1725,11 +1725,11 @@ export default function StartPage() {
             type="button"
             disabled={synthesis.length === 0 || synthShown < synthesis.length}
             onClick={editCalibrationFromSynthesis}
-            className="w-full min-h-[48px] rounded-[11px] border border-white/[0.11] text-[#9194AB] font-medium hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
+            className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-[#5E6580] font-medium hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
           >
             Edit my answers
           </button>
-          <p className="text-[11px] text-center text-[#52556A]">
+          <p className="text-[11px] text-center text-[#2E3347]">
             You&apos;ll return to the three Conexa calibration questions, then see a fresh synthesis.
           </p>
               </div>
@@ -1740,12 +1740,12 @@ export default function StartPage() {
             {step === 7 && !activation && (
               <div className="flex min-h-full w-full flex-col items-center justify-center py-16 px-4">
             <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] px-8 py-12 text-center">
-              <p className="text-[10px] font-semibold tracking-[0.13em] uppercase text-[#818CF8] mb-3">
+              <p className="text-[10px] font-semibold tracking-[0.13em] uppercase text-[#4F46E5] mb-3">
                 Conexa
               </p>
-              <p className="text-[15px] text-[#9194AB]">Preparing your execution read…</p>
+              <p className="text-[15px] text-[#5E6580]">Preparing your execution read…</p>
               <div className="flex justify-center py-8">
-                <span className="inline-block h-10 w-10 rounded-full border-2 border-[#6366F1] border-t-transparent animate-spin" />
+                <span className="inline-block h-10 w-10 rounded-full border-2 border-[#4F46E5] border-t-transparent animate-spin" />
               </div>
             </div>
           </div>
@@ -1755,16 +1755,16 @@ export default function StartPage() {
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
             <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5] mb-2">
                   Conexa · Execution intelligence
                 </p>
                 <h1
-                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
                   style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                 >
                   Your Day 0 read
                 </h1>
-                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed mt-2">
+                <p className="text-[13px] font-light text-[#5E6580] leading-relaxed mt-2">
                   Six tabs unlock as they&apos;re revealed.
                 </p>
               </div>
@@ -1790,13 +1790,13 @@ export default function StartPage() {
                       setActCollapsed((prev) => ({ ...prev, [i]: !collapsed }))
                     }
                   >
-                    <span className="font-semibold text-[#818CF8]">{t}</span>
-                    <span className="text-xs font-medium text-[#818CF8] shrink-0">
+                    <span className="font-semibold text-[#4F46E5]">{t}</span>
+                    <span className="text-xs font-medium text-[#4F46E5] shrink-0">
                       {collapsed ? "Show" : "Hide"}
                     </span>
                   </button>
                   {!collapsed ? (
-                    <p className="text-[#9194AB] px-3 pb-3 whitespace-pre-wrap break-words">
+                    <p className="text-[#5E6580] px-3 pb-3 whitespace-pre-wrap break-words">
                       {String(b ?? "")}
                     </p>
                   ) : null}
@@ -1806,22 +1806,22 @@ export default function StartPage() {
           </div>
           {actShown >= 6 && (
             <>
-              <p className="text-sm text-[#EEEEF2]">{activation.personal_insight}</p>
+              <p className="text-sm text-[#EAEFF8]">{activation.personal_insight}</p>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void editCalibrationFromActivation()}
-                className="w-full min-h-[48px] rounded-[11px] border border-white/[0.11] text-[#9194AB] font-medium hover:bg-white/[0.04] disabled:opacity-50"
+                className="w-full min-h-[48px] rounded-[10px] border border-white/[0.11] text-[#5E6580] font-medium hover:bg-white/[0.04] disabled:opacity-50"
               >
                 Edit Conexa calibration answers
               </button>
-              <p className="text-[11px] text-[#52556A]">
+              <p className="text-[11px] text-[#2E3347]">
                 Reopens the three questions, then synthesis, and this Conexa read runs again with your updates.
               </p>
               <button
                 type="button"
                 onClick={persistActivationAndGo}
-                className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)]"
+                className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)]"
               >
                 Start my record
               </button>
@@ -1836,16 +1836,16 @@ export default function StartPage() {
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
             <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5]">
                   First entry
                 </p>
                 <h1
-                  className="text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                  className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
                   style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                 >
                   Submit your first proof.
                 </h1>
-                <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+                <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
                   Your record starts the moment you submit. Choose your path.
                 </p>
               </div>
@@ -2091,7 +2091,7 @@ export default function StartPage() {
                   uploadContext.trim().length > 140))
             }
             onClick={() => void submitFirst()}
-            className="w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Start My record
           </button>

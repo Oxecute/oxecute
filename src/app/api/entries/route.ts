@@ -1,3 +1,4 @@
+import { mergeBreakDayNumbers } from "@/lib/break-days";
 import { getAcknowledgment } from "@/lib/conexa/acknowledgments";
 import { sha256Hex } from "@/lib/crypto";
 import { executionDayNumber, utcTodayISO } from "@/lib/dates";
@@ -69,16 +70,7 @@ export async function GET() {
       .eq("user_id", user.id)
       .ilike("title", "Break mark written%"),
   ]);
-  const fromMarks = (breakRows ?? [])
-    .map((r: { day_number: number }) => Number(r.day_number))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  const fromTitles = (breakNotifs ?? [])
-    .map((row: { title: string | null }) => {
-      const m = /Break mark written\s*-\s*Day\s*(\d+)/i.exec(String(row.title ?? ""));
-      return m ? Number(m[1]) : NaN;
-    })
-    .filter((n) => Number.isFinite(n) && n > 0);
-  const break_days = [...new Set([...fromMarks, ...fromTitles])];
+  const break_days = mergeBreakDayNumbers(breakRows, breakNotifs);
   return NextResponse.json({ entries: data ?? [], break_days });
 }
 

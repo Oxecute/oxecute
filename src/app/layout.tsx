@@ -5,7 +5,7 @@ import "./globals.css";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#080910",
+  themeColor: "#111318",
 };
 
 const urbanist = Urbanist({
@@ -27,6 +27,10 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Oxecute",
   description: "Execution is the credential.",
+  icons: {
+    icon: [{ url: "/brand/logo-icon.svg", type: "image/svg+xml" }],
+    apple: "/brand/logo-icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -35,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${urbanist.variable} ${dmSans.variable} font-sans antialiased`}>
         {children}
       </body>

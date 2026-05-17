@@ -69,7 +69,7 @@ function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const ENTRY_LOCK_BUTTON =
-  "w-full min-h-[48px] rounded-[11px] text-[14px] font-semibold text-white bg-gradient-to-br from-[#6366F1] to-[#7C3AED] shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
+  "w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
 
 function DashboardMain() {
   const user = useShellUser();
@@ -612,18 +612,18 @@ function DashboardMain() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-4 z-[100]">
-          <div className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] text-[#EEEEF2]">
+          <div className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] text-[#EAEFF8]">
             <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#818CF8]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5]">
                 {entries.length === 0 ? "First entry" : "Daily entry"}
               </p>
               <h2
-                className="text-[22px] sm:text-[26px] font-extrabold text-[#EEEEF2] tracking-[-0.02em]"
+                className="text-[22px] sm:text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
                 style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
               >
                 {entries.length === 0 ? "Submit your first proof." : "Submit today's proof."}
               </h2>
-              <p className="text-[13px] font-light text-[#9194AB] leading-relaxed">
+              <p className="text-[13px] font-light text-[#5E6580] leading-relaxed">
                 {entries.length === 0
                   ? "Your record starts the moment you submit. Choose your path."
                   : "One lock per UTC day. Choose how you are proving today's execution."}
@@ -659,8 +659,8 @@ function DashboardMain() {
                       </svg>
                     </span>
                     <span>
-                      <span className="block font-semibold text-[#EEEEF2]">Verified Proof</span>
-                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                      <span className="block font-semibold text-[#EAEFF8]">Verified Proof</span>
+                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
                         External URL · HEAD request validates immediately · Full Signal Score weight
                       </span>
                     </span>
@@ -687,8 +687,8 @@ function DashboardMain() {
                       aria-hidden
                     />
                     <span>
-                      <span className="block font-semibold text-[#EEEEF2]">Declaration</span>
-                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                      <span className="block font-semibold text-[#EAEFF8]">Declaration</span>
+                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
                         Stated intent · 30–140 chars · Upgrade within 30 days
                       </span>
                     </span>
@@ -717,8 +717,8 @@ function DashboardMain() {
                       </svg>
                     </span>
                     <span>
-                      <span className="block font-semibold text-[#EEEEF2]">Upload</span>
-                      <span className="mt-1 block text-xs text-[#9194AB] leading-snug">
+                      <span className="block font-semibold text-[#EAEFF8]">Upload</span>
+                      <span className="mt-1 block text-xs text-[#5E6580] leading-snug">
                         File upload · PDF, DOCX, PNG, PPTX, XLSX · Max 10MB each · Up to 3 files
                       </span>
                     </span>
@@ -729,7 +729,7 @@ function DashboardMain() {
               {entryPath === "verified" ? (
                 <div className="space-y-3">
                   <input
-                    className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[#EEEEF2] placeholder:text-[#9194AB]/80 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30"
+                    className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 text-[#EAEFF8] placeholder:text-[#5E6580]/80 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
                     value={proofUrl}
                     onChange={(e) => {
                       setProofUrl(e.target.value);
@@ -741,19 +741,19 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300 whitespace-nowrap">
                       Verified proof · Live
                     </span>
-                    <p className="text-xs text-[#9194AB]">Highest Signal weight when the URL validates.</p>
+                    <p className="text-xs text-[#5E6580]">Highest Signal weight when the URL validates.</p>
                   </div>
                 </div>
               ) : null}
 
               {entryPath === "declaration" ? (
                 <div className="space-y-3">
-                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB] leading-relaxed">
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580] leading-relaxed">
                     What are you building today? What will prove it&apos;s done? · 30–140 chars
                   </label>
                   <div className="relative">
                     <textarea
-                      className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[#EEEEF2] placeholder:text-[#9194AB]/60 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30 ${
+                      className={`w-full min-h-[128px] rounded-lg bg-black/30 border px-3 py-2 pr-3 pb-9 text-[#EAEFF8] placeholder:text-[#5E6580]/60 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
                         decl.trim().length > 0 && decl.trim().length < 30
                           ? "border-amber-500/50"
                           : "border-white/10"
@@ -766,7 +766,7 @@ function DashboardMain() {
                       }}
                       placeholder="Be specific."
                     />
-                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#52556A]">
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#5E6580]">
                       {decl.length}/140
                     </span>
                   </div>
@@ -774,18 +774,18 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 whitespace-nowrap">
                       Declaration · Pending
                     </span>
-                    <p className="text-xs text-[#9194AB]">
+                    <p className="text-xs text-[#5E6580]">
                       Upgrade within 30 days with a Verified Proof URL.
                     </p>
                   </div>
-                  <label className="block text-xs text-[#9194AB]">
+                  <label className="block text-xs text-[#5E6580]">
                     Attach proof (optional) — up to 3 files, 5MB each (JPG, PNG, WebP, GIF, PDF)
                   </label>
                   <input
                     type="file"
                     multiple
                     accept={ENTRY_UPLOAD_ACCEPT}
-                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EEEEF2] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EAEFF8] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
                     onChange={(e) => {
                       const files = e.target.files
                         ? Array.from(e.target.files).slice(0, 3)
@@ -795,7 +795,7 @@ function DashboardMain() {
                     }}
                   />
                   {declFiles.length > 0 ? (
-                    <ul className="text-xs text-[#9194AB] space-y-1 list-disc list-inside">
+                    <ul className="text-xs text-[#5E6580] space-y-1 list-disc list-inside">
                       {declFiles.map((f, i) => (
                         <li key={`${f.name}-${i}`}>
                           {f.name} ({Math.round(f.size / 1024)} KB)
@@ -808,14 +808,14 @@ function DashboardMain() {
 
               {entryPath === "upload" ? (
                 <div className="space-y-3">
-                  <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB]">
+                  <span className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580]">
                     Upload file
                   </span>
                   <input
                     type="file"
                     multiple
                     accept={FIRST_PROOF_ACCEPT}
-                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EEEEF2] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-[#EAEFF8] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--ac)] file:px-3 file:py-2 file:text-[#0d0f1a] file:text-xs file:font-semibold"
                     onChange={(e) => {
                       const files = e.target.files
                         ? Array.from(e.target.files).slice(0, 3)
@@ -825,7 +825,7 @@ function DashboardMain() {
                     }}
                   />
                   {uploadProofFiles.length > 0 ? (
-                    <ul className="text-xs text-[#9194AB] space-y-1 list-disc list-inside">
+                    <ul className="text-xs text-[#5E6580] space-y-1 list-disc list-inside">
                       {uploadProofFiles.map((f, i) => (
                         <li key={`${f.name}-${i}`}>
                           {f.name} ({Math.round(f.size / 1024)} KB)
@@ -833,12 +833,12 @@ function DashboardMain() {
                       ))}
                     </ul>
                   ) : null}
-                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#9194AB] leading-relaxed">
+                  <label className="block text-[10px] font-semibold tracking-[0.15em] uppercase text-[#5E6580] leading-relaxed">
                     What was made? · 30–140 chars required
                   </label>
                   <div className="relative">
                     <textarea
-                      className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[#EEEEF2] placeholder:text-[#9194AB]/60 focus:outline-none focus:ring-2 focus:ring-[#818CF8]/30 ${
+                      className={`w-full min-h-[100px] rounded-lg bg-black/30 border px-3 py-2 pb-9 text-[#EAEFF8] placeholder:text-[#5E6580]/60 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 ${
                         uploadContext.trim().length > 0 && uploadContext.trim().length < 30
                           ? "border-amber-500/50"
                           : "border-white/10"
@@ -851,7 +851,7 @@ function DashboardMain() {
                         setSubmitError(null);
                       }}
                     />
-                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#52556A]">
+                    <span className="absolute bottom-2 right-3 text-xs tabular-nums text-[#5E6580]">
                       {uploadContext.length}/140
                     </span>
                   </div>
@@ -859,7 +859,7 @@ function DashboardMain() {
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-200 whitespace-nowrap">
                       Submission · Unverified
                     </span>
-                    <p className="text-xs text-[#9194AB]">
+                    <p className="text-xs text-[#5E6580]">
                       Link a Verified Proof within 30 days for full Signal weight.
                     </p>
                   </div>
@@ -867,7 +867,7 @@ function DashboardMain() {
               ) : null}
 
               <div className="space-y-2">
-                <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-[#9194AB]">
+                <span className="block text-[10px] font-semibold tracking-[0.2em] uppercase text-[#5E6580]">
                   Work type
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -888,7 +888,7 @@ function DashboardMain() {
                       className={`rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
                         cat === id
                           ? "border-blue-400/50 bg-blue-950/80 text-white"
-                          : "border-white/20 text-[#9194AB] hover:border-[var(--ac)]/45"
+                          : "border-white/20 text-[#5E6580] hover:border-[var(--ac)]/45"
                       }`}
                     >
                       {label}
@@ -1006,7 +1006,7 @@ function DashboardMain() {
               </button>
               <button
                 type="button"
-                className="text-sm text-[#9194AB] hover:text-[#EEEEF2]"
+                className="text-sm text-[#5E6580] hover:text-[#EAEFF8]"
                 onClick={() => {
                   setModalOpen(false);
                   setSubmitError(null);
@@ -1114,7 +1114,7 @@ function DashboardMain() {
             </div>
             <div className="p-3 border-t border-white/[0.055] flex gap-2 bg-[#1C1F2A]">
               <input
-                className="flex-1 min-w-0 rounded-[10px] border border-white/[0.1] bg-[#13151C] px-3 py-2.5 text-sm text-[#EAEFF8] placeholder:text-[#5E6580] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30"
+                className="flex-1 min-w-0 rounded-[10px] border border-[rgba(255,255,255,0.055)] bg-[#1C1F2A] px-3 py-2.5 text-sm text-[#EAEFF8] placeholder:text-[#5E6580] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
                 value={chatText}
                 placeholder="Message Conexa…"
                 disabled={chatSending}
@@ -1129,7 +1129,7 @@ function DashboardMain() {
               <button
                 type="button"
                 disabled={chatSending || !chatText.trim()}
-                className="shrink-0 rounded-[10px] bg-[#6366f1] text-white px-4 py-2 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-95"
+                className="shrink-0 rounded-[10px] bg-[#4F46E5] text-white px-4 py-2 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-95 shadow-[0_4px_16px_rgba(79,70,229,0.22)]"
                 onClick={() => void sendConexa()}
               >
                 Send

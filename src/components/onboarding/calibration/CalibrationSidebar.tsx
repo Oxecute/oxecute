@@ -9,7 +9,7 @@ function LockIcon() {
       height="14"
       viewBox="0 0 24 24"
       fill="none"
-      className="shrink-0 mt-0.5 text-[#9194AB]"
+      className="shrink-0 mt-0.5 text-[#5E6580]"
       aria-hidden
     >
       <path
@@ -58,7 +58,7 @@ export function CalibrationSidebar({ phase, conexaSubtitle }: SidebarProps) {
         <StepTracker phase={phase} conexaSubtitle={conexaSubtitle} />
       </div>
       <div className="flex-1 min-h-0" aria-hidden />
-      <p className="text-[11px] text-[#9194AB] flex gap-2 items-start shrink-0 font-dm leading-relaxed">
+      <p className="text-[11px] text-[#5E6580] flex gap-2 items-start shrink-0 font-dm leading-relaxed">
         <LockIcon />
         <span>
           Your answers are private. Conexa uses them to generate your Day 0 report.

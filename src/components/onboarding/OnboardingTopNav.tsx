@@ -27,8 +27,15 @@ export function OnboardingTopNav() {
 
   return (
     <nav ref={navRef} style={{ background: "rgba(8, 9, 16, 0.82)" }}>
-      <Link href="/" className="logo">
-        oxecute
+      <Link href="/" className="ei-logo-link" aria-label="Oxecute home">
+        <img
+          src="/brand/logo-icon.svg"
+          alt=""
+          className="h-10 w-10 md:h-11 md:w-11"
+          width={44}
+          height={44}
+          decoding="async"
+        />
       </Link>
       <div className="nav-mid">
         <Link className="nl" href="/#hiw">

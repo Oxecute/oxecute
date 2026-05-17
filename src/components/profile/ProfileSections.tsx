@@ -91,31 +91,39 @@ type EntryTile = { day_number: number; tier: string | null };
 export function ExecutionGrid({
   entries,
   maxDays = 30,
+  breakDays = [],
   onDayClick,
 }: {
   entries: EntryTile[];
   maxDays?: number;
+  /** Days with a break mark (no execution tile). Matches dashboard FOR grid. */
+  breakDays?: number[];
   onDayClick?: (day: number, entry: EntryTile | undefined) => void;
 }) {
+  const breakSet = new Set(breakDays);
   return (
     <div>
       <p className="text-xs text-[var(--t3)] mb-2">Execution heatmap · {maxDays}-day window</p>
       <div className="grid grid-cols-10 gap-1">
         {Array.from({ length: maxDays }).map((_, i) => {
           const day = i + 1;
-          const ent = entries.find((e) => e.day_number === day);
+          const ent = entries.find((e) => Number(e.day_number) === day);
+          const isBreakDay = breakSet.has(day);
           let bg = "bg-black/5 dark:bg-white/5";
-          if (ent?.tier === "verified_proof") bg = "bg-[rgba(1,2,97,0.75)]";
-          if (ent?.tier === "declaration_pending") bg = "bg-[rgba(124,58,237,0.75)]";
-          if (ent?.tier === "upload_unverified") bg = "bg-[rgba(99,102,241,0.72)]";
-          if (ent?.tier === "signup_execution") bg = "bg-[rgba(34,197,94,0.4)]";
+          if (ent?.tier === "verified_proof") bg = "bg-[#0EA472]";
+          else if (ent?.tier === "declaration_pending") bg = "bg-[rgba(124,100,220,0.75)]";
+          else if (ent?.tier === "upload_unverified") bg = "bg-[rgba(194,164,120,0.75)]";
+          else if (ent?.tier === "signup_execution") bg = "bg-[rgba(14,164,114,0.35)]";
+          else if (isBreakDay) bg = "bg-[#E24B4A]";
           const interactive = Boolean(onDayClick && ent);
+          const title =
+            isBreakDay && !ent ? `Day ${day} · Break` : isBreakDay && ent ? `Day ${day} · Break + logged` : `Day ${day}`;
           return (
             <button
               key={day}
               type="button"
               disabled={!interactive}
-              title={`Day ${day}`}
+              title={title}
               {...(interactive && onDayClick
                 ? {
                     onClick: () => {
@@ -132,16 +140,19 @@ export function ExecutionGrid({
       </div>
       <div className="flex flex-wrap gap-4 mt-4 text-xs text-[var(--t3)]">
         <span className="inline-flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-[rgba(1,2,97,0.75)]" /> Verified
+          <span className="w-3 h-3 rounded bg-[#0EA472]" /> Verified
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-[rgba(124,58,237,0.75)]" /> Declaration
+          <span className="w-3 h-3 rounded bg-[rgba(124,100,220,0.75)]" /> Declaration
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-[rgba(99,102,241,0.72)]" /> File upload
+          <span className="w-3 h-3 rounded bg-[rgba(194,164,120,0.75)]" /> File upload
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-[rgba(34,197,94,0.4)]" /> Signup / Day 1
+          <span className="w-3 h-3 rounded bg-[rgba(14,164,114,0.35)]" /> Signup / Day 1
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-[#E24B4A]" /> Break
         </span>
       </div>
     </div>

@@ -132,7 +132,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)]">
-      <header className="sticky top-0 z-20 h-12 flex items-center px-3 md:px-4 border-b border-[var(--bdr)] bg-[var(--sur)] gap-3 text-sm">
+      <header className="sticky top-0 z-20 h-12 flex items-center px-3 md:px-4 border-b border-[var(--bdr)] bg-[#181B24] gap-3 text-sm">
         <button
           type="button"
           className="md:hidden p-2 -ml-1 rounded-lg border border-[var(--bdr)] text-[var(--t2)]"
@@ -227,7 +227,7 @@ export function AppShell({
               <button
                 type="button"
                 role="menuitem"
-                className="w-full text-left px-3 py-2.5 text-sm text-[var(--t1)] hover:bg-[var(--sur2)]"
+                className="w-full text-left px-3 py-2.5 text-sm text-[#E24B4A] hover:bg-[var(--sur2)]"
                 onClick={async () => {
                   setAccountOpen(false);
                   await supabase.auth.signOut();
@@ -247,7 +247,7 @@ export function AppShell({
           ref={flyoutRef}
           id="summary-flyout"
           style={{ right: flyoutRightPx }}
-          className={`hidden md:block fixed top-12 z-[45] w-[min(272px,calc(100vw-0.75rem))] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden scrollbar-none shadow-[-12px_0_24px_rgba(1,2,97,0.07)] border-l border-y border-[var(--bdr)] md:rounded-l-2xl bg-[var(--sur)] p-3 pb-6 transition-opacity duration-150 ease-out ${
+          className={`hidden md:block fixed top-12 z-[45] w-[min(272px,calc(100vw-0.75rem))] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden scrollbar-none shadow-[-12px_0_24px_rgba(0,0,0,0.25)] border-l border-y border-[var(--bdr)] md:rounded-l-2xl bg-[#181B24] p-3 pb-6 transition-opacity duration-150 ease-out ${
             desktopFlyoutOpen
               ? "opacity-100 visible pointer-events-auto"
               : "opacity-0 invisible pointer-events-none"
@@ -267,7 +267,7 @@ export function AppShell({
             aria-label="Close menu"
             onClick={() => setMobileNav(false)}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[#0c0e14] border-r border-zinc-800/70 p-3 flex flex-col overflow-hidden">
+          <aside className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[#181B24] border-r border-[var(--bdr)] p-3 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto min-h-0 scrollbar-none">
               <DashboardNav
                 user={user}
@@ -300,7 +300,7 @@ export function AppShell({
             : "max-w-5xl md:grid-cols-[200px_1fr]"
         }`}
       >
-        <aside className="hidden md:block rounded-xl bg-[#0c0e14] border border-zinc-800/70 p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
+          <aside className="hidden md:block rounded-[20px] bg-[#181B24] border border-[var(--bdr)] p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
           <DashboardNav user={user} inboxUnread={unreadCount} />
         </aside>
         <div className="min-w-0">{children}</div>

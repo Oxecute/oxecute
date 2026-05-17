@@ -35,36 +35,36 @@ export function CalibrationQuestionCard({
     <div
       className={`rounded-[10px] border p-4 transition-[opacity,border-color,background-color] duration-[250ms] ease-in-out ${
         unlocked
-          ? "opacity-100 border-[rgba(99,102,241,0.32)] bg-[rgba(99,102,241,0.04)]"
+          ? "opacity-100 border-[rgba(79,70,229,0.32)] bg-[rgba(79,70,229,0.04)]"
           : "opacity-[0.45] border-white/[0.06]"
       }`}
     >
       <p
         className={`text-[10px] uppercase tracking-[0.12em] mb-1 font-dm font-semibold ${
-          unlocked ? "text-[#818CF8]" : "text-[#52556A]"
+          unlocked ? "text-[#4F46E5]" : "text-[#2E3347]"
         }`}
       >
         {unlocked ? (
           <>
-            Question <span className="text-[#818CF8]">{num}</span>
-            <span className="text-[#52556A]"> / {denom}</span>
+            Question <span className="text-[#4F46E5]">{num}</span>
+            <span className="text-[#2E3347]"> / {denom}</span>
           </>
         ) : (
           <>
-            Question <span className="text-[#52556A]">{num}</span> / {denom}
+            Question <span className="text-[#2E3347]">{num}</span> / {denom}
           </>
         )}
       </p>
       <p
         className={`text-[13px] font-semibold mb-1 font-urbanist leading-snug ${
-          unlocked ? "text-[#EEEEF2]" : "text-[#52556A]"
+          unlocked ? "text-[#EAEFF8]" : "text-[#2E3347]"
         }`}
       >
         {meta.question}
       </p>
-      <p className="text-[10px] font-dm text-[#52556A] leading-[1.5] mb-2">{meta.helper}</p>
+      <p className="text-[10px] font-dm text-[#5E6580] leading-[1.5] mb-2">{meta.helper}</p>
       <textarea
-        className={`w-full min-h-[100px] md:min-h-[80px] rounded-[10px] px-[14px] py-[11px] text-sm text-[#EEEEF2] font-dm outline-none transition-[border-color,box-shadow,background-color] duration-200 bg-white/[0.04] border border-white/[0.11] placeholder:text-[#52556A] focus:border-[rgba(99,102,241,0.55)] focus:bg-[rgba(99,102,241,0.06)] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] ${
+        className={`w-full min-h-[100px] md:min-h-[80px] rounded-[10px] px-[14px] py-[11px] text-sm text-[#EAEFF8] font-dm outline-none transition-[border-color,box-shadow,background-color] duration-200 bg-[#1C1F2A] border border-[rgba(255,255,255,0.055)] placeholder:text-[#5E6580] focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 ${
           unlocked ? "" : "cursor-not-allowed"
         }`}
         placeholder={meta.placeholder}
@@ -75,7 +75,7 @@ export function CalibrationQuestionCard({
         value={value}
         onChange={(e) => onChange(field, e.target.value)}
       />
-      <p className="text-[11px] font-dm text-[#52556A] mt-1">
+      <p className="text-[11px] font-dm text-[#2E3347] mt-1">
         {value.length}/{meta.maxLen}
         {` · use "nothing" or "none" if that's accurate`}
       </p>

@@ -73,22 +73,22 @@ export default function LoginPage() {
   }
 
   const inputCls =
-    "w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[10px] text-sm text-[#EEEEF2] outline-none transition focus:border-[rgba(99,102,241,0.5)] focus:bg-[rgba(99,102,241,0.04)] focus:ring-[3px] focus:ring-[rgba(99,102,241,0.09)]";
+    "w-full rounded-[10px] bg-[#1C1F2A] border border-[rgba(255,255,255,0.055)] px-[14px] py-[10px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:ring-0";
 
   return (
     <main
       data-onboarding-surface="true"
-      className="ei-root relative flex min-h-dvh flex-col bg-[#080910] text-[#EEEEF2]"
+      className="ei-root relative flex min-h-dvh flex-col bg-[#111318] text-[#EAEFF8]"
     >
       <AmbientParticles />
       <MarketingSiteNav page="login" />
 
       <div className="flex min-h-0 flex-1 flex-col px-4 py-4 md:px-6 md:py-5">
         <div className="mx-auto flex w-full max-w-[520px] flex-1 flex-col justify-center gap-4 md:gap-5">
-          <div className="w-full overflow-hidden rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+          <div className="w-full overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.055)] bg-[#13151C] shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
             <div className="px-6 pt-5 pb-1 md:px-8 md:pt-6">
               <h1
-                className="text-[24px] font-extrabold tracking-[-0.02em] text-[#EEEEF2] md:text-[26px]"
+                className="text-[24px] font-extrabold tracking-[-0.02em] text-[#EAEFF8] md:text-[26px]"
                 style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
               >
                 Sign in
@@ -96,7 +96,7 @@ export default function LoginPage() {
             </div>
             <form onSubmit={(e) => void signIn(e)} className="space-y-3 px-6 py-5 md:px-8 md:py-6 md:pt-4">
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#9194AB]">Email</label>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#2E3347]">Email</label>
                 <input
                   type="email"
                   required
@@ -108,7 +108,7 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#9194AB]">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#2E3347]">
                   Password
                 </label>
                 <input
@@ -125,18 +125,18 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="min-h-[46px] w-full rounded-[11px] bg-gradient-to-br from-[#6366F1] to-[#7C3AED] text-[14px] font-semibold text-white shadow-[0_4px_24px_rgba(99,102,241,0.35)] transition-all hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] disabled:opacity-50"
+                className="min-h-[46px] w-full rounded-[10px] bg-[#0EA472] text-[14px] font-semibold text-white shadow-[0_4px_16px_rgba(14,164,114,0.25)] transition-all hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-50"
               >
                 {loading ? "Signing in" : "Sign in"}
               </button>
-              <p className="text-center text-[13px] text-[#9194AB]">
-                <Link href="/auth/forgot-password" className="text-[#818CF8] underline">
+              <p className="text-center text-[13px] text-[#5E6580]">
+                <Link href="/auth/forgot-password" className="text-[#4F46E5] underline">
                   Forgot password
                 </Link>
               </p>
               <div className="flex items-center gap-3 py-0.5">
                 <div className="h-px flex-1 bg-white/[0.08]" />
-                <span className="text-[11px] text-[#52556A]">or</span>
+                <span className="text-[11px] text-[#2E3347]">or</span>
                 <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
               <button
@@ -160,16 +160,16 @@ export default function LoginPage() {
 
           <div className="w-full space-y-3 pb-2">
             <AuthMobileHelp afterResetPath="/login" />
-            <p className="text-center text-[13px] text-[#9194AB]">
+            <p className="text-center text-[13px] text-[#5E6580]">
               New here?{" "}
-              <Link href="/start" className="text-[#818CF8] underline">
+              <Link href="/start" className="text-[#4F46E5] underline">
                 Create your account
               </Link>
             </p>
             <div className="flex justify-center">
               <Link
                 href="/"
-                className="rounded-[9px] border border-white/[0.11] px-4 py-2 text-[13px] text-[#9194AB] hover:bg-white/[0.04]"
+                className="rounded-[9px] border border-white/[0.11] px-4 py-2 text-[13px] text-[#5E6580] hover:bg-white/[0.04]"
               >
                 Back to site
               </Link>

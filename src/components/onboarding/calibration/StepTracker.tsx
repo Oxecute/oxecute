@@ -54,9 +54,9 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
               <CheckIcon className="shrink-0" />
             </span>
           ) : startupActive ? (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#6366F1] ring-4 ring-[#6366F1]/20" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#4F46E5] ring-4 ring-[#4F46E5]/20" />
           ) : (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#52556A]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#5E6580]" />
           )}
           <div className="w-px flex-1 min-h-[28px] bg-white/[0.08]" />
         </div>
@@ -64,15 +64,15 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
           <p
             className={`text-[13px] font-semibold leading-tight font-urbanist ${
               startupActive
-                ? "text-[#EEEEF2]"
+                ? "text-[#EAEFF8]"
                 : startupComplete
                   ? "text-[#9194AB]"
-                  : "text-[#52556A]"
+                  : "text-[#5E6580]"
             }`}
           >
             Your Startup
           </p>
-          <p className="text-[11px] font-dm text-[#52556A] mt-0.5">
+          <p className="text-[11px] font-dm text-[#5E6580] mt-0.5">
             {signupPhase
               ? "You’ll do this right after sign-up"
               : startupComplete
@@ -84,20 +84,20 @@ export function StepTracker({ phase, conexaSubtitle }: Props) {
       <div className="flex gap-3 items-start -mt-1">
         <div className="flex flex-col items-center w-[18px] shrink-0">
           {conexaActive ? (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#6366F1] ring-4 ring-[#6366F1]/20" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#4F46E5] ring-4 ring-[#4F46E5]/20" />
           ) : (
-            <span className="h-2.5 w-2.5 rounded-full bg-[#52556A]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#5E6580]" />
           )}
         </div>
         <div>
           <p
             className={`text-[13px] font-semibold leading-tight font-urbanist ${
-              conexaActive ? "text-[#EEEEF2]" : "text-[#52556A]"
+              conexaActive ? "text-[#EAEFF8]" : "text-[#5E6580]"
             }`}
           >
             Conexa
           </p>
-          <p className="text-[11px] font-dm text-[#52556A] mt-0.5">{row2Sub}</p>
+          <p className="text-[11px] font-dm text-[#5E6580] mt-0.5">{row2Sub}</p>
         </div>
       </div>
     </div>

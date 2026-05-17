@@ -45,7 +45,7 @@ export function AmbientParticles() {
         vx: (Math.random() - 0.5) * 0.18,
         vy: (Math.random() - 0.5) * 0.18,
         a: Math.random() * 0.4 + 0.1,
-        col: Math.random() > 0.6 ? "99,102,241" : "139,92,246",
+        col: Math.random() > 0.6 ? "79,70,229" : "124,100,220",
       };
     }
 

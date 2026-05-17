@@ -261,7 +261,7 @@ export function DashboardNav({
           onClick={onNavigate}
           className="flex items-center gap-3 px-2 py-1.5 -mx-1 rounded-lg hover:bg-white/[0.06] transition-colors min-w-0"
         >
-          <div className="w-9 h-9 rounded-full bg-[#6366F1] text-white text-xs font-bold flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[#4F46E5] text-white text-xs font-bold flex items-center justify-center shrink-0">
             {initials}
           </div>
           <div className="min-w-0 text-left">
