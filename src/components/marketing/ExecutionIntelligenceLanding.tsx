@@ -214,32 +214,29 @@ export function ExecutionIntelligenceLanding() {
 
         <div className="hero-l">
           <div className="hero-ticker">
-            <div className="ticker-live">
-              <span className="ticker-live-stack">
-                <span className="ticker-live-line">Beta</span>
-                <span className="ticker-live-line">Live</span>
-              </span>
+            <div className="ticker-card ticker-card-live">
+              <div className="ticker-live">
+                <span className="ticker-live-stack">
+                  <span className="ticker-live-line">Beta</span>
+                  <span className="ticker-live-line">Live</span>
+                </span>
+              </div>
             </div>
-            <span className="ticker-sep">
-              ·
-            </span>
-            <div className="ticker-stat">
-              <span className="ticker-stat-value">{MARKETING_HERO_STATS.founders}</span>
-              <span className="ticker-stat-label">Founders</span>
+            <div className="ticker-card ticker-card-stats">
+              <div className="ticker-stat">
+                <span className="ticker-stat-value">{MARKETING_HERO_STATS.founders}</span>
+                <span className="ticker-stat-label">Founders</span>
+              </div>
+              <div className="ticker-stat">
+                <span className="ticker-stat-value">{MARKETING_HERO_STATS.countries}</span>
+                <span className="ticker-stat-label">Countries</span>
+              </div>
             </div>
-            <span className="ticker-sep">
-              ·
-            </span>
-            <div className="ticker-stat">
-              <span className="ticker-stat-value">{MARKETING_HERO_STATS.countries}</span>
-              <span className="ticker-stat-label">Countries</span>
-            </div>
-            <span className="ticker-sep">
-              ·
-            </span>
-            <div className="ticker-spots">
-              <span className="ticker-spots-value">{MARKETING_HERO_STATS.spotsRemaining} Spots</span>
-              <span className="ticker-spots-label">Remaining</span>
+            <div className="ticker-card ticker-card-spots">
+              <div className="ticker-spots">
+                <span className="ticker-spots-value">{MARKETING_HERO_STATS.spotsRemaining} Spots</span>
+                <span className="ticker-spots-label">Remaining</span>
+              </div>
             </div>
           </div>
 
