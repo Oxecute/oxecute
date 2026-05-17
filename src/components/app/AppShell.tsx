@@ -170,18 +170,18 @@ export function AppShell({
       ) : null}
 
       <div
-        className={`w-full max-w-none px-0 py-6 md:py-8 grid gap-5 lg:gap-6 ${
+        className={`w-full min-w-0 max-w-[100vw] px-0 py-5 md:py-7 grid md:gap-3 lg:gap-4 ${
           inlineRightRail
-            ? "md:grid-cols-[224px_1fr_minmax(296px,328px)] lg:grid-cols-[232px_1fr_minmax(304px,336px)]"
+            ? "md:grid-cols-[240px_1fr_minmax(300px,348px)] lg:grid-cols-[248px_1fr_minmax(308px,360px)]"
             : "max-w-5xl mx-auto md:grid-cols-[224px_1fr] px-4"
         }`}
       >
-        <aside className="hidden md:block border-y border-r border-[var(--bdr)] border-l-0 bg-[#181B24] rounded-r-[20px] p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
+        <aside className="hidden md:block min-w-0 border-y border-r border-[var(--bdr)] border-l-0 bg-[#181B24] rounded-r-[20px] p-2.5 space-y-2 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
           <DashboardNav user={user} inboxUnread={unreadCount} />
         </aside>
-        <div className={`min-w-0 ${inlineRightRail ? "px-4 md:px-6 lg:px-7" : ""}`}>{children}</div>
+        <div className={`min-w-0 ${inlineRightRail ? "px-3 md:px-4 lg:px-5" : ""}`}>{children}</div>
         {inlineRightRail ? (
-          <aside className="hidden md:block min-w-0 border-y border-l border-[var(--bdr)] border-r-0 bg-[var(--bg)] pl-4 lg:pl-5 pr-0 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
+          <aside className="hidden md:block min-w-0 border-y border-l border-[var(--bdr)] border-r-0 bg-[var(--bg)] pl-3 lg:pl-4 pr-0 self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-none">
             {inlineRightRail}
           </aside>
         ) : null}

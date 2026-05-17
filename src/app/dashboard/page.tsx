@@ -606,7 +606,7 @@ function DashboardMain() {
       <button
         type="button"
         onClick={() => setChatOpen(true)}
-        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#4F46E5] text-white px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(224px+1.25rem+1.5rem)] lg:left-[calc(232px+1.5rem+1.75rem)] md:bottom-6"
+        className="fixed z-50 pointer-events-auto left-4 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#4F46E5] text-white px-3 py-2 text-[10px] sm:text-[11px] font-semibold leading-tight shadow-lg ring-1 ring-black/10 hover:opacity-95 bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:left-[calc(240px+0.75rem+1rem)] lg:left-[calc(248px+1rem+1.25rem)] md:bottom-6"
       >
         <span className="text-[#c8f542] text-[8px] leading-none" aria-hidden>
           ●
