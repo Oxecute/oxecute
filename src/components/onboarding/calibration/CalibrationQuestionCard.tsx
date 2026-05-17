@@ -16,6 +16,8 @@ type Props = {
   field: CalField;
   value: string;
   unlocked: boolean;
+  /** Minimum trimmed length to count as complete (must match server / parent). */
+  minChars: number;
   onChange: (field: CalField, value: string) => void;
 };
 
@@ -26,6 +28,7 @@ export function CalibrationQuestionCard({
   field,
   value,
   unlocked,
+  minChars,
   onChange,
 }: Props) {
   const num = String(index + 1).padStart(2, "0");
@@ -77,7 +80,11 @@ export function CalibrationQuestionCard({
       />
       <p className="text-[11px] font-dm text-[#2E3347] mt-1">
         {value.length}/{meta.maxLen}
-        {` · use "nothing" or "none" if that's accurate`}
+        <span className="text-[#5E6580]">
+          {" "}
+          · minimum {minChars} characters ·
+        </span>
+        {` use "nothing" or "none" if that's accurate`}
       </p>
     </div>
   );

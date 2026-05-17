@@ -1272,6 +1272,7 @@ export default function StartPage() {
                     {!hasAuthSession ? (
                       <div>
                         <label className="block text-[11px] font-medium text-[#5E6580] mb-1.5">Password</label>
+                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">Minimum 6 characters.</p>
                         <input
                           className="w-full rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0"
                           placeholder="••••••••"
@@ -1438,6 +1439,9 @@ export default function StartPage() {
                         <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
                           What are you building and who is it for?
                         </label>
+                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">
+                          Minimum 50 characters · maximum 500 (after trimming).
+                        </p>
                         <textarea
                           className={`w-full min-h-[120px] md:min-h-[100px] rounded-[10px] bg-white/[0.04] border px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347] ${
                             description.trim().length > 0 &&
@@ -1506,6 +1510,7 @@ export default function StartPage() {
                         <label className="block text-[11px] font-medium font-dm text-[#5E6580] mb-1.5">
                           What&apos;s your biggest blocker right now?
                         </label>
+                        <p className="text-[10px] font-dm text-[#2E3347] mb-1.5">Required — a short honest line is enough.</p>
                         <textarea
                           className="w-full min-h-[100px] md:min-h-[80px] rounded-[10px] bg-white/[0.04] border border-white/[0.11] px-[14px] py-[11px] text-sm font-dm text-[#EAEFF8] outline-none transition focus:border-[rgba(255,255,255,0.15)] focus:bg-[#1C1F2A] focus:ring-0 placeholder:text-[#2E3347]"
                           placeholder="Be honest. Conexa reads this literally."
@@ -1560,7 +1565,8 @@ export default function StartPage() {
                             </h1>
                             <p className="text-[13px] font-light text-[#5E6580] font-dm leading-relaxed">
                               Conexa reads these literally. The more specific you are, the sharper your
-                              report. Don&apos;t perform — this isn&apos;t a pitch.
+                              report. Don&apos;t perform — this isn&apos;t a pitch. Each answer needs a minimum of{" "}
+                              {CAL_MIN_SUBMIT_CHARS} characters (up to {CALIBRATION_STEPS[0].maxLen} each).
                             </p>
                           </header>
 
@@ -1601,6 +1607,7 @@ export default function StartPage() {
                                   field={field}
                                   value={cal[field]}
                                   unlocked={unlocked}
+                                  minChars={CAL_MIN_SUBMIT_CHARS}
                                   onChange={(f, v) =>
                                     setCal((prev) => ({ ...prev, [f]: v }))
                                   }
