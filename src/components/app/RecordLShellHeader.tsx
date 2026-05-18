@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { COMING_SOON_PILL_CLASS } from "./dashboard-nav-config";
-import { DashboardNavLogo } from "./DashboardNav";
 import { formatCountdown, getUtcWindowRemainingParts } from "./utc-countdown";
 
 const pillBorder =
@@ -20,6 +19,150 @@ function shellTitle(text: string) {
     <h1 className={h1Shell} style={h1Font}>
       {text}
     </h1>
+  );
+}
+
+/** Laptop (`md+`): same inner row as pre-split header (logo row removed — logo band is in AppShell grid). */
+function RecordLShellHeaderDesktop({
+  title,
+  subtitle,
+  extraActions,
+  utcClock,
+  windowLeft,
+  openSubmit,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  extraActions?: ReactNode;
+  utcClock: string;
+  windowLeft: string;
+  openSubmit: () => void;
+}) {
+  const iconSm = "h-3 w-3 shrink-0 text-[#8B93A7] sm:h-3.5 sm:w-3.5";
+
+  return (
+    <div className="hidden md:block w-full min-w-0">
+      <header className="flex w-full min-w-0 flex-col bg-[#0B0F14]">
+        <div
+          className={
+            "flex min-h-0 min-w-0 flex-col gap-3 border-b border-[#1F2430] px-4 pt-4 pb-5 " +
+            "sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:pb-6"
+          }
+        >
+          <div className="min-w-0 w-full shrink-0 sm:w-auto sm:max-w-[min(100%,42rem)] sm:flex-1">
+            <div className="min-w-0">{title}</div>
+            {subtitle != null ? <div className="mt-1 min-w-0">{subtitle}</div> : null}
+          </div>
+
+          <div
+            className={
+              "flex w-full min-w-0 flex-wrap content-center items-center gap-2 " +
+              "sm:w-auto sm:flex-nowrap sm:justify-end sm:gap-2.5"
+            }
+          >
+            <span className={`${pillBorder} shrink-0`}>
+              <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" strokeLinecap="round" />
+              </svg>
+              {utcClock}
+            </span>
+            <span
+              className={`${pillBorder} shrink-0`}
+              title="Time remaining until 23:59:59 UTC (submission window)"
+            >
+              <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-medium normal-case tracking-normal text-[#8B93A7]">Window</span>
+              {windowLeft}
+            </span>
+            {extraActions}
+            <button
+              type="button"
+              onClick={openSubmit}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#16C784] px-3 py-1.5 text-[11px] font-semibold text-white shadow-[0_2px_12px_rgba(22,199,132,0.25)] hover:opacity-95 sm:px-4 sm:text-[12px]"
+            >
+              <span className="text-sm font-bold leading-none" aria-hidden>
+                +
+              </span>
+              Submit Entry
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+  );
+}
+
+/** Mobile: slim L-band (logo strip is in AppShell); title + actions stacked for narrow viewports. */
+function RecordLShellHeaderMobile({
+  title,
+  subtitle,
+  extraActions,
+  utcClock,
+  windowLeft,
+  openSubmit,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  extraActions?: ReactNode;
+  utcClock: string;
+  windowLeft: string;
+  openSubmit: () => void;
+}) {
+  const iconSm = "h-3 w-3 shrink-0 text-[#8B93A7]";
+
+  return (
+    <div className="md:hidden w-full min-w-0">
+      <header className="flex w-full min-w-0 flex-col bg-[#0B0F14]">
+        <div
+          className={
+            "flex min-h-0 min-w-0 flex-col gap-3 border-b border-[#1F2430] px-4 pt-3 pb-4"
+          }
+        >
+          <div className="min-w-0 w-full">
+            <div className="min-w-0">{title}</div>
+            {subtitle != null ? <div className="mt-1 min-w-0">{subtitle}</div> : null}
+          </div>
+
+          <div
+            className={
+              "flex w-full min-w-0 flex-wrap content-center items-center gap-2"
+            }
+          >
+            <span className={`${pillBorder} shrink-0`}>
+              <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" strokeLinecap="round" />
+              </svg>
+              {utcClock}
+            </span>
+            <span
+              className={`${pillBorder} shrink-0`}
+              title="Time remaining until 23:59:59 UTC (submission window)"
+            >
+              <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-medium normal-case tracking-normal text-[#8B93A7]">Window</span>
+              {windowLeft}
+            </span>
+            {extraActions}
+            <button
+              type="button"
+              onClick={openSubmit}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#16C784] px-3 py-1.5 text-[11px] font-semibold text-white shadow-[0_2px_12px_rgba(22,199,132,0.25)] hover:opacity-95"
+            >
+              <span className="text-sm font-bold leading-none" aria-hidden>
+                +
+              </span>
+              Submit Entry
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
   );
 }
 
@@ -52,61 +195,13 @@ export function RecordLShellHeader({
     }
   };
 
-  const iconSm = "h-3 w-3 shrink-0 text-[#8B93A7] sm:h-3.5 sm:w-3.5";
+  const shared = { title, subtitle, extraActions, utcClock, windowLeft, openSubmit };
 
   return (
-    <header className="flex w-full min-w-0 flex-col bg-[#0B0F14]">
-      <div className="flex items-center border-b border-[#1F2430] px-5 py-3 md:hidden">
-        <DashboardNavLogo />
-      </div>
-      <div
-        className={
-          "flex min-h-0 min-w-0 flex-col gap-3 border-b border-[#1F2430] px-4 pt-4 pb-5 " +
-          "sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:pb-6"
-        }
-      >
-        <div className="min-w-0 w-full shrink-0 sm:w-auto sm:max-w-[min(100%,42rem)] sm:flex-1">
-          <div className="min-w-0">{title}</div>
-          {subtitle != null ? <div className="mt-1 min-w-0">{subtitle}</div> : null}
-        </div>
-
-        <div
-          className={
-            "flex w-full min-w-0 flex-wrap content-center items-center gap-2 " +
-            "sm:w-auto sm:flex-nowrap sm:justify-end sm:gap-2.5"
-          }
-        >
-          <span className={`${pillBorder} shrink-0`}>
-            <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" strokeLinecap="round" />
-            </svg>
-            {utcClock}
-          </span>
-          <span
-            className={`${pillBorder} shrink-0`}
-            title="Time remaining until 23:59:59 UTC (submission window)"
-          >
-            <svg className={iconSm} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="font-medium normal-case tracking-normal text-[#8B93A7]">Window</span>
-            {windowLeft}
-          </span>
-          {extraActions}
-          <button
-            type="button"
-            onClick={openSubmit}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#16C784] px-3 py-1.5 text-[11px] font-semibold text-white shadow-[0_2px_12px_rgba(22,199,132,0.25)] hover:opacity-95 sm:px-4 sm:text-[12px]"
-          >
-            <span className="text-sm font-bold leading-none" aria-hidden>
-              +
-            </span>
-            Submit Entry
-          </button>
-        </div>
-      </div>
-    </header>
+    <>
+      <RecordLShellHeaderDesktop {...shared} />
+      <RecordLShellHeaderMobile {...shared} />
+    </>
   );
 }
 

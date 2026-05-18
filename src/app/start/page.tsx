@@ -1418,7 +1418,7 @@ export default function StartPage() {
                       href="/"
                       className="text-[13px] text-ox-t2 border border-white/[0.11] rounded-[9px] px-4 py-2 hover:bg-white/[0.04]"
                     >
-                      ← Back to site
+                      Back to site
                     </Link>
                   </div>
                 </div>
@@ -1586,7 +1586,7 @@ export default function StartPage() {
                     onClick={() => router.push("/")}
                     className="mt-6 text-[13px] font-dm text-ox-t2 border border-white/[0.11] rounded-[9px] px-4 py-2.5 hover:bg-white/[0.04] w-full max-w-[560px] md:mx-auto shrink-0"
                   >
-                    ← Back to site
+                    Back to site
                   </button>
                 </div>
             )}

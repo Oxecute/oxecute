@@ -35,7 +35,7 @@ export function DashboardNavLogo({ onNavigate }: { onNavigate?: () => void }) {
         alt="Oxecute"
         width={400}
         height={102}
-        className="h-[24px] sm:h-[26px] lg:h-[28px] w-auto max-w-none object-contain object-left shrink-0 block"
+        className="h-[24px] sm:h-[26px] lg:h-[28px] w-auto max-w-full object-contain object-left shrink-0 block"
         decoding="async"
       />
     </Link>

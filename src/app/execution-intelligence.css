@@ -199,7 +199,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 55%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 55%
+  );
 }
 .ei-root .btn-primary:hover {
   transform: translateY(-1px);
@@ -225,7 +229,11 @@
   left: -160px;
   width: 640px;
   height: 640px;
-  background: radial-gradient(ellipse, rgba(79, 70, 229, 0.1) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse,
+    rgba(79, 70, 229, 0.1) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .hero-glow-r {
@@ -234,7 +242,11 @@
   right: -80px;
   width: 480px;
   height: 480px;
-  background: radial-gradient(ellipse, rgba(124, 100, 220, 0.07) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse,
+    rgba(124, 100, 220, 0.07) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .hero-l {
@@ -259,15 +271,16 @@
   max-width: 100%;
   box-sizing: border-box;
 }
-/* Phone: three separate cards. Laptop+: one unified bar (see min-width rule below). */
+/* Phone: three cards in one horizontal row. Laptop+: one unified bar (min-width: 768px below). */
 .ei-root .ticker-bar {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: stretch;
   gap: 8px;
   width: 100%;
 }
 .ei-root .ticker-seg {
+  flex: 1 1 0;
   background: rgba(14, 164, 114, 0.1);
   border: 1px solid rgba(14, 164, 114, 0.25);
   border-radius: 12px;
@@ -541,7 +554,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 55%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 55%
+  );
 }
 .ei-root .btn-cta:hover {
   transform: translateY(-2px);
@@ -630,7 +647,11 @@
 .ei-root .c-glow {
   position: absolute;
   inset: -72px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(79, 70, 229, 0.11) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(79, 70, 229, 0.11) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .c-track {
@@ -845,7 +866,11 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.09), rgba(124, 100, 220, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.09),
+    rgba(124, 100, 220, 0.05)
+  );
   border: 1px solid rgba(79, 70, 229, 0.18);
   border-radius: 10px;
   padding: 12px 14px;
@@ -1098,7 +1123,11 @@
   transform: translate(-50%, -50%);
   width: 800px;
   height: 400px;
-  background: radial-gradient(ellipse, rgba(79, 70, 229, 0.055) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse,
+    rgba(79, 70, 229, 0.055) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .section-eye {
@@ -1170,19 +1199,39 @@
   transition: opacity 0.3s;
 }
 .ei-root .arc-card:nth-child(1)::after {
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.14) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(79, 70, 229, 0.14) 0%,
+    transparent 70%
+  );
 }
 .ei-root .arc-card:nth-child(2)::after {
-  background: radial-gradient(circle, rgba(14, 164, 114, 0.12) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(14, 164, 114, 0.12) 0%,
+    transparent 70%
+  );
 }
 .ei-root .arc-card:nth-child(3)::after {
-  background: radial-gradient(circle, rgba(124, 100, 220, 0.12) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(124, 100, 220, 0.12) 0%,
+    transparent 70%
+  );
 }
 .ei-root .arc-card:nth-child(4)::after {
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(245, 158, 11, 0.1) 0%,
+    transparent 70%
+  );
 }
 .ei-root .arc-card:nth-child(5)::after {
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.1) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(79, 70, 229, 0.1) 0%,
+    transparent 70%
+  );
 }
 .ei-root .arc-card:hover::after {
   opacity: 1;
@@ -1281,7 +1330,11 @@
   transform: translateY(-50%);
   width: 500px;
   height: 500px;
-  background: radial-gradient(ellipse at right, rgba(14, 164, 114, 0.05) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse at right,
+    rgba(14, 164, 114, 0.05) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .inv-eye {
@@ -1637,7 +1690,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(79, 70, 229, 0.07) 0%, transparent 65%);
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(79, 70, 229, 0.07) 0%,
+    transparent 65%
+  );
   pointer-events: none;
 }
 .ei-root .cta-h {
@@ -1652,7 +1709,13 @@
   z-index: 1;
 }
 .ei-root .cta-h .g {
-  background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 35%, #4f46e5 65%, #7c64dc 100%);
+  background: linear-gradient(
+    135deg,
+    #c7d2fe 0%,
+    #a5b4fc 35%,
+    #4f46e5 65%,
+    #7c64dc 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1702,7 +1765,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 55%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 55%
+  );
 }
 .ei-root .btn-cta-lg:hover {
   transform: translateY(-2px);

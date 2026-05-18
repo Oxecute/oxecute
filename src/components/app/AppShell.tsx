@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
+import { useBreakpointMd } from "@/hooks/useBreakpointMd";
+
 import { DashboardNav, DashboardNavLogo, type MeUser } from "./DashboardNav";
+import { MobileShellRailDrawer } from "./MobileShellRailDrawer";
 
 export type AppShellUser = MeUser & {
   full_name?: string;
@@ -56,6 +59,7 @@ export function AppShell({
 }) {
   const [mobileNav, setMobileNav] = useState(false);
   const useLShape = Boolean(lHeader && inlineRightRail);
+  const mdUp = useBreakpointMd();
 
   const outerGridClass =
     inlineRightRail
@@ -167,8 +171,8 @@ export function AppShell({
     <div
       className={
         useLShape
-          ? "h-dvh max-h-dvh min-h-0 overflow-hidden flex flex-col bg-[var(--mi)] text-[var(--t1)]"
-          : "min-h-screen bg-[var(--mi)] text-[var(--t1)]"
+          ? "h-dvh max-h-dvh w-full min-w-0 overflow-x-hidden overflow-hidden flex flex-col bg-[var(--mi)] text-[var(--t1)]"
+          : "min-h-screen w-full min-w-0 max-w-[100vw] overflow-x-hidden bg-[var(--mi)] text-[var(--t1)]"
       }
     >
       <button
@@ -202,12 +206,29 @@ export function AppShell({
       ) : null}
 
       {useLShape ? (
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7">
-          <div
-            className={`max-w-[1920px] mx-auto w-full h-full min-h-0 grid ${LSHAPE_GRID} ${L_UNIFIED_SHELL}`}
-          >
-            {gridBody}
-          </div>
+        <div className="flex flex-1 min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden px-3 sm:px-4 md:px-5 lg:px-7 pt-14 pb-5 md:pt-6 md:pb-7">
+          {mdUp ? (
+            <div
+              className={`max-w-[1920px] mx-auto w-full min-w-0 h-full min-h-0 grid ${LSHAPE_GRID} ${L_UNIFIED_SHELL}`}
+            >
+              {gridBody}
+            </div>
+          ) : (
+            <div className="mx-auto flex h-full min-h-0 min-w-0 w-full max-w-[1920px] flex-1 flex-col">
+              <div
+                className={`flex h-full min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden ${L_UNIFIED_SHELL}`}
+              >
+                <div className="flex min-w-0 shrink-0 items-center border-b border-[#1F2430] bg-[#0B0F14] px-4 py-3">
+                  <DashboardNavLogo />
+                </div>
+                <div className="min-w-0 shrink-0">{lHeader}</div>
+                <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain scrollbar-none bg-[var(--shell-bg)]">
+                  {children}
+                </div>
+                <MobileShellRailDrawer>{inlineRightRail}</MobileShellRailDrawer>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className={`w-full min-w-0 max-w-[100vw] ${outerGridClass}`}>{gridBody}</div>

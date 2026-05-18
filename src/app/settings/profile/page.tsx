@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 function ProfileSettingsMain() {
   const shellUser = useShellUser();
   const [bio, setBio] = useState("");
+  const [profilePublic, setProfilePublic] = useState(false);
   const [showBreaks, setShowBreaks] = useState(true);
   const [showSignal, setShowSignal] = useState(false);
   const [username, setUsername] = useState("");
@@ -24,6 +25,7 @@ function ProfileSettingsMain() {
     const j = await res.json();
     const u = j.user as Record<string, unknown>;
     setBio(String(u.profile_bio ?? ""));
+    setProfilePublic(Boolean(u.profile_public ?? false));
     setShowBreaks(Boolean(u.show_breaks ?? true));
     setShowSignal(Boolean(u.show_signal_score ?? false));
     setUsername(String(u.username ?? ""));
@@ -60,7 +62,7 @@ function ProfileSettingsMain() {
     }
     const body: Record<string, unknown> = {
       profile_bio: bio.trim() ? bio.trim() : null,
-      profile_public: true,
+      profile_public: profilePublic,
       show_breaks: showBreaks,
       show_signal_score: showSignal,
     };
@@ -139,6 +141,20 @@ function ProfileSettingsMain() {
             />
           </div>
           <span className="text-xs text-[var(--t3)]">3–20 characters after oxecute/. Letters, numbers, _-.</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 shrink-0"
+            checked={profilePublic}
+            onChange={(e) => setProfilePublic(e.target.checked)}
+          />
+          <span>
+            Public profile
+            <span className="block text-xs text-[var(--t3)] mt-0.5">
+              Anyone can open your page at oxecute/{username || "your-username"} when this is on.
+            </span>
+          </span>
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showBreaks} onChange={(e) => setShowBreaks(e.target.checked)} />

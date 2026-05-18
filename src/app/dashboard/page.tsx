@@ -253,17 +253,17 @@ function DashboardMainInner() {
 
   return (
     <>
-      <section id="oxe-dashboard-today" className="text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
+      <section id="oxe-dashboard-today" className="min-w-0 max-w-full text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
         {gapWarn ? (
-          <div className="flex items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
-            <span className="text-[#C2A478] shrink-0 mt-0.5" aria-hidden>
+          <div className="flex min-w-0 max-w-full items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
+            <span className="mt-0.5 shrink-0 text-[#C2A478]" aria-hidden>
               ⓘ
             </span>
-            {gapWarn}
+            <span className="min-w-0 flex-1 break-words">{gapWarn}</span>
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-300 mb-2.5">Days executed</p>
             <p className="text-[30px] font-bold tabular-nums leading-none tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
