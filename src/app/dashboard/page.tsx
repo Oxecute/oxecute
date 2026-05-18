@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  AuthenticatedShell,
-  useShellUser,
-  useShellUserRefresh,
-} from "@/components/app/AuthenticatedShell";
-import { DashboardOperatingRecordHeader } from "@/components/app/DashboardOperatingRecordHeader";
-import { useShellLHeaderSetter } from "@/components/app/shell-l-header-context";
+import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
 import {
@@ -18,7 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
   return (
@@ -74,7 +68,6 @@ const ENTRY_LOCK_BUTTON =
   "w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all";
 
 function DashboardMainInner() {
-  const setShellLHeader = useShellLHeaderSetter();
   const user = useShellUser();
   const refreshShellUser = useShellUserRefresh();
   const router = useRouter();
@@ -162,11 +155,6 @@ function DashboardMainInner() {
 
   const execCount = Number(user.execution_count ?? 0);
   const day21Reached = Boolean(user.day21_reached);
-  useLayoutEffect(() => {
-    if (!setShellLHeader) return;
-    setShellLHeader(<DashboardOperatingRecordHeader />);
-    return () => setShellLHeader(null);
-  }, [setShellLHeader]);
 
   const recent = [...entries]
     .sort(

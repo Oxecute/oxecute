@@ -1,7 +1,6 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
-import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 import { useCallback, useEffect, useState } from "react";
 
 type RequestRow = {
@@ -110,20 +109,13 @@ function BoardMain() {
   const sorted = [...filtered].sort((a, b) => b.upvote_count - a.upvote_count);
 
   return (
-    <div className="space-y-8 max-w-3xl">
-      <RecordPageHeader
-        title={
-          <h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
-            Feature requests
-          </h1>
-        }
-        subtitle={
-          <p className="text-[12px] sm:text-[13px] text-ox-t2 leading-relaxed max-w-xl">
-            Shape the product with your record. Upvotes unlock after Day 7; new requests open at Day 21.
-          </p>
-        }
-        extraActions={
-          day21 ? (
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-8 px-5 pb-10 pt-5 sm:px-7 sm:pt-7 md:pb-14">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <p className="text-[12px] sm:text-[13px] text-ox-t2 leading-relaxed max-w-xl">
+          Shape the product with your record. Upvotes unlock after Day 7; new requests open at Day 21.
+        </p>
+        <div className="shrink-0">
+          {day21 ? (
             <button
               type="button"
               className="rounded-full bg-[#0EA472] text-white font-semibold px-4 py-2 text-[12px] shadow-sm hover:opacity-95"
@@ -133,14 +125,14 @@ function BoardMain() {
             </button>
           ) : (
             <span
-              className="text-[11px] text-ox-t2 border border-white/[0.08] rounded-full px-3 py-1.5 bg-[#1C1F2A]"
+              className="inline-flex text-[11px] text-ox-t2 border border-white/[0.08] rounded-full px-3 py-1.5 bg-[#1C1F2A]"
               title="Unlocks at 21 days executed"
             >
               + New request · Day 21
             </span>
-          )
-        }
-      />
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2 text-sm">
         <button

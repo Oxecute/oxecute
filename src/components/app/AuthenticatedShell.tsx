@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import { AppShell, type AppShellUser } from "./AppShell";
 import { DashboardRightRail } from "./DashboardRightRail";
+import { PathRecordLShellHeader } from "./RecordLShellHeader";
 import { ShellLHeaderSetterContext } from "./shell-l-header-context";
 
 export const InboxUnreadContext = createContext<number>(0);
@@ -123,6 +124,7 @@ export function AuthenticatedShell({
 
   const refreshShellUser = useCallback(() => setUserReloadNonce((n) => n + 1), []);
   const [shellLHeader, setShellLHeader] = useState<ReactNode | null>(null);
+  const lHeaderNode = shellLHeader ?? <PathRecordLShellHeader />;
 
   useEffect(() => {
     void load();
@@ -174,7 +176,7 @@ export function AuthenticatedShell({
               user={user}
               unreadCount={inboxUnread}
               inlineRightRail={<DashboardRightRail />}
-              lHeader={shellLHeader}
+              lHeader={lHeaderNode}
             >
               {children}
             </AppShell>

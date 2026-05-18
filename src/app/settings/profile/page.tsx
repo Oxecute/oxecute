@@ -1,7 +1,6 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
-import { RecordPageHeader } from "@/components/app/RecordPageHeader";
 import {
   ExecutionGrid,
   ExecutionStats,
@@ -102,10 +101,6 @@ function ProfileSettingsMain() {
 
   return (
     <div className="space-y-10 max-w-3xl">
-      <RecordPageHeader
-        title={<h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>My Profile</h1>}
-      />
-
       <ProfileHeader
         fullName={String(shellUser.full_name ?? shellUser.username)}
         username={String(shellUser.username)}

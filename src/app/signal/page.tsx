@@ -1,49 +1,27 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
-import { RecordPageHeader, RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
-
-const titleClasses =
-  "text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]";
-const titleFont = { fontFamily: "var(--font-urbanist), Urbanist, sans-serif" } as const;
+import { RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
 
 function SignalContent() {
   const user = useShellUser();
   const day21 = Boolean(user.day21_reached);
 
-  const title = (
-    <h1 className={titleClasses} style={titleFont}>
-      Signal Score
-    </h1>
-  );
-
   if (day21) {
     return (
       <section className="text-[#EAEFF8] p-5 sm:p-7 space-y-6">
-        <RecordPageHeader
-          title={title}
-          subtitle={
-            <p className={RECORD_PAGE_SUBTITLE_CLASS}>
-              Your execution, quantified. You&apos;ve crossed Day 21 — detailed Signal surfaces will deepen as
-              your record grows.
-            </p>
-          }
-        />
+        <p className={RECORD_PAGE_SUBTITLE_CLASS}>
+          Your execution, quantified. You&apos;ve crossed Day 21 — detailed Signal surfaces will deepen as your record grows.
+        </p>
       </section>
     );
   }
 
   return (
     <section className="text-[#EAEFF8] p-5 sm:p-7 space-y-6">
-      <RecordPageHeader
-        title={title}
-        subtitle={
-            <p className={RECORD_PAGE_SUBTITLE_CLASS}>
-              Your execution, quantified. Activates after 21 days of execution. Keep going — it&apos;s already
-              watching.
-            </p>
-        }
-      />
+      <p className={RECORD_PAGE_SUBTITLE_CLASS}>
+        Your execution, quantified. Activates after 21 days of execution. Keep going — it&apos;s already watching.
+      </p>
 
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#14161f]">
         <div className="relative h-[min(58vh,520px)] w-full overflow-hidden">

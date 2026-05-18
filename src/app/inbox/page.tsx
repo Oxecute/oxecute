@@ -1,7 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
-import { RecordPageHeader, RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
+import { RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
 import { useCallback, useEffect, useState } from "react";
 
 type Notif = {
@@ -60,24 +60,17 @@ function InboxMain() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl w-full min-w-0">
-      <RecordPageHeader
-        title={
-          <h1 className="text-[20px] sm:text-[22px] font-extrabold tracking-[-0.02em] text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
-            Inbox
-          </h1>
-        }
-        subtitle={<p className={RECORD_PAGE_SUBTITLE_CLASS}>System and product notices for @{user.username}.</p>}
-        extraActions={
-          <button
-            type="button"
-            className="rounded-full bg-transparent px-3.5 py-1.5 text-[12px] font-semibold text-[#0EA472] border border-[#0EA472]/45 hover:bg-[#0EA472]/10"
-            onClick={() => void markAll()}
-          >
-            Mark all read
-          </button>
-        }
-      />
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-6 px-5 pb-10 pt-5 sm:px-7 sm:pt-7 md:pb-14">
+      <p className={RECORD_PAGE_SUBTITLE_CLASS}>System and product notices for @{user.username}.</p>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          className="rounded-full bg-transparent px-3.5 py-1.5 text-[12px] font-semibold text-[#0EA472] border border-[#0EA472]/45 hover:bg-[#0EA472]/10"
+          onClick={() => void markAll()}
+        >
+          Mark all read
+        </button>
+      </div>
 
       {loading ? <p className="text-[var(--t2)]">Loading…</p> : null}
 
