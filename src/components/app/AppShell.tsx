@@ -187,7 +187,7 @@ export function AppShell({
       </button>
 
       {mobileNav ? (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-[60] md:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
