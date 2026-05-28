@@ -303,6 +303,29 @@ export default function StartPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBeforeUnload = () => {
+      if (step === 4) {
+        // Send drop-off event via keepalive fetch so it executes before closing
+        fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_type: "drop_off",
+            properties: { last_screen: 4 },
+            session_id: "web",
+          }),
+          keepalive: true,
+        });
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [step]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function hydrateFromUser(u: Record<string, unknown>) {

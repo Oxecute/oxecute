@@ -1,6 +1,18 @@
 import { conexaDay14Read } from "@/lib/conexa/anthropic";
 import { executionDayNumber, executionRate, startOfUtcDay, utcTodayISO } from "@/lib/dates";
-import { sendEmail } from "@/lib/email/send";
+import {
+  sendDay7Email,
+  sendDay14Email,
+  sendDay21Email,
+  sendDay45Email,
+  sendWindowClosingReminderEmail,
+  sendZeroReferrerDay7Email,
+  sendZeroReferrerDay14Email,
+  sendZeroReferrerDay21Email,
+  sendZeroReferrerDay28Email,
+  sendZeroReferrerDay35Email,
+  sendActiveReferrerRecurringEmail,
+} from "@/lib/email/service";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { logEvent } from "@/lib/analytics";
 
@@ -12,9 +24,9 @@ async function acquireLock(job: string, dateKey: string): Promise<boolean> {
   return true;
 }
 
-export async function runCronHeartbeat() {
+export async function runCronHeartbeat(overrideNow?: Date) {
   const admin = createServiceRoleClient();
-  const now = new Date();
+  const now = overrideNow || new Date();
   const utcH = now.getUTCHours();
   const utcM = now.getUTCMinutes();
   const today = utcTodayISO();
@@ -84,6 +96,8 @@ export async function runCronHeartbeat() {
 
   for (const u of candidates ?? []) {
     const ex = u.execution_count ?? 0;
+    const firstName = String(u.first_name || u.full_name || "Founder").split(" ")[0];
+
     if (ex >= 7 && !u.day7_reached) {
       await admin
         .from("users")
@@ -94,18 +108,8 @@ export async function runCronHeartbeat() {
         milestone: "day7",
         execution_count_at: ex,
       });
-      await admin.from("notifications").insert({
-        user_id: u.id,
-        type: "milestone",
-        title: "7 days executed",
-        body: "You can now upvote and comment on feature requests. Your referral link is active.",
-      });
-      await sendEmail({
-        to: u.email,
-        subject: "7 days executed",
-        text: `7 days milestone email - ${u.full_name}`,
-        html: `<p>7 days executed</p>`,
-      });
+      // Unified email helper also handles the database notification automatically!
+      await sendDay7Email(u.email, firstName, u.referral_code || "");
       await logEvent("milestone_day7_reached", { execution_count: ex }, u.id, "cron");
     }
     if (ex >= 14 && !u.day14_notified) {
@@ -156,12 +160,8 @@ ${lines}`;
         milestone: "day14",
         execution_count_at: ex,
       });
-      await admin.from("notifications").insert({
-        user_id: u.id,
-        type: "milestone",
-        title: "14 days executed - Conexa mid-point read",
-        body: paragraph,
-      });
+      // Unified email helper also handles the database notification automatically!
+      await sendDay14Email(u.email, firstName, ex, paragraph);
       await logEvent("milestone_day14_notified", { execution_count: ex, execution_rate: rate }, u.id, "cron");
     }
     if (ex >= 21 && !u.day21_reached) {
@@ -174,12 +174,8 @@ ${lines}`;
         milestone: "day21",
         execution_count_at: ex,
       });
-      await admin.from("notifications").insert({
-        user_id: u.id,
-        type: "milestone",
-        title: "21 days executed - you've earned this",
-        body: "Signal Score, Daily Directive, and Builder tier just unlocked.",
-      });
+      // Unified email helper also handles the database notification automatically!
+      await sendDay21Email(u.email, firstName, u.referral_code || "");
       await logEvent(
         "milestone_day21_reached",
         { execution_count: ex, break_count: u.break_count ?? 0 },
@@ -197,13 +193,121 @@ ${lines}`;
         milestone: "day45",
         execution_count_at: ex,
       });
-      await admin.from("notifications").insert({
-        user_id: u.id,
-        type: "milestone",
-        title: "45 days executed - community opens",
-        body: "Founders at your stage who've also executed 45 days are now visible to you.",
-      });
+      // Unified email helper also handles the database notification automatically!
+      await sendDay45Email(u.email, firstName);
       await logEvent("milestone_day45_reached", { execution_count: ex }, u.id, "cron");
+    }
+  }
+
+  // ─── Window-Closing Reminder (20:00 UTC) ──────────────────────────────────
+  if (utcH === 20 && utcM === 0) {
+    const ok = await acquireLock("window_closing_reminder", dateKey);
+    if (ok) {
+      const { data: reminderUsers } = await admin
+        .from("users")
+        .select("id, email, full_name, first_name, execution_count, last_submission_date")
+        .or(`last_submission_date.lt.${today},last_submission_date.is.null`);
+
+      for (const u of reminderUsers ?? []) {
+        const firstName = String(u.first_name || u.full_name || "Founder").split(" ")[0];
+        
+        // Unified email helper handles both sending and notification database insert!
+        await sendWindowClosingReminderEmail(u.email, firstName, u.execution_count ?? 0);
+        await logEvent("window_closing_reminder_sent", { execution_count: u.execution_count ?? 0 }, u.id, "cron");
+      }
+    }
+  }
+
+  // ─── Recurring Referral & Milestones Sequences (12:00 UTC) ─────────────────
+  if (utcH === 12 && utcM === 0) {
+    const ok = await acquireLock("referral_milestones", dateKey);
+    if (ok) {
+      const { data: allUsers } = await admin.from("users").select("*");
+      for (const u of allUsers ?? []) {
+        const days = u.days_on_record ?? 0;
+        
+        // Fetch all referrals made by this user
+        const { data: refs } = await admin
+          .from("referrals")
+          .select("onboarding_completed, subscription_valid, created_at")
+          .eq("referrer_user_id", u.id);
+
+        const onboardedCount = (refs ?? []).filter(r => r.onboarding_completed).length;
+        const paidCount = (refs ?? []).filter(r => r.subscription_valid).length;
+        const hasReferrals = (refs ?? []).length > 0;
+
+        const firstName = String(u.first_name || u.full_name || "Founder").split(" ")[0];
+
+        if (!hasReferrals) {
+          // --- ZERO REFERRERS SEQUENCE ---
+          if (days === 7) {
+            await sendZeroReferrerDay7Email(u.email, firstName, u.referral_code || "");
+            await logEvent("zero_referrer_day7_sent", { days }, u.id, "cron");
+          } else if (days === 14) {
+            await sendZeroReferrerDay14Email(u.email, firstName, u.referral_code || "");
+            await logEvent("zero_referrer_day14_sent", { days }, u.id, "cron");
+          } else if (days === 21) {
+            await sendZeroReferrerDay21Email(u.email, firstName, u.referral_code || "");
+            await logEvent("zero_referrer_day21_sent", { days }, u.id, "cron");
+          } else if (days === 28) {
+            await sendZeroReferrerDay28Email(u.email, firstName, u.referral_code || "");
+            await logEvent("zero_referrer_day28_sent", { days }, u.id, "cron");
+          } else if (days === 35) {
+            await sendZeroReferrerDay35Email(u.email, firstName, u.referral_code || "");
+            await logEvent("zero_referrer_day35_sent", { days }, u.id, "cron");
+          }
+        } else {
+          // --- ACTIVE REFERRERS SEQUENCE ---
+          const { data: rewards } = await admin
+            .from("referral_rewards")
+            .select("tier_reached")
+            .eq("user_id", u.id);
+          const rewardTiers = new Set((rewards ?? []).map(r => r.tier_reached));
+
+          const has3Paid = rewardTiers.has("3_paid");
+          const has5Paid = rewardTiers.has("5_paid");
+          const has5Onboarded = rewardTiers.has("5_onboarded");
+
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+          const allConversionWindowsClosed = (refs ?? []).every(ref => new Date(ref.created_at) < thirtyDaysAgo);
+
+          const paidCondition = (has3Paid && has5Paid) || allConversionWindowsClosed;
+          const onboardingCondition = has5Onboarded;
+
+          const stopConditionMet = paidCondition && onboardingCondition;
+
+          if (!stopConditionMet) {
+            if (days === 7) {
+              await sendActiveReferrerRecurringEmail(u.email, firstName, u.referral_code || "", 7, onboardedCount, paidCount, "Next milestone: 3 onboarded = 50% off.");
+              await logEvent("active_referrer_day7_sent", { days }, u.id, "cron");
+            } else if (days === 14) {
+              await sendActiveReferrerRecurringEmail(u.email, firstName, u.referral_code || "", 14, onboardedCount, paidCount, "Next milestone: 5 onboarded = 1 month free.");
+              await logEvent("active_referrer_day14_sent", { days }, u.id, "cron");
+            } else if (days === 21) {
+              let discountDesc = "25% off";
+              if (onboardedCount >= 5) discountDesc = "1 month free";
+              else if (onboardedCount >= 3) discountDesc = "50% off";
+              await sendActiveReferrerRecurringEmail(u.email, firstName, u.referral_code || "", 21, onboardedCount, paidCount, `Onboarding tiers unlocked! Pay with ${discountDesc} at subscribe.`);
+              await logEvent("active_referrer_day21_sent", { days }, u.id, "cron");
+            } else if (days === 28) {
+              await sendActiveReferrerRecurringEmail(u.email, firstName, u.referral_code || "", 28, onboardedCount, paidCount, "Conversion window closes soon. Refer paid subscribers for free months.");
+              await admin.from("users").update({ day28_referral_sent: true }).eq("id", u.id);
+              await logEvent("active_referrer_day28_sent", { days }, u.id, "cron");
+            } else if (days >= 35 && days % 7 === 0 && u.day28_referral_sent) {
+              let nextTierDesc = "";
+              if (onboardedCount < 1) nextTierDesc = "Next milestone: 1 onboarded = 25% off.";
+              else if (onboardedCount < 3) nextTierDesc = "Next milestone: 3 onboarded = 50% off.";
+              else if (onboardedCount < 5) nextTierDesc = "Next milestone: 5 onboarded = 1 month free.";
+              else if (paidCount < 3) nextTierDesc = "Next milestone: 3 paid referrals = 3 months free.";
+              else if (paidCount < 5) nextTierDesc = "Next milestone: 5 paid referrals = 50% off for 3 months.";
+              else nextTierDesc = "All reward tiers reached! Thank you for sharing Oxecute.";
+
+              await sendActiveReferrerRecurringEmail(u.email, firstName, u.referral_code || "", days, onboardedCount, paidCount, nextTierDesc);
+              await logEvent(`active_referrer_recurring_sent`, { days }, u.id, "cron");
+            }
+          }
+        }
+      }
     }
   }
 

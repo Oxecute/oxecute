@@ -51,6 +51,12 @@ function showLockpill(item: NavItem, user: MeUser): string | null {
   if (item.href === "/signal" || item.href === "/directive") {
     if (!user.day21_reached) return item.lockLabel ?? "Day 21";
   }
+  if (item.href === "/community") {
+    if (!user.day45_reached) return "Day 45";
+  }
+  if (item.href === "/coaches" || item.href === "/angels") {
+    return "Coming Soon";
+  }
   return null;
 }
 
@@ -433,11 +439,15 @@ export function DashboardNav({
           <NavSection
             title="Network"
             user={user}
-            items={NAV_NETWORK_ITEMS}
+            items={NAV_NETWORK_ITEMS.map((item) => {
+              if (item.label === "Community") {
+                return { ...item, disabled: !user.day45_reached };
+              }
+              return item;
+            })}
             onNavigate={onNavigate}
             inboxUnread={inboxUnread}
-            soonBadge
-            forceDisabled
+            soonBadge={!user.day45_reached}
           />
           <NavSection
             title="Tools"

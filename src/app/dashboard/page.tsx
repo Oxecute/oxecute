@@ -75,6 +75,7 @@ function DashboardMainInner() {
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Record<string, unknown>[]>([]);
   const [breakDays, setBreakDays] = useState<number[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatText, setChatText] = useState("");
   const [chatLog, setChatLog] = useState<{ role: string; content: string }[]>([]);
@@ -89,18 +90,49 @@ function DashboardMainInner() {
   const [dayDetail, setDayDetail] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [declFiles, setDeclFiles] = useState<File[]>([]);
+  const [conexaDrawerOpen, setConexaDrawerOpen] = useState(false);
   const [conexaTab, setConexaTab] = useState<string>("reality_check");
 
-  const loadEntries = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  // Referral states
+  const [onboardedCount, setOnboardedCount] = useState(0);
+  const [paidCount, setPaidCount] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCaption, setCopiedCaption] = useState(false);
+
+  const loadReferrals = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const eRes = await fetch("/api/entries");
-    const eJ = await eRes.json();
-    setEntries(eJ.entries ?? []);
-    setBreakDays(eJ.break_days ?? []);
-  }, [supabase.auth]);
+    const { data: refRows } = await supabase
+      .from("referrals")
+      .select("onboarding_completed, subscription_valid")
+      .eq("referrer_user_id", session.user.id);
+    
+    if (refRows) {
+      setOnboardedCount(refRows.filter((r: { onboarding_completed: boolean }) => r.onboarding_completed).length);
+      setPaidCount(refRows.filter((r: { subscription_valid: boolean }) => r.subscription_valid).length);
+    }
+  }, [supabase]);
+
+  const loadEntries = useCallback(async () => {
+    try {
+      setLoadError(null);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const eRes = await fetch("/api/entries");
+      if (!eRes.ok) {
+        throw new Error(`Failed to load entries: ${eRes.status}`);
+      }
+      const eJ = await eRes.json();
+      setEntries(eJ.entries ?? []);
+      setBreakDays(eJ.break_days ?? []);
+      void loadReferrals();
+    } catch (e) {
+      console.error(e);
+      setLoadError("API timeout or connection lost. Please check your network and try again.");
+    }
+  }, [supabase.auth, loadReferrals]);
 
   useEffect(() => {
     void loadEntries();
@@ -155,6 +187,25 @@ function DashboardMainInner() {
 
   const execCount = Number(user.execution_count ?? 0);
   const day21Reached = Boolean(user.day21_reached);
+
+  const refCode = user.referral_code || "";
+  const referralLink = `oxecute.com/signup?ref=${refCode}`;
+  const prewrittenCaption = `21 days executed on Oxecute. No streak required. Just 21 days of verified proof. If you're building and leaving no trace, start here: ${referralLink}`;
+
+  const copyToClipboard = useCallback(async (text: string, type: "link" | "caption") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "link") {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      } else {
+        setCopiedCaption(true);
+        setTimeout(() => setCopiedCaption(false), 2000);
+      }
+    } catch (err) {
+      console.error("Failed to copy!", err);
+    }
+  }, []);
 
   const recent = [...entries]
     .sort(
@@ -225,11 +276,42 @@ function DashboardMainInner() {
     setChatText("");
     setChatLog((l) => [...l, { role: "user", content: t }]);
     setChatSending(true);
+
+    const connectedList: string[] = [];
+    const toolsToCheck = ["GitHub", "Notion", "Stripe", "Lemon Squeezy", "Calendly", "Typeform"];
+    toolsToCheck.forEach((tool) => {
+      const val = localStorage.getItem(`oxe_connected_tool_${tool}`);
+      if (val) {
+        try {
+          const parsedVal = JSON.parse(val);
+          if (parsedVal) {
+            if (tool === "GitHub") {
+              connectedList.push(`GitHub (Repo: ${parsedVal.repo || "Unknown"}, Branch: ${parsedVal.branch || "main"})`);
+            } else if (tool === "Notion") {
+              connectedList.push(`Notion (Workspace: ${parsedVal.workspace || "Unknown"}, Database: ${parsedVal.database || "Execution Log"})`);
+            } else if (tool === "Stripe") {
+              connectedList.push(`Stripe (Account ID: ${parsedVal.accountId || "Unknown"}, Mode: ${parsedVal.mode || "live"})`);
+            } else if (tool === "Lemon Squeezy") {
+              connectedList.push(`Lemon Squeezy (Store ID: ${parsedVal.storeId || "Unknown"})`);
+            } else if (tool === "Calendly") {
+              connectedList.push(`Calendly (Link: ${parsedVal.username || "Unknown"})`);
+            } else if (tool === "Typeform") {
+              connectedList.push(`Typeform (Form ID: ${parsedVal.formId || "Unknown"})`);
+            } else {
+              connectedList.push(tool);
+            }
+          }
+        } catch {
+          connectedList.push(tool);
+        }
+      }
+    });
+
     try {
       const res = await fetch("/api/conexa/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: t }),
+        body: JSON.stringify({ message: t, connectedTools: connectedList }),
       });
       const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
       const reply =
@@ -260,6 +342,22 @@ function DashboardMainInner() {
               ⓘ
             </span>
             <span className="min-w-0 flex-1 break-words">{gapWarn}</span>
+          </div>
+        ) : null}
+
+        {loadError ? (
+          <div className="rounded-[20px] border border-red-500/20 bg-red-500/5 p-5 flex flex-wrap items-center justify-between gap-4 transition-all duration-200">
+            <div>
+              <h3 className="text-sm font-semibold text-red-400">Connection Offline</h3>
+              <p className="text-[12px] text-ox-t2 mt-0.5">{loadError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadEntries()}
+              className="rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white px-3.5 py-1.5 text-xs font-semibold transition-colors"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : null}
 
@@ -404,6 +502,145 @@ function DashboardMainInner() {
             {gridLegend}
           </div>
         </div>
+
+        {/* Referral System Panel */}
+        {!user.day7_reached ? (
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 sm:p-[22px] overflow-hidden space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.055] pb-4">
+              <div>
+                <p className="text-[14.5px] font-semibold tracking-tight animate-pulse" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  Referral System
+                </p>
+                <p className="text-[11.5px] text-ox-t3 mt-0.5">Invite early-stage founders to execute alongside you</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <p className="text-[13px] text-zinc-300">
+                Your referral link is ready. We&apos;ll let you know when to use it.
+              </p>
+              <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.08] px-3.5 py-2.5 max-w-md">
+                <span className="text-xs text-ox-t2 select-all font-mono break-all flex-1">{referralLink}</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(referralLink, "link")}
+                  className="shrink-0 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 hover:text-white px-3 py-1.5 text-xs font-semibold transition-colors"
+                >
+                  {copiedLink ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 sm:p-[22px] overflow-hidden space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.055] pb-4">
+              <div>
+                <p className="text-[14.5px] font-semibold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  Referral Program
+                </p>
+                <p className="text-[11.5px] text-ox-t3 mt-0.5">Your referral link is active. Share it to unlock premium rewards.</p>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full border border-[rgba(14,164,114,0.35)] text-[#6ee7b7] bg-[rgba(14,164,114,0.12)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0EA472]" /> Active
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Your Referral Link</label>
+                  <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.08] px-3.5 py-2.5">
+                    <span className="text-xs text-ox-t2 select-all font-mono break-all flex-1">{referralLink}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(referralLink, "link")}
+                      className="shrink-0 rounded-lg bg-[#0EA472] hover:opacity-95 text-white px-3.5 py-1.5 text-xs font-semibold shadow-[0_2px_8px_rgba(14,164,114,0.2)] transition-all"
+                    >
+                      {copiedLink ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Quick Share Caption</label>
+                  <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 text-xs text-ox-t2 leading-relaxed italic relative">
+                    &ldquo;{prewrittenCaption}&rdquo;
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(prewrittenCaption, "caption")}
+                      className="absolute bottom-2 right-2 rounded-md bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 hover:text-white px-2 py-1 text-[10px] font-semibold transition-colors"
+                    >
+                      {copiedCaption ? "Copied Caption!" : "Copy Caption"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <a
+                    href={`https://x.com/intent/tweet?text=${encodeURIComponent(prewrittenCaption)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white px-4 py-2 text-xs font-semibold transition-all hover:scale-[1.02]"
+                  >
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    Share on X
+                  </a>
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white px-4 py-2 text-xs font-semibold transition-all hover:scale-[1.02]"
+                  >
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452z" />
+                    </svg>
+                    Share on LinkedIn
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Reward Tiers Table</label>
+                  <span className="text-xs text-zinc-400 tabular-nums">
+                    <strong className="text-[#0EA472]">{onboardedCount}</strong> onboarded · <strong className="text-[#7C64DC]">{paidCount}</strong> paid
+                  </span>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] overflow-hidden text-xs">
+                  <div className="grid grid-cols-[1.2fr_1fr] bg-white/[0.04] px-3.5 py-2.5 font-semibold text-white border-b border-white/[0.06]">
+                    <div>Your Referrals</div>
+                    <div>What you get</div>
+                  </div>
+                  <div className="divide-y divide-white/[0.06]">
+                    {[
+                      { label: "0 referrals", active: onboardedCount === 0, val: "$29/month full price", color: "" },
+                      { label: "1 onboarded", active: onboardedCount >= 1, val: "25% off one month", color: "text-emerald-400 font-medium" },
+                      { label: "3 onboarded", active: onboardedCount >= 3, val: "50% off one month", color: "text-emerald-400 font-medium" },
+                      { label: "5 onboarded", active: onboardedCount >= 5, val: "1 month free", color: "text-emerald-400 font-medium" },
+                      { label: "3 paid within 30 days", active: paidCount >= 3, val: "3 months free", color: "text-[#8B82F5] font-medium" },
+                      { label: "5 paid within 30 days", active: paidCount >= 5, val: "50% off for 3 months", color: "text-[#8B82F5] font-medium" }
+                    ].map((row, rIdx) => (
+                      <div
+                        key={rIdx}
+                        className={`grid grid-cols-[1.2fr_1fr] px-3.5 py-2.5 transition-colors ${
+                          row.active ? "bg-white/[0.05] font-semibold text-white" : "text-ox-t2"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {row.active && <span className="w-1.5 h-1.5 rounded-full bg-[#0EA472] shrink-0" />}
+                          {row.label}
+                        </div>
+                        <div className={row.active ? row.color : "text-zinc-400"}>{row.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 px-[22px] py-4 border-b border-white/[0.055]">
@@ -570,6 +807,17 @@ function DashboardMainInner() {
                 </p>
               </div>
             </div>
+            {!day21Reached && (
+              <div className="px-[22px] pb-[22px] pt-0">
+                <button
+                  type="button"
+                  onClick={() => setConexaDrawerOpen(true)}
+                  className="text-xs font-semibold text-[#7C64DC] hover:text-[#9B8CE8] hover:underline flex items-center gap-1.5 transition-colors"
+                >
+                  21 days executed unlocks 5 more ➜
+                </button>
+              </div>
+            )}
           </div>
         ) : null}
       </section>
@@ -952,12 +1200,18 @@ function DashboardMainInner() {
                       upload_paths,
                     };
                   }
-                  const res = await fetch("/api/entries", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "same-origin",
-                    body: JSON.stringify(body),
-                  });
+                  let res: Response;
+                  try {
+                    res = await fetch("/api/entries", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "same-origin",
+                      body: JSON.stringify(body),
+                    });
+                  } catch {
+                    setSubmitError("API timeout or network offline. Could not submit proof.");
+                    return;
+                  }
                   const j = (await res.json().catch(() => ({}))) as { error?: string };
                   if (!res.ok) {
                     setSubmitError(
@@ -1110,6 +1364,102 @@ function DashboardMainInner() {
                 Send
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Conexa Locked Tabs Slide-out Drawer */}
+      {conexaDrawerOpen && (
+        <div className="fixed inset-0 z-[120] flex justify-end pointer-events-auto">
+          {/* Backdrop overlay */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-[2px] cursor-pointer"
+            onClick={() => setConexaDrawerOpen(false)}
+          />
+          {/* Drawer container */}
+          <div className="relative w-full max-w-[480px] h-full bg-[#0d0f1a] border-l border-white/[0.1] shadow-2xl p-6 sm:p-8 flex flex-col gap-6 overflow-y-auto text-[#EAEFF8] animate-[slideIn_0.3s_ease-out]">
+            <style>{`
+              @keyframes slideIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+              }
+            `}</style>
+            
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#7C64DC]">
+                  Conexa Intelligence
+                </p>
+                <h2 className="text-xl font-extrabold tracking-tight mt-1" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  Locked Conexa Insights
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="text-zinc-400 hover:text-white rounded-full bg-white/[0.04] p-1.5 transition-colors"
+                onClick={() => setConexaDrawerOpen(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.06)] p-4 text-xs leading-relaxed text-zinc-300">
+              <strong className="text-white block mb-1">These 5 tabs unlock at 21 days executed.</strong>
+              They read your behaviour, not your declarations. The drawer is read-only at MVP, showing what 21 days executed will reveal.
+            </div>
+
+            <div className="space-y-6">
+              {[
+                {
+                  tab: "Tab 7",
+                  title: "Where Your Time Actually Went",
+                  desc: "21-day category breakdown vs your stated focus on Day 1."
+                },
+                {
+                  tab: "Tab 8",
+                  title: "What You Said You'd Do — And Did",
+                  desc: "Every declaration-to-proof arc. The times you committed and followed through."
+                },
+                {
+                  tab: "Tab 9",
+                  title: "Your Avoidance Pattern, Confirmed",
+                  desc: "Day 1 stated avoidance vs 21 days of actual submissions. Confirmed / Contradicted / Expanded."
+                },
+                {
+                  tab: "Tab 10",
+                  title: "Your Execution Signature",
+                  desc: "Your behavioural type from the record. One of four named patterns."
+                },
+                {
+                  tab: "Tab 11",
+                  title: "The Gap That Will Kill This",
+                  desc: "One thing. The most dangerous pattern in 21 days. No softening."
+                }
+              ].map((item, index) => (
+                <div key={index} className="rounded-xl border border-white/[0.055] bg-white/[0.02] p-4 flex gap-3 animate-[fadeIn_0.5s_ease-out]">
+                  <div className="w-8 h-8 rounded-lg shrink-0 bg-[#7C64DC]/15 border border-[#7C64DC]/30 text-[#8B82F5] text-[10px] font-bold flex items-center justify-center">
+                    {item.tab}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setConexaDrawerOpen(false)}
+              className="mt-auto w-full min-h-[44px] rounded-xl text-xs font-semibold border border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-white transition-all"
+            >
+              Close Preview
+            </button>
           </div>
         </div>
       )}

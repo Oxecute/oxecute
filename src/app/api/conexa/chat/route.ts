@@ -13,9 +13,14 @@ import { z } from "zod";
 const bodySchema = z.object({
   message: z.string().min(1).max(4000),
   session_id: z.string().optional(),
+  connectedTools: z.array(z.string()).optional(),
 });
 
-function buildContext(u: Record<string, unknown>, entries: { day_number: number; category: string; tier: string; url?: string | null; declaration_text?: string | null }[]) {
+function buildContext(
+  u: Record<string, unknown>,
+  entries: { day_number: number; category: string; tier: string; url?: string | null; declaration_text?: string | null }[],
+  connectedTools?: string[],
+) {
   const pPct = 33,
     dPct = 33,
     oPct = 34;
@@ -25,6 +30,9 @@ function buildContext(u: Record<string, unknown>, entries: { day_number: number;
         `${e.day_number} · ${e.category} · ${e.tier} · ${(e.url || e.declaration_text || "").slice(0, 80)}`,
     )
     .join("\n");
+  const toolsString = connectedTools && connectedTools.length > 0
+    ? connectedTools.join(", ")
+    : "None";
   return `=== FOUNDER OPERATING RECORD ===
 Name: ${u.full_name}
 Startup: ${u.startup_name}
@@ -33,6 +41,7 @@ Days on record: (computed server-side)
 Execution count: ${u.execution_count} | Breaks: ${u.break_count}
 Execution rate: ${executionRate(Number(u.execution_count ?? 0), String(u.created_at))}%
 Category mix: Product ${pPct}% / Distribution ${dPct}% / Ops ${oPct}%
+Connected Tools: ${toolsString}
 === PERMANENT BASELINE ===
 Description: ${u.startup_description}
 Q1 (Last 7 days): ${u.cal_q1_shipped}
@@ -88,7 +97,7 @@ export async function POST(request: Request) {
     .order("day_number", { ascending: false })
     .limit(10);
 
-  const context = buildContext(u as Record<string, unknown>, recent ?? []);
+  const context = buildContext(u as Record<string, unknown>, recent ?? [], parsed.data.connectedTools);
   const { data: hist } = await admin
     .from("conexa_messages")
     .select("role, content")

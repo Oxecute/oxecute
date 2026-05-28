@@ -9,7 +9,16 @@ async function handleCron(request: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
   try {
-    await runCronHeartbeat();
+    let overrideNow: Date | undefined = undefined;
+    try {
+      const url = new URL(request.url);
+      const sim = url.searchParams.get("simulated_time");
+      if (sim) {
+        overrideNow = new Date(sim);
+      }
+    } catch {}
+
+    await runCronHeartbeat(overrideNow);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "cron failed";

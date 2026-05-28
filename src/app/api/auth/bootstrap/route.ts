@@ -95,7 +95,10 @@ export async function POST(request: Request) {
       .select("id, founding_member")
       .eq("referral_code", b.ref_code.trim())
       .maybeSingle();
-    if (refUser && refUser.id !== user.id) {
+    if (refUser) {
+      if (refUser.id === user.id) {
+        return NextResponse.json({ error: "Self-referral is blocked" }, { status: 403 });
+      }
       referredBy = refUser.id;
       foundingFromReferrer = !!refUser.founding_member;
     }

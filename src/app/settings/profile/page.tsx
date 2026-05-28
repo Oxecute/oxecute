@@ -182,6 +182,14 @@ function ProfileSettingsMain() {
         showBreaks={showBreaks}
       />
 
+      {showSignal ? (
+        <div className="rounded-xl border border-[var(--bdr)] p-4 bg-[var(--sur)]">
+          <p className="text-xs font-semibold text-[var(--t3)] uppercase">Signal score</p>
+          <p className="text-2xl font-bold mt-1">…</p>
+          <p className="text-xs text-[var(--t3)] mt-2">Quantified execution ships with Builder.</p>
+        </div>
+      ) : null}
+
       <ExecutionGrid entries={entries} breakDays={breakDays} />
 
       <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />

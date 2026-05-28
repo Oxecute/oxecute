@@ -13,8 +13,18 @@ export async function generateMetadata(props: {
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await props.params;
+  const admin = createServiceRoleClient();
+  const { data: user } = await admin
+    .from("users")
+    .select("profile_public")
+    .eq("username", username)
+    .maybeSingle();
+
+  const isPrivate = !user || !user.profile_public;
+
   return {
     title: `${username} - Oxecute`,
+    robots: isPrivate ? "noindex, nofollow" : "index, follow",
   };
 }
 
@@ -35,6 +45,7 @@ export default async function PublicProfilePage(props: {
   if (!user || !user.profile_public) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--t1)]">
+        <meta name="robots" content="noindex,nofollow" />
         <p>This record is private.</p>
       </main>
     );

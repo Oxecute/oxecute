@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
 import { assertValidUploadPathsForUser } from "@/lib/entry-uploads";
-import { sendEmail } from "@/lib/email/send";
+import { sendWelcomeEmail } from "@/lib/email/service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -228,33 +228,12 @@ export async function POST(request: Request) {
     report?.personal_insight ??
     `Conexa has read your baseline. Your execution window opens at midnight.`;
 
-  await sendEmail({
-    to: profile.email,
-    subject: "your record is live",
-    text: `Hey ${String(profile.full_name).split(" ")[0]},
-
-Entry #001 is locked. Cannot be edited or deleted. Ever.
-
-Here's what Conexa read about you today:
-${insight}
-
-Your dashboard: ${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${profile.username}
-Your execution window opens at midnight.
-
-- Ashwinni`,
-    html: `<p>Hey ${String(profile.full_name).split(" ")[0]},</p>
-<p>Entry #001 is locked. Cannot be edited or deleted. Ever.</p>
-<p>Here's what Conexa read about you today:<br/>${insight}</p>
-<p>Your dashboard: <a href="${process.env.NEXT_PUBLIC_APP_URL ?? ""}/dashboard">${process.env.NEXT_PUBLIC_APP_URL ?? ""}/dashboard</a></p>
-<p>- Ashwinni</p>`,
-  });
-
-  await admin.from("notifications").insert({
-    user_id: user.id,
-    type: "system",
-    title: "Welcome to Oxecute - your record is permanent from today",
-    body: "Entry #001 is locked.",
-  });
+  await sendWelcomeEmail(
+    profile.email,
+    String(profile.full_name).split(" ")[0],
+    profile.username,
+    insight,
+  );
 
   await logEvent(
     "first_entry_submitted",

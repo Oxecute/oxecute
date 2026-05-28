@@ -14,6 +14,7 @@ export type AppShellUser = MeUser & {
   last_submission_date?: string | null;
   break_count?: number;
   founding_member?: boolean;
+  referral_code?: string;
 };
 
 /** Three-column shell: dark canvas + rounded nav / main / rail cards (product layout). */

@@ -7,6 +7,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
 import { assertValidUploadPathsForUser } from "@/lib/entry-uploads";
+import { logEvent } from "@/lib/analytics";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -251,6 +252,16 @@ export async function POST(request: Request) {
     }
 
     const ack = getAcknowledgment(tier, category);
+    await logEvent(
+      "entry_submitted",
+      {
+        tier,
+        category,
+        day_number: dayNum,
+      },
+      user.id,
+      "web",
+    );
     return NextResponse.json({
       ok: true,
       acknowledgment: ack,
@@ -357,5 +368,15 @@ export async function POST(request: Request) {
   }
 
   const ack = getAcknowledgment(tier, category);
+  await logEvent(
+    "entry_submitted",
+    {
+      tier,
+      category,
+      day_number: dayNum,
+    },
+    user.id,
+    "web",
+  );
   return NextResponse.json({ ok: true, acknowledgment: ack, entry_number: responseEntryNumber });
 }

@@ -1,4 +1,7 @@
+"use client";
+
 import { AuthenticatedShell } from "@/components/app/AuthenticatedShell";
+import { useEffect, useState } from "react";
 
 type ToolDef = { name: string; Logo: () => JSX.Element };
 
@@ -70,7 +73,7 @@ const SECTIONS: { num: string; title: string; tools: ToolDef[] }[] = [
   },
   {
     num: "03",
-    title: "Sales & Market",
+    title: "Sales & CRM",
     tools: [
       { name: "Calendly", Logo: LogoCalendly },
       { name: "Typeform", Logo: LogoTypeform },
@@ -78,30 +81,139 @@ const SECTIONS: { num: string; title: string; tools: ToolDef[] }[] = [
   },
 ];
 
-function ToolCard({ name, Logo }: ToolDef) {
-  return (
-    <div className="rounded-xl border border-[var(--bdr)] p-4 bg-[var(--sur)] flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] p-2 flex items-center justify-center">
-          <Logo />
-        </div>
-        <p className="font-semibold text-[var(--t1)]">{name}</p>
-      </div>
-      <button
-        type="button"
-        disabled
-        className="mt-auto rounded-lg border border-[var(--bdr)] py-2 text-xs font-medium text-[var(--t3)] cursor-not-allowed w-full"
-      >
-        Connect
-      </button>
-    </div>
-  );
-}
+const EXCLUDED_TOOLS = [
+  { name: "Reddit", reason: "Not eligible · non-normalised signal" },
+  { name: "ChatGPT", reason: "Not eligible · AI usage is not verified proof of execution. The work that comes out of it can be." },
+  { name: "Claude", reason: "Not eligible · same reason as above." },
+  { name: "Perplexity", reason: "Not eligible · same reason." },
+  { name: "Gamma", reason: "Not eligible · same reason." }
+];
 
 export default function ToolsPage() {
+  const [connections, setConnections] = useState<Record<string, Record<string, string>>>({});
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  // Form states for modals
+  const [githubRepo, setGithubRepo] = useState("");
+  const [githubBranch, setGithubBranch] = useState("main");
+  const [notionWorkspace, setNotionWorkspace] = useState("");
+  const [notionDatabase, setNotionDatabase] = useState("Execution Log");
+  const [stripeAccount, setStripeAccount] = useState("");
+  const [stripeMode, setStripeMode] = useState("live");
+  const [lemonStore, setLemonStore] = useState("");
+  const [calendlyLink, setCalendlyLink] = useState("");
+  const [typeformId, setTypeformId] = useState("");
+
+  useEffect(() => {
+    // Load connections from localStorage
+    const saved: Record<string, Record<string, string>> = {};
+    SECTIONS.forEach((sec) => {
+      sec.tools.forEach((t) => {
+        const conn = localStorage.getItem(`oxe_connected_tool_${t.name}`);
+        if (conn) {
+          try {
+            saved[t.name] = JSON.parse(conn);
+          } catch {
+            saved[t.name] = { connected: "true" };
+          }
+        }
+      });
+    });
+    setConnections(saved);
+  }, []);
+
+  const handleConnect = (name: string) => {
+    setActiveModal(name);
+    // Pre-fill fields if already connected
+    if (connections[name]) {
+      const data = connections[name];
+      if (name === "GitHub") {
+        setGithubRepo(data.repo || "");
+        setGithubBranch(data.branch || "main");
+      } else if (name === "Notion") {
+        setNotionWorkspace(data.workspace || "");
+        setNotionDatabase(data.database || "Execution Log");
+      } else if (name === "Stripe") {
+        setStripeAccount(data.accountId || "");
+        setStripeMode(data.mode || "live");
+      } else if (name === "Lemon Squeezy") {
+        setLemonStore(data.storeId || "");
+      } else if (name === "Calendly") {
+        setCalendlyLink(data.username || "");
+      } else if (name === "Typeform") {
+        setTypeformId(data.formId || "");
+      }
+    } else {
+      // Clear fields
+      setGithubRepo("");
+      setGithubBranch("main");
+      setNotionWorkspace("");
+      setNotionDatabase("Execution Log");
+      setStripeAccount("");
+      setStripeMode("live");
+      setLemonStore("");
+      setCalendlyLink("");
+      setTypeformId("");
+    }
+  };
+
+  const handleSaveConnection = (name: string, data: Record<string, string>) => {
+    setConnecting(true);
+    // Simulate connection delay
+    setTimeout(() => {
+      localStorage.setItem(`oxe_connected_tool_${name}`, JSON.stringify(data));
+      setConnections((prev) => ({
+        ...prev,
+        [name]: data,
+      }));
+      setConnecting(false);
+      setActiveModal(null);
+    }, 1200);
+  };
+
+  const handleDisconnect = (name: string) => {
+    localStorage.removeItem(`oxe_connected_tool_${name}`);
+    setConnections((prev) => {
+      const copy = { ...prev };
+      delete copy[name];
+      return copy;
+    });
+    setActiveModal(null);
+  };
+
   return (
     <AuthenticatedShell>
       <main className="mx-auto w-full min-w-0 max-w-4xl space-y-8 px-5 pb-10 pt-7 sm:px-7 sm:pt-9 md:pb-14">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#EAEFF8]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+            Connect Tools
+          </h1>
+          <p className="text-[12px] sm:text-[13px] text-ox-t2 leading-relaxed mt-1 max-w-xl">
+            Integrate your tech stack to feed verified execution data into Conexa.
+          </p>
+        </div>
+
+        {/* Top Banner */}
+        <div className="rounded-[20px] border border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.06)] shadow-[0_0_24px_rgba(124,100,220,0.06)] p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-white tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                Auto-capture is coming in Month 2.
+              </h3>
+              <p className="text-[12px] text-ox-t2 mt-0.5">
+                Connect your tools now — when auto-capture launches, Conexa will start reading them immediately.
+              </p>
+            </div>
+            <span className="inline-flex h-4 items-center rounded-full border border-[rgba(124,100,220,0.45)] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#ddd6fe] bg-[rgba(124,100,220,0.16)] shrink-0">
+              Active Sync Sandbox
+            </span>
+          </div>
+          <p className="text-xs text-zinc-300 leading-relaxed">
+            Every connected tool maintains an active simulation state. Conexa parses your repository and metrics structures dynamically in sandbox mode.
+          </p>
+        </div>
+
         <div className="space-y-10">
           {SECTIONS.map((sec) => (
             <section key={sec.num} className="space-y-4">
@@ -109,14 +221,271 @@ export default function ToolsPage() {
                 {sec.num} · {sec.title}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                {sec.tools.map((t) => (
-                  <ToolCard key={t.name} {...t} />
-                ))}
+                {sec.tools.map((t) => {
+                  const conn = connections[t.name];
+                  const Logo = t.Logo;
+                  return (
+                    <div key={t.name} className={`rounded-xl border p-4 bg-[var(--sur)] flex flex-col gap-4 transition-all duration-200 ${
+                      conn ? "border-[rgba(14,164,114,0.3)] shadow-[0_0_16px_rgba(14,164,114,0.04)]" : "border-[var(--bdr)]"
+                    }`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0 rounded-lg border border-[var(--bdr)] bg-[var(--sur2)] p-2 flex items-center justify-center">
+                            <Logo />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-[var(--t1)]">{t.name}</p>
+                            {conn && (
+                              <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1.5 mt-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Active Sync · {conn.repo || conn.workspace || conn.accountId || conn.storeId || conn.username || conn.formId || "Connected"}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleConnect(t.name)}
+                        className={`mt-auto rounded-lg py-2 text-xs font-semibold w-full transition-colors ${
+                          conn 
+                            ? "border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400"
+                            : "border border-[var(--bdr)] hover:bg-white/[0.02] text-[var(--t1)] bg-white/[0.01]"
+                        }`}
+                      >
+                        {conn ? "Manage Integration" : "Connect"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           ))}
+
+          {/* Permanently Excluded Tools */}
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold text-[var(--t1)]">
+              Permanently Excluded
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {EXCLUDED_TOOLS.map((t) => (
+                <div key={t.name} className="rounded-xl border border-red-500/10 p-4 bg-[var(--sur)] flex flex-col gap-2 relative overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-[var(--t1)]">{t.name}</p>
+                    <span className="inline-flex items-center rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-red-400">
+                      Not eligible
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--t2)] leading-relaxed">{t.reason}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
+
+      {/* Connection Modals */}
+      {activeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !connecting && setActiveModal(null)} />
+          <div className="relative rounded-2xl w-full max-w-md border border-white/[0.08] bg-[#13151C] text-[#EAEFF8] p-6 shadow-2xl flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-[17px] font-bold tracking-tight text-white flex items-center gap-2">
+                Connect {activeModal}
+              </h3>
+              {!connecting && (
+                <button
+                  type="button"
+                  className="text-xs text-ox-t2 hover:text-white transition-colors"
+                  onClick={() => setActiveModal(null)}
+                >
+                  Close
+                </button>
+              )}
+            </div>
+
+            {/* Tool-specific form contents */}
+            <div className="space-y-4">
+              {activeModal === "GitHub" && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Target Repository</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                      placeholder="e.g. facebook/react"
+                      value={githubRepo}
+                      onChange={(e) => setGithubRepo(e.target.value)}
+                      disabled={connecting}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Default Branch</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                      placeholder="main"
+                      value={githubBranch}
+                      onChange={(e) => setGithubBranch(e.target.value)}
+                      disabled={connecting}
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeModal === "Notion" && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Workspace Name</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                      placeholder="e.g. My Workspace"
+                      value={notionWorkspace}
+                      onChange={(e) => setNotionWorkspace(e.target.value)}
+                      disabled={connecting}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Target Sync Database</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                      placeholder="Execution Log"
+                      value={notionDatabase}
+                      onChange={(e) => setNotionDatabase(e.target.value)}
+                      disabled={connecting}
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeModal === "Stripe" && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Stripe Account ID</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                      placeholder="acct_1xxxxxxxxx"
+                      value={stripeAccount}
+                      onChange={(e) => setStripeAccount(e.target.value)}
+                      disabled={connecting}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Sync Mode</label>
+                    <select
+                      className="w-full rounded-lg bg-[#1F222F] border border-white/[0.1] px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                      value={stripeMode}
+                      onChange={(e) => setStripeMode(e.target.value)}
+                      disabled={connecting}
+                    >
+                      <option value="live">Live Environment</option>
+                      <option value="test">Test Sandbox Mode</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {activeModal === "Lemon Squeezy" && (
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Store ID</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                    placeholder="e.g. 12345"
+                    value={lemonStore}
+                    onChange={(e) => setLemonStore(e.target.value)}
+                    disabled={connecting}
+                  />
+                </div>
+              )}
+
+              {activeModal === "Calendly" && (
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Calendly Profile Link / Username</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                    placeholder="e.g. my-founder-profile"
+                    value={calendlyLink}
+                    onChange={(e) => setCalendlyLink(e.target.value)}
+                    disabled={connecting}
+                  />
+                </div>
+              )}
+
+              {activeModal === "Typeform" && (
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-ox-t3 uppercase tracking-wider">Typeform Form ID</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] px-3.5 py-2 text-sm text-white outline-none focus:border-white/20"
+                    placeholder="e.g. ABCdef"
+                    value={typeformId}
+                    onChange={(e) => setTypeformId(e.target.value)}
+                    disabled={connecting}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-white/[0.06]">
+              <button
+                type="button"
+                disabled={connecting}
+                onClick={() => {
+                  let data: Record<string, string> = { connected: "true" };
+                  if (activeModal === "GitHub") {
+                    if (!githubRepo.trim()) return;
+                    data = { repo: githubRepo.trim(), branch: githubBranch.trim() };
+                  } else if (activeModal === "Notion") {
+                    if (!notionWorkspace.trim()) return;
+                    data = { workspace: notionWorkspace.trim(), database: notionDatabase.trim() };
+                  } else if (activeModal === "Stripe") {
+                    if (!stripeAccount.trim()) return;
+                    data = { accountId: stripeAccount.trim(), mode: stripeMode };
+                  } else if (activeModal === "Lemon Squeezy") {
+                    if (!lemonStore.trim()) return;
+                    data = { storeId: lemonStore.trim() };
+                  } else if (activeModal === "Calendly") {
+                    if (!calendlyLink.trim()) return;
+                    data = { username: calendlyLink.trim() };
+                  } else if (activeModal === "Typeform") {
+                    if (!typeformId.trim()) return;
+                    data = { formId: typeformId.trim() };
+                  }
+                  handleSaveConnection(activeModal!, data);
+                }}
+                className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold py-3 text-sm flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(16,185,129,0.2)]"
+              >
+                {connecting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Establishing Sync...
+                  </>
+                ) : (
+                  connections[activeModal!] ? "Update Connection" : "Authorize & Connect"
+                )}
+              </button>
+
+              {connections[activeModal!] && !connecting && (
+                <button
+                  type="button"
+                  onClick={() => handleDisconnect(activeModal!)}
+                  className="w-full rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 py-3 text-sm font-semibold transition-colors"
+                >
+                  Disconnect Integration
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AuthenticatedShell>
   );
 }
