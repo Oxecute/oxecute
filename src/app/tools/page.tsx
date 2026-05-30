@@ -105,6 +105,115 @@ export default function ToolsPage() {
   const [calendlyLink, setCalendlyLink] = useState("");
   const [typeformId, setTypeformId] = useState("");
 
+  const [simulationState, setSimulationState] = useState<{
+    running: boolean;
+    toolName: string;
+    stage: string;
+    success: boolean;
+    error: string | null;
+    createdUrl?: string;
+  }>({
+    running: false,
+    toolName: "",
+    stage: "",
+    success: false,
+    error: null,
+  });
+
+  const handleSimulateAutoCapture = async (toolName: string, config: Record<string, string>) => {
+    setSimulationState({
+      running: true,
+      toolName,
+      stage: "Connecting to secure provider sandbox...",
+      success: false,
+      error: null,
+    });
+
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    try {
+      await sleep(1000);
+      setSimulationState((prev) => ({ ...prev, stage: `Authenticating secure hooks for ${toolName}...` }));
+      
+      await sleep(1200);
+      setSimulationState((prev) => ({ ...prev, stage: "Parsing branch activity and build diffs..." }));
+
+      await sleep(1200);
+      setSimulationState((prev) => ({ ...prev, stage: "Analyzing execution payload for ledger criteria..." }));
+
+      await sleep(1000);
+      
+      // Determine simulated URL and category
+      let url = "";
+      let category: "product" | "distribution" | "ops" = "product";
+      
+      if (toolName === "GitHub") {
+        const repo = config.repo || "facebook/react";
+        const commitHash = Math.random().toString(16).substring(2, 9);
+        url = `https://github.com/${repo}/commit/${commitHash}?sandbox_simulated=true`;
+        category = "product";
+      } else if (toolName === "Notion") {
+        const pageId = Math.random().toString(16).substring(2, 10);
+        url = `https://notion.so/workspace/${pageId}?sandbox_simulated=true`;
+        category = "ops";
+      } else if (toolName === "Stripe") {
+        const acct = config.accountId || "acct_1234567";
+        const chg = Math.random().toString(16).substring(2, 9);
+        url = `https://dashboard.stripe.com/${acct}/payments/ch_${chg}?sandbox_simulated=true`;
+        category = "distribution";
+      } else if (toolName === "Lemon Squeezy") {
+        const store = config.storeId || "12345";
+        const order = Math.floor(Math.random() * 100000);
+        url = `https://app.lemonsqueezy.com/my-store/${store}/orders/${order}?sandbox_simulated=true`;
+        category = "distribution";
+      } else if (toolName === "Calendly") {
+        const username = config.username || "founder";
+        const meetId = Math.random().toString(36).substring(2, 8);
+        url = `https://calendly.com/${username}/meeting-${meetId}?sandbox_simulated=true`;
+        category = "distribution";
+      } else if (toolName === "Typeform") {
+        const formId = config.formId || "ABCdef";
+        const respId = Math.random().toString(36).substring(2, 8);
+        url = `https://admin.typeform.com/form/${formId}/results/response/${respId}?sandbox_simulated=true`;
+        category = "distribution";
+      }
+
+      const res = await fetch("/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: "verified",
+          url,
+          category,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Simulation failed to write ledger row. Ensure you haven't already submitted a proof URL today!");
+      }
+
+      setSimulationState({
+        running: true,
+        toolName,
+        stage: "Sync complete! Immutable block has been locked successfully.",
+        success: true,
+        error: null,
+        createdUrl: url,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred during simulated sync.";
+      setSimulationState({
+        running: true,
+        toolName,
+        stage: "",
+        success: false,
+        error: msg,
+      });
+    }
+  };
+
   useEffect(() => {
     // Load connections from localStorage
     const saved: Record<string, Record<string, string>> = {};
@@ -255,6 +364,15 @@ export default function ToolsPage() {
                       >
                         {conn ? "Manage Integration" : "Connect"}
                       </button>
+                      {conn && (
+                        <button
+                          type="button"
+                          onClick={() => handleSimulateAutoCapture(t.name, conn)}
+                          className="mt-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/20 py-2 text-xs font-semibold w-full transition-colors flex items-center justify-center gap-1.5 animate-pulse"
+                        >
+                          ⚡ Simulate Auto-Capture
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -482,6 +600,81 @@ export default function ToolsPage() {
                   Disconnect Integration
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Capture Simulation Modal */}
+      {simulationState.running && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm" 
+            onClick={() => !simulationState.success && !simulationState.error && setSimulationState(prev => ({ ...prev, running: false }))} 
+          />
+          <div className="relative rounded-2xl w-full max-w-md border border-indigo-500/20 bg-[#13151C] text-[#EAEFF8] p-6 shadow-2xl flex flex-col gap-5 text-center">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-white flex items-center justify-center gap-2" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                ⚡ {simulationState.toolName} Sync Simulator
+              </h3>
+              <p className="text-xs text-ox-t2 mt-1">Month 2 Auto-Capture Testing sandbox</p>
+            </div>
+
+            <div className="py-4 flex flex-col items-center justify-center gap-4 min-h-[140px]">
+              {!simulationState.success && !simulationState.error ? (
+                <>
+                  <div className="relative w-12 h-12 flex items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-25" />
+                    <span className="relative inline-flex rounded-full h-8 w-8 bg-indigo-600 items-center justify-center text-white text-xs">
+                      🔄
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium animate-pulse text-indigo-300">
+                    {simulationState.stage}
+                  </p>
+                </>
+              ) : simulationState.success ? (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl">
+                    ✓
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-emerald-400">
+                      Sync Successful!
+                    </p>
+                    <p className="text-xs text-ox-t2 px-4 leading-relaxed">
+                      Immutable block successfully generated. Verified proof was pushed directly to your Operating Record.
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-mono text-zinc-300 select-all mx-auto">
+                    {simulationState.createdUrl}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 text-xl">
+                    ✕
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-red-400">
+                      Sync Restricted
+                    </p>
+                    <p className="text-xs text-red-300 px-4 leading-relaxed">
+                      {simulationState.error}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-white/[0.06] pt-4">
+              <button
+                type="button"
+                className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 text-sm shadow-[0_4px_16px_rgba(79,70,229,0.2)] transition-colors"
+                onClick={() => setSimulationState(prev => ({ ...prev, running: false }))}
+              >
+                Close Simulator
+              </button>
             </div>
           </div>
         </div>
