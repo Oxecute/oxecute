@@ -33,6 +33,8 @@ const patchSchema = z
     show_breaks: z.boolean().optional(),
     show_signal_score: z.boolean().optional(),
     day21_unlocked: z.boolean().optional(),
+    github_repo: z.string().max(250).nullish(),
+    github_branch: z.string().max(100).nullish(),
   })
   .strict();
 

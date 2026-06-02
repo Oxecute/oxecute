@@ -229,6 +229,23 @@ export default function ToolsPage() {
         }
       });
     });
+
+    // Sync database GitHub repo configuration
+    fetch("/api/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user) {
+          const repo = data.user.github_repo;
+          const branch = data.user.github_branch || "main";
+          if (repo) {
+            saved["GitHub"] = { repo, branch };
+            localStorage.setItem("oxe_connected_tool_GitHub", JSON.stringify({ repo, branch }));
+            setConnections({ ...saved });
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to fetch profile settings:", err));
+
     setConnections(saved);
   }, []);
 
@@ -267,8 +284,28 @@ export default function ToolsPage() {
     }
   };
 
-  const handleSaveConnection = (name: string, data: Record<string, string>) => {
+  const handleSaveConnection = async (name: string, data: Record<string, string>) => {
     setConnecting(true);
+
+    if (name === "GitHub") {
+      try {
+        const res = await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            github_repo: data.repo || null,
+            github_branch: data.branch || "main",
+          }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to persist GitHub connection in database");
+        }
+      } catch (err) {
+        console.error("Database persistence error:", err);
+      }
+    }
+
     // Simulate connection delay
     setTimeout(() => {
       localStorage.setItem(`oxe_connected_tool_${name}`, JSON.stringify(data));
@@ -281,7 +318,22 @@ export default function ToolsPage() {
     }, 1200);
   };
 
-  const handleDisconnect = (name: string) => {
+  const handleDisconnect = async (name: string) => {
+    if (name === "GitHub") {
+      try {
+        await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            github_repo: null,
+            github_branch: "main",
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to disconnect GitHub on database:", err);
+      }
+    }
+
     localStorage.removeItem(`oxe_connected_tool_${name}`);
     setConnections((prev) => {
       const copy = { ...prev };
