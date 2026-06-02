@@ -108,7 +108,7 @@ function ProfileSettingsMain() {
   };
 
   return (
-    <div className="space-y-10 max-w-3xl">
+    <main className="mx-auto w-full min-w-0 max-w-3xl space-y-10 px-5 pb-10 pt-7 sm:px-7 sm:pt-9 md:pb-14">
       <ProfileHeader
         fullName={String(shellUser.full_name ?? shellUser.username)}
         username={String(shellUser.username)}
@@ -206,7 +206,7 @@ function ProfileSettingsMain() {
       <ExecutionGrid entries={entries} breakDays={breakDays} />
 
       <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />
-    </div>
+    </main>
   );
 }
 
