@@ -486,15 +486,45 @@ function DashboardMainInner() {
                   cls = "bg-[#E24B4A] border-[#E24B4A] shadow-[0_2px_8px_rgba(226,75,74,0.3)]";
                 }
                 const isFutureSlot = !ent && !isBreakDay;
+
+                let tooltip = `Day ${day}`;
+                if (ent) {
+                  if (ent.tier === "declaration_pending") {
+                    tooltip = `Day ${day} · ○ DECLARATION · PENDING VALIDATION`;
+                  } else {
+                    tooltip = `Day ${day} · ${String(ent.tier).replace(/_/g, " ")}`;
+                  }
+                } else if (isBreakDay) {
+                  tooltip = `Day ${day} · Break`;
+                } else {
+                  tooltip = `Day ${day} · Not yet.`;
+                }
+
                 return (
                   <button
                     type="button"
                     key={day}
-                    className={`w-7 h-7 sm:w-[30px] sm:h-[30px] shrink-0 rounded-[6px] transition-transform hover:scale-105 ${cls} ${
-                      ent ? "cursor-pointer" : "cursor-default"
-                    } ${isFutureSlot ? "opacity-50" : ""}`}
-                    title={isBreakDay && !ent ? `Day ${day} · Break` : `Day ${day}`}
-                    onClick={() => (ent ? setDayDetail(ent as unknown as Record<string, unknown>) : undefined)}
+                    className={`w-7 h-7 sm:w-[30px] sm:h-[30px] shrink-0 rounded-[6px] transition-transform hover:scale-105 ${cls} cursor-pointer ${
+                      isFutureSlot ? "opacity-50" : ""
+                    }`}
+                    title={tooltip}
+                    onClick={() => {
+                      if (ent) {
+                        setDayDetail(ent as unknown as Record<string, unknown>);
+                      } else if (isBreakDay) {
+                        setDayDetail({
+                          day_number: day,
+                          tier: "break",
+                          message: "This gap is part of your record. Break marks are permanent.",
+                        });
+                      } else {
+                        setDayDetail({
+                          day_number: day,
+                          tier: "future",
+                          message: `Day ${day} · Not yet.`,
+                        });
+                      }
+                    }}
                   />
                 );
               })}
@@ -667,12 +697,15 @@ function DashboardMainInner() {
                 let rowCls = "border-[rgba(79,70,229,0.28)] bg-[rgba(79,70,229,0.12)]";
                 let badge = "Verified";
                 let badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
-                if (tier === "declaration_pending" || tier === "upload_unverified") {
+                if (tier === "declaration_pending") {
+                  rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
+                  badge = "○ DECLARATION · PENDING VALIDATION";
+                  badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
+                } else if (tier === "upload_unverified") {
                   rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
                   badge = "Declared";
                   badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
-                }
-                if (tier === "verified_proof" || tier === "signup_execution") {
+                } else if (tier === "verified_proof" || tier === "signup_execution") {
                   rowCls = "border-[rgba(14,164,114,0.25)] bg-[rgba(14,164,114,0.1)]";
                   badge = "Verified";
                   badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
@@ -1260,31 +1293,49 @@ function DashboardMainInner() {
             aria-label="Close"
             onClick={() => setDayDetail(null)}
           />
-          <div className="relative bg-[var(--sur)] rounded-2xl w-full max-w-md p-6 shadow-xl text-sm space-y-2">
-            <p className="font-semibold">Day {String(dayDetail.day_number)}</p>
-            <p className="text-[var(--t2)] capitalize">{String(dayDetail.tier).replace(/_/g, " ")}</p>
-            <p className="text-[var(--t2)]">Category: {String(dayDetail.category)}</p>
-            {dayDetail.url ? (
-              <a
-                href={String(dayDetail.url)}
-                className="text-[var(--p)] break-all underline"
-                target="_blank"
-                rel="noreferrer"
+          <div className="relative bg-[var(--sur)] rounded-2xl w-full max-w-md p-6 shadow-xl text-sm space-y-2 text-left">
+            <p className="font-semibold text-white">Day {String(dayDetail.day_number)}</p>
+            {dayDetail.tier === "break" || dayDetail.tier === "future" ? (
+              <p className="text-[var(--t2)]">{String(dayDetail.message)}</p>
+            ) : (
+              <>
+                <p className="text-[var(--t2)] capitalize">
+                  {dayDetail.tier === "declaration_pending"
+                    ? "○ DECLARATION · PENDING VALIDATION"
+                    : String(dayDetail.tier).replace(/_/g, " ") + " · Locked · Immutable"}
+                </p>
+                <p className="text-[var(--t2)]">Category: {String(dayDetail.category)}</p>
+                {dayDetail.url ? (
+                  <a
+                    href={String(dayDetail.url)}
+                    className="text-[var(--p)] break-all underline block mt-1"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {String(dayDetail.url)}
+                  </a>
+                ) : null}
+                {dayDetail.declaration_text ? (
+                  <p className="text-[var(--t2)] mt-2 italic bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg">
+                    &ldquo;{String(dayDetail.declaration_text)}&rdquo;
+                  </p>
+                ) : null}
+                {Array.isArray(dayDetail.upload_paths) && (dayDetail.upload_paths as string[]).length > 0 ? (
+                  <p className="text-[var(--t2)] text-xs mt-2">
+                    Attachments: {(dayDetail.upload_paths as string[]).length} file(s) on record (private storage).
+                  </p>
+                ) : null}
+              </>
+            )}
+            <div className="pt-2">
+              <button
+                type="button"
+                className="mt-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white px-4 py-2 text-xs font-semibold transition-colors"
+                onClick={() => setDayDetail(null)}
               >
-                {String(dayDetail.url)}
-              </a>
-            ) : null}
-            {dayDetail.declaration_text ? (
-              <p className="text-[var(--t2)]">{String(dayDetail.declaration_text)}</p>
-            ) : null}
-            {Array.isArray(dayDetail.upload_paths) && (dayDetail.upload_paths as string[]).length > 0 ? (
-              <p className="text-[var(--t2)] text-xs">
-                Attachments: {(dayDetail.upload_paths as string[]).length} file(s) on record (private storage).
-              </p>
-            ) : null}
-            <button type="button" className="mt-4 text-[var(--t3)]" onClick={() => setDayDetail(null)}>
-              Close
-            </button>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

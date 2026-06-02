@@ -11,6 +11,12 @@ import { useCallback, useEffect, useState } from "react";
 
 function ProfileSettingsMain() {
   const shellUser = useShellUser();
+  const isUsernameLocked =
+    !!(shellUser as Record<string, unknown>).username_locked_at ||
+    (shellUser.created_at &&
+      Date.now() - new Date(shellUser.created_at as string).getTime() >
+        7 * 86400000);
+
   const [bio, setBio] = useState("");
   const [profilePublic, setProfilePublic] = useState(false);
   const [showBreaks, setShowBreaks] = useState(true);
@@ -130,17 +136,24 @@ function ProfileSettingsMain() {
               oxecute/
             </span>
             <input
-              className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none text-[var(--t1)]"
+              className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none text-[var(--t1)] disabled:opacity-60 disabled:cursor-not-allowed"
               value={username}
               onChange={(e) => {
+                if (isUsernameLocked) return;
                 const v = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20);
                 setUsername(v);
               }}
               autoComplete="username"
               spellCheck={false}
+              disabled={Boolean(isUsernameLocked)}
+              readOnly={Boolean(isUsernameLocked)}
             />
           </div>
-          <span className="text-xs text-[var(--t3)]">3–20 characters after oxecute/. Letters, numbers, _-.</span>
+          <span className="text-xs text-[var(--t3)]">
+            {isUsernameLocked
+              ? "Username is locked (read-only after 7 days from signup)."
+              : "3–20 characters after oxecute/. Letters, numbers, _-."}
+          </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input
