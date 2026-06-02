@@ -4,6 +4,23 @@ import { executionDayNumber, utcTodayISO } from "@/lib/dates";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
+interface GitHubCommit {
+  id?: string;
+  message: string;
+  url?: string;
+  author?: {
+    name?: string;
+    email?: string;
+  };
+  committer?: {
+    name?: string;
+    email?: string;
+  };
+  added?: string[];
+  modified?: string[];
+  removed?: string[];
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json().catch(() => null);
@@ -13,7 +30,7 @@ export async function POST(request: Request) {
 
     // Identify details from the push event
     const ref = payload.ref || "";
-    const commits = payload.commits || [];
+    const commits = (payload.commits || []) as GitHubCommit[];
     const repository = payload.repository || {};
     const repoName = repository.full_name || "";
     
@@ -59,6 +76,12 @@ export async function POST(request: Request) {
         console.info(`[GitHub Webhook] Pushed repo ${repoName} does not match connected repo ${user.github_repo}`);
         return NextResponse.json({ ok: true, message: "Pushed repository does not match user connected repository" });
       }
+      
+      // Verify branch matches
+      if (targetBranch && pushBranch && targetBranch !== pushBranch) {
+        console.info(`[GitHub Webhook] Pushed branch ${pushBranch} does not match target branch ${targetBranch}`);
+        return NextResponse.json({ ok: true, message: "Pushed branch does not match target branch" });
+      }
     } else {
       // Auto-connect repository on first push if not connected via UI
       await admin
@@ -72,12 +95,12 @@ export async function POST(request: Request) {
     }
 
     // Aggregate commit details for Conexa analysis
-    const commitMessages = commits.map((c: any) => `- ${c.message}`).join("\n");
+    const commitMessages = commits.map((c) => `- ${c.message}`).join("\n");
     const changedFiles = Array.from(
       new Set([
-        ...commits.flatMap((c: any) => c.added || []),
-        ...commits.flatMap((c: any) => c.modified || []),
-        ...commits.flatMap((c: any) => c.removed || []),
+        ...commits.flatMap((c) => c.added || []),
+        ...commits.flatMap((c) => c.modified || []),
+        ...commits.flatMap((c) => c.removed || []),
       ])
     );
 
@@ -207,8 +230,9 @@ ${changedFiles.slice(0, 40).join(", ")}`;
       category,
       analysis: synthesisText,
     });
-  } catch (err: any) {
-    console.error("[GitHub Webhook] Error in route execution:", err);
-    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+  } catch (err) {
+    const error = err as Error;
+    console.error("[GitHub Webhook] Error in route execution:", error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
