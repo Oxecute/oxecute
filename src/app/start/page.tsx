@@ -250,7 +250,7 @@ export default function StartPage() {
   /** Day 0 accordion: `true` = collapsed. */
   const [actCollapsed, setActCollapsed] = useState<Record<number, boolean>>({});
 
-  const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "upload">(
+  const [firstPath, setFirstPath] = useState<"verified" | "declaration" | "upload" | "signup_execution">(
     "verified",
   );
   const [proofUrl, setProofUrl] = useState("");
@@ -258,7 +258,20 @@ export default function StartPage() {
   const [uploadContext, setUploadContext] = useState("");
   const [uploadProofFiles, setUploadProofFiles] = useState<File[]>([]);
   const [workCat, setWorkCat] = useState<"product" | "distribution" | "ops">("product");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const isSubmittedRef = useRef(false);
+  const [username, setUsername] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
   const uploadProofInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChoosePathB = () => {
+    setFirstPath("signup_execution");
+    void fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: "first_entry_path_b", properties: {} }),
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -363,6 +376,7 @@ export default function StartPage() {
       });
 
       setBlocker(String(u.blocker_text ?? ""));
+      setUsername(String(u.username ?? ""));
 
       const desc = String(u.startup_description ?? "");
       if (desc.trim().length < 50) {
@@ -473,7 +487,7 @@ export default function StartPage() {
       }
 
       const execCount = Number(u.execution_count ?? 0);
-      if (execCount >= 1) {
+      if (execCount >= 1 && !isSubmittedRef.current) {
         router.push("/dashboard");
         return;
       }
@@ -1098,7 +1112,9 @@ export default function StartPage() {
   async function submitFirst() {
     setBusy(true);
     setErr(null);
-    if (firstPath === "declaration") {
+    if (firstPath === "signup_execution") {
+      // No validation needed for Path B
+    } else if (firstPath === "declaration") {
       const t = decl.trim();
       if (t.length < 30 || t.length > 140) {
         setBusy(false);
@@ -1164,6 +1180,8 @@ export default function StartPage() {
         category: workCat,
         upload_paths,
       };
+    } else if (firstPath === "signup_execution") {
+      body = { path: "signup_execution" };
     } else {
       body = { path: "verified", url: proofUrl.trim(), category: workCat };
     }
@@ -1179,7 +1197,8 @@ export default function StartPage() {
       setErr(j.error || "Failed");
       return;
     }
-    router.push("/dashboard");
+    isSubmittedRef.current = true;
+    setIsSubmitted(true);
     router.refresh();
   }
 
@@ -1905,7 +1924,125 @@ export default function StartPage() {
           </div>
             )}
 
-            {step === 8 && (
+            {step === 8 && isSubmitted && (
+              <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+                <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] flex flex-col items-center text-center space-y-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs font-bold text-emerald-400 tracking-wide uppercase">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      RECORD STARTED
+                    </span>
+                    <h1
+                      className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
+                      style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                    >
+                      Record started.
+                    </h1>
+                    <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
+                      Entry #001 is locked permanently to your record.
+                    </p>
+                  </div>
+                  <div className="px-6 md:px-8 py-7 space-y-5 flex flex-col items-center text-center">
+                    <p className="text-sm text-[var(--ca)] leading-relaxed">
+                      Your verified execution record is officially active. This gap-less record is permanent, public, and append-only.
+                    </p>
+                    <div className="w-full space-y-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const link = `${window.location.origin}/u/${username}`;
+                            await navigator.clipboard.writeText(link);
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center"
+                      >
+                        {copiedLink ? "✓ Copied public link!" : "Share my record"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard")}
+                        className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-[var(--mi)] bg-[#DEF408] shadow-[0_4px_16px_rgba(222,244,8,0.25)] hover:shadow-[0_4px_20px_rgba(222,244,8,0.35)] transition-all flex items-center justify-center"
+                      >
+                        Open dashboard
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {/* Milestone track */}
+                <div className="mt-8 flex flex-col items-center w-full max-w-[560px]">
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-medium flex-wrap justify-center">
+                    <span className="text-emerald-400 font-bold">● 1 day executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 21 days executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 60 days executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 90 days executed</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 8 && !isSubmitted && firstPath === "signup_execution" && (
+              <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
+                <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#4F46E5]">
+                      Path B
+                    </p>
+                    <h1
+                      className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
+                      style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
+                    >
+                      That&apos;s fine.
+                    </h1>
+                    <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
+                      Signing up is your Day 1 execution. Your record starts today.
+                    </p>
+                  </div>
+                  <div className="px-6 md:px-8 py-7 space-y-5">
+                    <p className="text-sm text-[var(--ca)] leading-relaxed">
+                      Signing up is your Day 1 execution. Your record starts today. Submit your first real proof from the dashboard when your window opens.
+                    </p>
+                    {err ? <p className="text-[var(--orange)] text-sm">{err}</p> : null}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void submitFirst()}
+                      className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-[#0EA472] shadow-[0_4px_16px_rgba(14,164,114,0.25)] hover:shadow-[0_4px_20px_rgba(14,164,114,0.35)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Continue to my record →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFirstPath("verified")}
+                      className="w-full text-center text-xs text-zinc-400 hover:text-white underline pt-1"
+                    >
+                      ← Back to proof options
+                    </button>
+                  </div>
+                </div>
+                {/* Milestone track */}
+                <div className="mt-8 flex flex-col items-center w-full max-w-[560px]">
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-medium flex-wrap justify-center">
+                    <span className="text-emerald-400 font-bold">● 1 day executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 21 days executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 60 days executed</span>
+                    <span className="text-zinc-700">——</span>
+                    <span>○ 90 days executed</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 8 && !isSubmitted && firstPath !== "signup_execution" && (
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
             <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
               <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] space-y-2">
@@ -2010,6 +2147,17 @@ export default function StartPage() {
                   </span>
                 </span>
               </div>
+            </button>
+          </div>
+
+          {/* Path B link */}
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={handleChoosePathB}
+              className="text-[13px] text-zinc-400 hover:text-[#DEF408] transition-colors"
+            >
+              I don&apos;t have anything to submit yet →
             </button>
           </div>
 
@@ -2168,6 +2316,18 @@ export default function StartPage() {
           >
             Start My record
           </button>
+              </div>
+            </div>
+            {/* Milestone track */}
+            <div className="mt-8 flex flex-col items-center w-full max-w-[560px]">
+              <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-medium flex-wrap justify-center">
+                <span className="text-emerald-400 font-bold">● 1 day executed</span>
+                <span className="text-zinc-700">——</span>
+                <span>○ 21 days executed</span>
+                <span className="text-zinc-700">——</span>
+                <span>○ 60 days executed</span>
+                <span className="text-zinc-700">——</span>
+                <span>○ 90 days executed</span>
               </div>
             </div>
           </div>

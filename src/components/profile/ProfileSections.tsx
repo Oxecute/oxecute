@@ -6,12 +6,14 @@ export function ProfileHeader({
   createdAtIso,
   foundingMember,
   badges,
+  executionRate,
 }: {
   fullName: string;
   username: string;
   createdAtIso: string;
   foundingMember: boolean;
   badges: { label: string; reached: boolean }[];
+  executionRate?: number;
 }) {
   const initials = fullName
     .split(/\s+/)
@@ -20,9 +22,22 @@ export function ProfileHeader({
     .slice(0, 2)
     .toUpperCase();
 
+  let avatarBg = "bg-[var(--p)] text-[var(--fw)]";
+  if (executionRate !== undefined) {
+    if (executionRate <= 25) {
+      avatarBg = "bg-indigo-950/40 text-indigo-300 border border-indigo-500/20";
+    } else if (executionRate <= 50) {
+      avatarBg = "bg-indigo-900/60 text-indigo-200 border border-indigo-500/30";
+    } else if (executionRate <= 75) {
+      avatarBg = "bg-indigo-800/80 text-indigo-100 border border-indigo-500/40";
+    } else {
+      avatarBg = "bg-indigo-600 text-white border border-indigo-400/50";
+    }
+  }
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-8">
-      <div className="w-16 h-16 rounded-full bg-[var(--p)] text-[var(--fw)] flex items-center justify-center font-bold text-lg shrink-0">
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${avatarBg}`}>
         {initials}
       </div>
       <div className="min-w-0 flex-1">
@@ -115,7 +130,8 @@ export function ExecutionGrid({
           else if (ent?.tier === "upload_unverified") bg = "bg-[rgba(194,164,120,0.75)]";
           else if (ent?.tier === "signup_execution") bg = "bg-[rgba(14,164,114,0.35)]";
           else if (isBreakDay) bg = "bg-[#E24B4A]";
-          const interactive = Boolean(onDayClick && ent);
+
+          const interactive = Boolean(onDayClick);
           const title =
             isBreakDay && !ent ? `Day ${day} · Break` : isBreakDay && ent ? `Day ${day} · Break + logged` : `Day ${day}`;
           return (
@@ -138,6 +154,7 @@ export function ExecutionGrid({
           );
         })}
       </div>
+
       <div className="flex flex-wrap gap-4 mt-4 text-xs text-[var(--t3)]">
         <span className="inline-flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-[#0EA472]" /> Verified

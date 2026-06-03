@@ -440,10 +440,7 @@ export function DashboardNav({
             title="Network"
             user={user}
             items={NAV_NETWORK_ITEMS.map((item) => {
-              if (item.label === "Community") {
-                return { ...item, disabled: !user.day45_reached };
-              }
-              return item;
+              return { ...item, disabled: false };
             })}
             onNavigate={onNavigate}
             inboxUnread={inboxUnread}

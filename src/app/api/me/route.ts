@@ -32,7 +32,11 @@ const patchSchema = z
     profile_bio: z.string().max(160).nullish(),
     show_breaks: z.boolean().optional(),
     show_signal_score: z.boolean().optional(),
+    show_directives: z.boolean().optional(),
+    show_completion_rate: z.boolean().optional(),
+    show_investor_requests: z.boolean().optional(),
     day21_unlocked: z.boolean().optional(),
+    tier: z.enum(["record", "builder", "free"]).optional(),
     github_repo: z.string().max(250).nullish(),
     github_branch: z.string().max(100).nullish(),
   })
@@ -161,6 +165,37 @@ export async function PATCH(request: Request) {
       user.id,
       "web",
     );
+  }
+  if (p.day21_unlocked === true) {
+    if (p.tier === "builder") {
+      const { data: rewards } = await admin
+        .from("referral_rewards")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+      await logEvent(
+        "day21_cta_subscribe_clicked",
+        {
+          has_referral_reward: !!rewards?.length,
+          reward_type: rewards?.[0] ? "referred_cohort" : null,
+        },
+        user.id,
+        "web",
+      );
+    } else if (p.tier === "free") {
+      await logEvent(
+        "day21_cta_free_clicked",
+        {},
+        user.id,
+        "web",
+      );
+      await admin.from("notifications").insert({
+        user_id: user.id,
+        type: "system",
+        title: "You're on the free tier. Builder access waits whenever you're ready.",
+        body: "",
+      });
+    }
   }
 
   return NextResponse.json({ ok: true });

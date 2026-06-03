@@ -36,6 +36,9 @@ const jsonSchema = z.discriminatedUnion("path", [
     category: z.enum(["product", "distribution", "ops"]),
     upload_paths: uploadPathList,
   }),
+  z.object({
+    path: z.literal("signup_execution"),
+  }),
 ]);
 
 async function urlNotDuplicate(
@@ -118,7 +121,24 @@ export async function POST(request: Request) {
   let validation_hash: string;
   const createdAtIso = new Date().toISOString();
 
-  if (parsed.data.path === "declaration") {
+  if (parsed.data.path === "signup_execution") {
+    tier = "signup_execution";
+    source_type = "signup";
+    category = "product";
+    declaration_text = "Signed up and activated Conexa. Record starts here.";
+    validation_hash = await sha256Hex("signup" + createdAtIso);
+    await admin.from("entries").insert({
+      user_id: user.id,
+      entry_number: 1,
+      day_number: dayNum,
+      category,
+      source_type,
+      tier,
+      declaration_text,
+      validation_hash,
+      execution_day: true,
+    });
+  } else if (parsed.data.path === "declaration") {
     tier = "declaration_pending";
     source_type = "declaration";
     category = parsed.data.category;

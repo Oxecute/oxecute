@@ -8,13 +8,17 @@ import { DashboardNav, DashboardNavLogo, type MeUser } from "./DashboardNav";
 import { MobileShellRailDrawer } from "./MobileShellRailDrawer";
 
 export type AppShellUser = MeUser & {
+  id: string;
   full_name?: string;
   created_at?: string;
   conexa_day1_report?: Record<string, unknown> | null;
   last_submission_date?: string | null;
   break_count?: number;
+  days_on_record?: number;
+  tier?: string;
   founding_member?: boolean;
   referral_code?: string;
+  country?: string | null;
 };
 
 /** Three-column shell: dark canvas + rounded nav / main / rail cards (product layout). */

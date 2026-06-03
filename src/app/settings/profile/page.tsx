@@ -21,6 +21,9 @@ function ProfileSettingsMain() {
   const [profilePublic, setProfilePublic] = useState(false);
   const [showBreaks, setShowBreaks] = useState(true);
   const [showSignal, setShowSignal] = useState(false);
+  const [showDirectives, setShowDirectives] = useState(false);
+  const [showCompletionRate, setShowCompletionRate] = useState(false);
+  const [showInvestorRequests, setShowInvestorRequests] = useState(false);
   const [username, setUsername] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [entries, setEntries] = useState<{ day_number: number; tier: string | null }[]>([]);
@@ -34,6 +37,9 @@ function ProfileSettingsMain() {
     setProfilePublic(Boolean(u.profile_public ?? false));
     setShowBreaks(Boolean(u.show_breaks ?? true));
     setShowSignal(Boolean(u.show_signal_score ?? false));
+    setShowDirectives(Boolean(u.show_directives ?? false));
+    setShowCompletionRate(Boolean(u.show_completion_rate ?? false));
+    setShowInvestorRequests(Boolean(u.show_investor_requests ?? false));
     setUsername(String(u.username ?? ""));
     const eRes = await fetch("/api/entries");
     const eJ = await eRes.json();
@@ -71,6 +77,9 @@ function ProfileSettingsMain() {
       profile_public: profilePublic,
       show_breaks: showBreaks,
       show_signal_score: showSignal,
+      show_directives: showDirectives,
+      show_completion_rate: showCompletionRate,
+      show_investor_requests: showInvestorRequests,
     };
     if (usernameNorm && usernameNorm !== shellUser.username) {
       if (usernameNorm.length < 3 || usernameNorm.length > 20) {
@@ -176,6 +185,18 @@ function ProfileSettingsMain() {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showSignal} onChange={(e) => setShowSignal(e.target.checked)} />
           Show Signal score block publicly
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showDirectives} onChange={(e) => setShowDirectives(e.target.checked)} />
+          Show directives issued publicly
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showCompletionRate} onChange={(e) => setShowCompletionRate(e.target.checked)} />
+          Show completion rate publicly
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showInvestorRequests} onChange={(e) => setShowInvestorRequests(e.target.checked)} />
+          Show investor requests accepted publicly
         </label>
         <div className="flex flex-wrap gap-3">
           <button

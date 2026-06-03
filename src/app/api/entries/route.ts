@@ -30,6 +30,7 @@ const postSchema = z.discriminatedUnion("path", [
     path: z.literal("verified"),
     url: z.string().url(),
     category: z.enum(["product", "distribution", "ops"]),
+    upgraded_from_id: z.string().uuid().optional(),
   }),
   z.object({
     path: z.literal("declaration"),
@@ -138,7 +139,9 @@ export async function POST(request: Request) {
   const canUpgradeSignup =
     submittedToday && daySlot?.tier === "signup_execution";
 
-  if (submittedToday && !canUpgradeSignup) {
+  const isUpgrade = parsed.data.path === "verified" && !!parsed.data.upgraded_from_id;
+
+  if (submittedToday && !canUpgradeSignup && !isUpgrade) {
     return NextResponse.json(
       {
         error:
@@ -157,6 +160,99 @@ export async function POST(request: Request) {
     .maybeSingle();
   const nextEntry = (last?.entry_number ?? 0) + 1;
   const createdAtIso = new Date().toISOString();
+
+  if (isUpgrade && parsed.data.path === "verified") {
+    const origId = parsed.data.upgraded_from_id!;
+    const { data: origEntry, error: fetchErr } = await admin
+      .from("entries")
+      .select("*")
+      .eq("id", origId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (fetchErr || !origEntry) {
+      return NextResponse.json({ error: "Original entry not found." }, { status: 404 });
+    }
+
+    if (origEntry.tier !== "declaration_pending" && origEntry.tier !== "upload_unverified") {
+      return NextResponse.json(
+        { error: "Only declarations and unverified uploads can be upgraded." },
+        { status: 400 },
+      );
+    }
+
+    const createdTime = new Date(origEntry.created_at).getTime();
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    if (createdTime < thirtyDaysAgo) {
+      return NextResponse.json(
+        { error: "The 30-day upgrade window for this entry has expired." },
+        { status: 400 },
+      );
+    }
+
+    const { data: existingUpgrade } = await admin
+      .from("entries")
+      .select("id")
+      .eq("upgraded_from_id", origId)
+      .limit(1)
+      .maybeSingle();
+    if (existingUpgrade) {
+      return NextResponse.json(
+        { error: "This entry has already been upgraded." },
+        { status: 400 },
+      );
+    }
+
+    const url = parsed.data.url!;
+    if (!(await urlNotDuplicateExcept(admin, user.id, url))) {
+      return NextResponse.json({ error: "Duplicate URL" }, { status: 400 });
+    }
+    const check = await validateProofUrl(url);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.failureReason ?? "Bad URL" }, { status: 400 });
+    }
+
+    const nextTier =
+      origEntry.tier === "declaration_pending" ? "declaration_validated" : "submission_validated";
+
+    const hash = await sha256Hex(url + createdAtIso);
+    const { error: insertErr } = await admin.from("entries").insert({
+      user_id: user.id,
+      entry_number: nextEntry,
+      day_number: origEntry.day_number,
+      category: parsed.data.category,
+      source_type: "manual_url",
+      tier: nextTier,
+      url,
+      upgraded_from_id: origId,
+      validation_hash: hash,
+      url_resolved_status: check.httpStatus,
+      url_content_type: check.contentType ?? null,
+      execution_day: true,
+    });
+
+    if (insertErr) {
+      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    }
+
+    const daysBetween = Math.max(0, Math.floor((Date.now() - createdTime) / 86400000));
+    await logEvent(
+      "declaration_upgraded",
+      {
+        original_entry_id: origId,
+        days_between: daysBetween,
+      },
+      user.id,
+      "web",
+    );
+
+    const ack = getAcknowledgment(nextTier, parsed.data.category);
+    return NextResponse.json({
+      ok: true,
+      acknowledgment: ack,
+      entry_number: nextEntry,
+    });
+  }
 
   let tier: string;
   let source_type: string;

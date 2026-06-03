@@ -21,9 +21,9 @@ export const NAV_OVERVIEW_ITEMS: NavItem[] = [
 
 /** Not live — shown grey, no hover; no navigation. */
 export const NAV_NETWORK_ITEMS: NavItem[] = [
-  { label: "Coaches", href: "/coaches", disabled: true },
-  { label: "Angels", href: "/angels", disabled: true },
-  { label: "Community", href: "/community", disabled: true },
+  { label: "Coaches", href: "/coaches" },
+  { label: "Angels", href: "/angels" },
+  { label: "Community", href: "/community" },
 ];
 
 export const NAV_TOOL_ITEMS: NavItem[] = [

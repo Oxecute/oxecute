@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
+import type { AppShellUser } from "@/components/app/AppShell";
 import { utcTodayISO } from "@/lib/dates";
 import { submissionBrief } from "@/lib/entry-preview";
 import {
@@ -14,52 +15,277 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
-function Day21Gate({ onUnlock }: { onUnlock: () => void }) {
+function Day21Gate({ user, onUnlock }: { user: AppShellUser; onUnlock: () => void }) {
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCaption, setCopiedCaption] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refCode = user.referral_code || "";
+  const referralLink = `oxecute.com/signup?ref=${refCode}`;
+  const prewrittenCaption = `21 days executed on Oxecute. No streak required. Just 21 days of verified proof. If you're building and leaving no trace, start here: ${referralLink}`;
+
+  const copyToClipboard = async (text: string, type: "link" | "caption") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "link") {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      } else {
+        setCopiedCaption(true);
+        setTimeout(() => setCopiedCaption(false), 2000);
+      }
+    } catch (err) {
+      console.error("Failed to copy!", err);
+    }
+  };
+
+  const [referralRewardText, setReferralRewardText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRewards = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("referral_rewards")
+        .select("tier_reached")
+        .eq("user_id", user.id);
+      
+      if (data && data.length > 0) {
+        const tiers = data.map((r) => r.tier_reached);
+        if (tiers.includes("5_paid")) {
+          setReferralRewardText("5 paid referrals — 50% off for 3 months applied to your next billing cycle.");
+        } else if (tiers.includes("3_paid")) {
+          setReferralRewardText("3 of your referrals just subscribed — 3 months free credited.");
+        } else if (tiers.includes("5_onboarded")) {
+          setReferralRewardText("5 founders onboarded — 1 month free locked.");
+        } else if (tiers.includes("3_onboarded")) {
+          setReferralRewardText("3 founders onboarded through your link — 50% off locked.");
+        } else if (tiers.includes("1_onboarded")) {
+          setReferralRewardText("1 founder onboarded through your link — 25% off your first month locked.");
+        }
+      }
+    };
+    void fetchRewards();
+  }, [user.id]);
+
+  const handleUnlock = async (tierSelected: "builder" | "free") => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day21_unlocked: true, tier: tierSelected }),
+      });
+      if (res.ok) {
+        if (tierSelected === "builder") {
+          setToastMessage("Builder tier locked in. Billing activates when payments launch. You'll hear from Ashwinni directly.");
+          setTimeout(() => {
+            onUnlock();
+          }, 3500);
+        } else {
+          onUnlock();
+        }
+      } else {
+        alert("Failed to save. Try again.");
+        setLoading(false);
+      }
+    } catch {
+      alert("Network error.");
+      setLoading(false);
+    }
+  };
+
+  const isIndia = user.country?.toLowerCase() === "india";
+
   return (
-    <main className="min-h-screen bg-[var(--mi)] text-[var(--fw)] px-6 py-12 max-w-lg mx-auto flex flex-col gap-6">
-      <p className="text-xs tracking-widest text-[var(--ac)]">21 DAYS EXECUTED · VERIFIED OPERATOR</p>
-      <h1 className="text-[28px] font-extrabold leading-tight">
-        21 days executed. Here&apos;s what you&apos;ve earned.
-      </h1>
-      <ol className="list-decimal list-inside space-y-2 text-[var(--ca)] text-sm">
-        <li>Signal Score - your execution record, quantified</li>
-        <li>Daily Directive - one action, one proof requirement, every day</li>
-        <li>Conexa Intelligence - 5 more tabs reading 21 days of behaviour</li>
-        <li>Day 21 Achievement Card - shareable, verified, yours</li>
-        <li>Builder tier - the full execution toolkit</li>
-      </ol>
-      <div className="glass-card rounded-2xl p-4 mt-4">
-        <p className="text-sm text-[var(--ca)] mb-2">Builder · $29/month</p>
-        <p className="text-xs text-[var(--t3)]">India · ₹1,199/month</p>
+    <main className="min-h-screen bg-[#08080F] text-[#EAEFF8] flex flex-col font-sans relative overflow-x-hidden w-full select-none">
+      {/* Background Radial Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-violet-600/5 blur-[120px] pointer-events-none" />
+
+      {/* Header Bar */}
+      <header className="max-w-4xl w-full mx-auto px-6 py-6 flex items-center justify-between z-10 shrink-0">
+        <span className="text-[17px] font-extrabold tracking-tight text-white select-none">
+          Oxe<span className="text-[#DEF408]">c</span>ute
+        </span>
+      </header>
+
+      {/* Main Container */}
+      <div className="flex-1 max-w-2xl w-full mx-auto px-6 pb-20 flex flex-col gap-8 justify-center z-10">
+        
+        {/* Title Section */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold tracking-[0.16em] text-[#DEF408] uppercase">
+            21 DAYS EXECUTED · VERIFIED OPERATOR
+          </p>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight text-white" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+            21 days executed. Here&apos;s what you&apos;ve earned.
+          </h1>
+        </div>
+
+        {/* Big Execution Counter Grid Card */}
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="block text-[44px] font-black text-[#DEF408] leading-none select-all font-mono">
+              21
+            </span>
+            <span className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Days Executed
+            </span>
+          </div>
+          <div className="h-10 w-px bg-white/10" />
+          <div className="text-right space-y-1">
+            <span className="block text-lg font-bold text-zinc-200 tabular-nums">
+              {String(user.break_count ?? 0)}
+            </span>
+            <span className="block text-[10px] font-semibold text-ox-t3 uppercase tracking-wider">
+              breaks on record
+            </span>
+          </div>
+        </div>
+
+        {/* What Just Unlocked List */}
+        <div className="space-y-4">
+          <p className="text-xs font-bold text-ox-t3 uppercase tracking-widest border-b border-white/[0.06] pb-2">
+            Features Unlocking Today
+          </p>
+          <ul className="space-y-4 text-sm">
+            {[
+              {
+                title: "1. Signal Score",
+                desc: "Your execution record quantified as a single score (0–100) factoring rate, consistency, and discipline."
+              },
+              {
+                title: "2. Daily Directive",
+                desc: "One tailored action statement, one specific proof requirement, generated nightly from your record."
+              },
+              {
+                title: "3. Conexa Intelligence",
+                desc: "5 additional intelligence tabs reading and diagnosing your 21 days of actual execution behaviour."
+              },
+              {
+                title: "4. Day 21 Achievement Card",
+                desc: "A shareable, cryptographically verified record achievement card to display your proof of execution."
+              },
+              {
+                title: "5. Builder Tier",
+                desc: "Permanent access to the complete execution record infrastructure, with lock-rate price protection."
+              }
+            ].map((item, index) => (
+              <li key={index} className="space-y-1 flex gap-3 items-start">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#DEF408] mt-2 shrink-0" />
+                <div>
+                  <strong className="text-white block font-semibold text-[14.5px]" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>{item.title}</strong>
+                  <span className="text-[12.5px] text-zinc-400 leading-relaxed block mt-0.5">{item.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Referral Reward Block */}
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 space-y-3.5">
+          {referralRewardText ? (
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold text-[#0EA472] uppercase tracking-wider block">
+                ✓ Referral Reward Unlocked
+              </span>
+              <p className="text-xs text-zinc-200 leading-relaxed">
+                {referralRewardText}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold text-ox-t3 uppercase tracking-wider block">
+                  Share What You Just Unlocked
+                </span>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Refer 1 founder before you subscribe and get 25% off this month.
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-2 rounded-xl bg-black/40 border border-white/10 px-3.5 py-2">
+                <span className="text-xs text-zinc-300 font-mono select-all break-all flex-1">{referralLink}</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(referralLink, "link")}
+                  className="shrink-0 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200 px-3 py-1.5 text-xs font-semibold transition-all"
+                >
+                  {copiedLink ? "Copied!" : "Copy link"}
+                </button>
+              </div>
+
+              <div className="rounded-xl bg-black/25 border border-white/[0.06] p-3 text-xs text-zinc-400 relative italic leading-relaxed">
+                &ldquo;{prewrittenCaption}&rdquo;
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(prewrittenCaption, "caption")}
+                  className="absolute bottom-2 right-2 rounded bg-white/[0.06] hover:bg-white/[0.1] text-[10px] text-zinc-300 px-2 py-1 font-semibold transition-all"
+                >
+                  {copiedCaption ? "Copied!" : "Copy post"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Pricing Reveal Card */}
+        <div className="rounded-2xl border border-[rgba(222,244,8,0.22)] bg-[rgba(222,244,8,0.03)] p-6 space-y-4">
+          <div className="flex items-baseline justify-between">
+            <span className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>Builder Tier</span>
+            <div className="text-right">
+              <span className="text-2xl font-black text-[#DEF408] tabular-nums">$29</span>
+              <span className="text-xs text-zinc-400">/month</span>
+              {isIndia && (
+                <div className="text-xs text-zinc-400 mt-0.5">
+                  India: <span className="text-[#DEF408] font-bold tabular-nums">₹1,199</span>/month
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="h-px bg-white/10" />
+          <p className="text-[12px] text-zinc-400 leading-relaxed">
+            Your rate is locked from today for as long as your subscription stays active. Cancellation voids the lock permanently. Resubscription is at the current market rate.
+          </p>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex flex-col gap-3.5 pt-4 shrink-0">
+          <button
+            type="button"
+            disabled={loading}
+            className="w-full min-h-[50px] rounded-xl bg-[#DEF408] hover:opacity-95 text-[#08080F] font-bold text-sm tracking-wide transition-all shadow-[0_4px_24px_rgba(222,244,8,0.18)] disabled:opacity-40"
+            onClick={() => handleUnlock("builder")}
+          >
+            {loading ? "Unlocking..." : "Unlock what you earned →"}
+          </button>
+          
+          <button
+            type="button"
+            disabled={loading}
+            className="w-full min-h-[50px] rounded-xl border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white bg-white/[0.02] text-xs font-semibold transition-all"
+            onClick={() => handleUnlock("free")}
+          >
+            Continue on free tier
+          </button>
+        </div>
+
       </div>
-      <button
-        type="button"
-        className="w-full rounded-full bg-[var(--ac)] text-[var(--mi)] font-semibold py-3"
-        onClick={async () => {
-          await fetch("/api/me", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ day21_unlocked: true }),
-          });
-          onUnlock();
-        }}
-      >
-        Unlock what you earned
-      </button>
-      <button
-        type="button"
-        className="w-full rounded-full border border-white/20 py-3"
-        onClick={async () => {
-          await fetch("/api/me", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ day21_unlocked: true }),
-          });
-          onUnlock();
-        }}
-      >
-        Continue on free tier
-      </button>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[90%] rounded-xl border border-emerald-500/30 bg-emerald-950/95 text-emerald-200 px-4 py-3.5 text-xs text-left shadow-2xl flex items-start gap-2.5 animate-[slideUp_0.3s_ease-out]">
+          <style>{`
+            @keyframes slideUp {
+              from { transform: translate(-50%, 20px); opacity: 0; }
+              to { transform: translate(-50%, 0); opacity: 1; }
+            }
+          `}</style>
+          <span className="text-emerald-400 text-sm mt-0.5 font-bold">✓</span>
+          <p className="leading-relaxed">{toastMessage}</p>
+        </div>
+      )}
     </main>
   );
 }
@@ -92,6 +318,40 @@ function DashboardMainInner() {
   const [declFiles, setDeclFiles] = useState<File[]>([]);
   const [conexaDrawerOpen, setConexaDrawerOpen] = useState(false);
   const [conexaTab, setConexaTab] = useState<string>("reality_check");
+
+  const resolvedEntries = useMemo(() => {
+    const map = new Map<number, Record<string, unknown>>();
+    // Sort so that upgraded entries (which have upgraded_from_id) overwrite the originals
+    const sorted = [...entries].sort((a, b) => {
+      const aUp = !!a.upgraded_from_id;
+      const bUp = !!b.upgraded_from_id;
+      if (aUp && !bUp) return 1;
+      if (!aUp && bUp) return -1;
+      return 0;
+    });
+    for (const e of sorted) {
+      map.set(Number(e.day_number), e);
+    }
+    return Array.from(map.values());
+  }, [entries]);
+
+  const [relatesToPrevious, setRelatesToPrevious] = useState(false);
+  const [selectedUpgradeId, setSelectedUpgradeId] = useState("");
+
+  const upgradableEntries = useMemo(() => {
+    const upgradedIds = new Set(
+      entries.map((e) => e.upgraded_from_id).filter(Boolean) as string[],
+    );
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return entries.filter((e) => {
+      const isUpgradableTier =
+        e.tier === "declaration_pending" || e.tier === "upload_unverified";
+      const isWithin30Days =
+        new Date(String(e.created_at ?? 0)).getTime() >= thirtyDaysAgo;
+      const isNotUpgradedYet = !upgradedIds.has(String(e.id));
+      return isUpgradableTier && isWithin30Days && isNotUpgradedYet;
+    });
+  }, [entries]);
 
   // Referral states
   const [onboardedCount, setOnboardedCount] = useState(0);
@@ -146,6 +406,8 @@ function DashboardMainInner() {
     setProofUrl("");
     setDecl("");
     setEntryPath("verified");
+    setRelatesToPrevious(false);
+    setSelectedUpgradeId("");
     setModalOpen(true);
   }, []);
 
@@ -207,7 +469,7 @@ function DashboardMainInner() {
     }
   }, []);
 
-  const recent = [...entries]
+  const recent = [...resolvedEntries]
     .sort(
       (a, b) =>
         new Date(String(b.created_at ?? 0)).getTime() -
@@ -218,7 +480,7 @@ function DashboardMainInner() {
   const breakDaySet = useMemo(() => new Set(breakDays), [breakDays]);
 
   const byCat = { product: 0, distribution: 0, ops: 0 } as Record<string, number>;
-  for (const e of entries) {
+  for (const e of resolvedEntries) {
     const c = String(e.category ?? "");
     if (c in byCat) byCat[c]++;
   }
@@ -231,10 +493,10 @@ function DashboardMainInner() {
           month: "short",
           year: "numeric",
         })
-      : entries.length > 0
+      : resolvedEntries.length > 0
         ? new Date(
             Math.min(
-              ...entries.map((e) => new Date(String(e.created_at ?? 0)).getTime()),
+              ...resolvedEntries.map((e) => new Date(String(e.created_at ?? 0)).getTime()),
             ),
           ).toLocaleDateString("en-GB", {
             day: "numeric",
@@ -263,7 +525,7 @@ function DashboardMainInner() {
     </div>
   );
 
-  const ledgerRows = [...entries]
+  const ledgerRows = [...resolvedEntries]
     .sort(
       (a, b) =>
         new Date(String(b.created_at ?? 0)).getTime() - new Date(String(a.created_at ?? 0)).getTime(),
@@ -471,10 +733,10 @@ function DashboardMainInner() {
             <div className="flex flex-wrap gap-1.5">
               {Array.from({ length: 30 }).map((_, i) => {
                 const day = i + 1;
-                const ent = entries.find((e) => Number(e.day_number) === day) as Record<string, string> | undefined;
+                const ent = resolvedEntries.find((e) => Number(e.day_number) === day) as Record<string, string> | undefined;
                 const isBreakDay = breakDaySet.has(day);
                 let cls = "border border-white/[0.055] bg-white/[0.025]";
-                if (ent?.tier === "verified_proof" || ent?.tier === "signup_execution") {
+                if (ent?.tier === "verified_proof" || ent?.tier === "signup_execution" || ent?.tier === "declaration_validated" || ent?.tier === "submission_validated") {
                   cls = "bg-[#0EA472] border-[#0EA472] shadow-[0_2px_8px_rgba(14,164,114,0.3)]";
                 } else if (ent?.tier === "declaration_pending") {
                   cls =
@@ -705,7 +967,7 @@ function DashboardMainInner() {
                   rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
                   badge = "Declared";
                   badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
-                } else if (tier === "verified_proof" || tier === "signup_execution") {
+                } else if (tier === "verified_proof" || tier === "signup_execution" || tier === "declaration_validated" || tier === "submission_validated") {
                   rowCls = "border-[rgba(14,164,114,0.25)] bg-[rgba(14,164,114,0.1)]";
                   badge = "Verified";
                   badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
@@ -999,6 +1261,57 @@ function DashboardMainInner() {
                     </span>
                     <p className="text-xs text-ox-t2">Highest Signal weight when the URL validates.</p>
                   </div>
+                  {upgradableEntries.length > 0 ? (
+                    <div className="space-y-3 border-t border-white/[0.06] pt-4.5 mt-2">
+                      <label className="flex items-center gap-2.5 text-xs font-semibold text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="rounded bg-black/40 border-white/20 text-[#0EA472] focus:ring-0 focus:ring-offset-0"
+                          style={{ accentColor: "#0EA472" }}
+                          checked={relatesToPrevious}
+                          onChange={(e) => {
+                            setRelatesToPrevious(e.target.checked);
+                            if (e.target.checked && upgradableEntries[0]) {
+                              setSelectedUpgradeId(String(upgradableEntries[0].id));
+                            } else {
+                              setSelectedUpgradeId("");
+                            }
+                          }}
+                        />
+                        <span>Does this outcome relate to a previous declaration or upload?</span>
+                      </label>
+                      {relatesToPrevious && (
+                        <div className="space-y-1.5 animate-[fadeIn_0.2s_ease-out]">
+                          <label className="block text-[10px] font-semibold text-ox-t3 uppercase tracking-wider">
+                            Select entry to upgrade
+                          </label>
+                          <select
+                            className="w-full rounded-lg bg-[#181a25] border border-white/10 px-3 py-2.5 text-xs text-[#EAEFF8] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30"
+                            value={selectedUpgradeId}
+                            onChange={(e) => setSelectedUpgradeId(e.target.value)}
+                          >
+                            {upgradableEntries.map((e) => {
+                              const dateStr = new Date(String(e.created_at)).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                              });
+                              const text = String(e.declaration_text || "").trim();
+                              const snippet = text ? `"${text.slice(0, 32)}..."` : "attachments only";
+                              const labelText =
+                                e.tier === "declaration_pending"
+                                  ? `Day ${e.day_number} · Declaration: ${snippet} (${dateStr})`
+                                  : `Day ${e.day_number} · File Upload: ${snippet} (${dateStr})`;
+                              return (
+                                <option key={String(e.id)} value={String(e.id)} className="bg-[#181a25]">
+                                  {labelText}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1174,7 +1487,12 @@ function DashboardMainInner() {
                 onClick={async () => {
                   let body: Record<string, unknown>;
                   if (entryPath === "verified") {
-                    body = { path: "verified", url: proofUrl.trim(), category: cat };
+                    body = {
+                      path: "verified",
+                      url: proofUrl.trim(),
+                      category: cat,
+                      ...(relatesToPrevious && selectedUpgradeId ? { upgraded_from_id: selectedUpgradeId } : {}),
+                    };
                   } else if (entryPath === "declaration") {
                     const {
                       data: { session },
@@ -1302,7 +1620,11 @@ function DashboardMainInner() {
                 <p className="text-[var(--t2)] capitalize">
                   {dayDetail.tier === "declaration_pending"
                     ? "○ DECLARATION · PENDING VALIDATION"
-                    : String(dayDetail.tier).replace(/_/g, " ") + " · Locked · Immutable"}
+                    : dayDetail.tier === "declaration_validated"
+                      ? "Verified Proof (Upgraded Declaration) · Locked · Immutable"
+                      : dayDetail.tier === "submission_validated"
+                        ? "Verified Proof (Upgraded Upload) · Locked · Immutable"
+                        : String(dayDetail.tier).replace(/_/g, " ") + " · Locked · Immutable"}
                 </p>
                 <p className="text-[var(--t2)]">Category: {String(dayDetail.category)}</p>
                 {dayDetail.url ? (
@@ -1534,7 +1856,7 @@ export default function DashboardPage() {
       refreshKey={gateKey}
       fullscreenBlock={(u) =>
         Boolean(u.day21_reached) && !u.day21_unlocked ? (
-          <Day21Gate onUnlock={() => setGateKey((k) => k + 1)} />
+          <Day21Gate user={u} onUnlock={() => setGateKey((k) => k + 1)} />
         ) : null
       }
     >
