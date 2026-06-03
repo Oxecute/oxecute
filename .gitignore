@@ -34,3 +34,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Documentation and PDF briefs (ignored to keep off GitHub)
+/API_INTEGRATIONS.md
+/AUTH_AUDIT.md
+/Changes.pdf
+/Developer Breif Medini.pdf
+/ENVIRONMENT_SETUP.md
+/Oxecute Product Architecture V1.pdf
+/README.md
+/README_CONEXA.md
+/README_CRON.md
+/README_LEDGER.md
