@@ -60,18 +60,10 @@ export async function middleware(request: NextRequest) {
   const pathname =
     rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
 
-  if (pathname === "/api/auth/clear-session-cookies") {
+  if (pathname.startsWith("/api") || pathname.startsWith("/auth")) {
     return NextResponse.next({ request: { headers: request.headers } });
   }
 
-  /**
-   * Do not run `getUser()` here — it can rewrite auth cookies and drop the PKCE
-   * `code_verifier` before `exchangeCodeForSession` in `/auth/callback` (mobile Safari/Chrome often hit this).
-   * Match with or without a trailing slash so this path never hits `getUser()`.
-   */
-  if (pathname === "/auth/callback") {
-    return NextResponse.next({ request: { headers: request.headers } });
-  }
   const segments = pathname.split("/").filter(Boolean);
   const rewriteTo =
     segments.length === 1 && !ROOT_APP_SEGMENTS.has(segments[0]!.toLowerCase())
