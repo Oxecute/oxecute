@@ -46,3 +46,11 @@ next-env.d.ts
 /README_CONEXA.md
 /README_CRON.md
 /README_LEDGER.md
+*.pdf
+*.html
+*_files/
+*.exe
+*.zip
+*.txt
+*.svg
+

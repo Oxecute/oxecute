@@ -39,6 +39,8 @@ const patchSchema = z
     tier: z.enum(["record", "builder", "free"]).optional(),
     github_repo: z.string().max(250).nullish(),
     github_branch: z.string().max(100).nullish(),
+    google_calendar_connected: z.boolean().optional(),
+    google_calendar_tokens: z.unknown().nullable().optional(),
   })
   .strict();
 
@@ -65,7 +67,11 @@ export async function GET() {
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("read", false);
-  return NextResponse.json({ user: data, inbox_unread: inboxUnread ?? 0 });
+  return NextResponse.json({
+    user: data,
+    inbox_unread: inboxUnread ?? 0,
+    server_time: new Date().toISOString()
+  });
 }
 
 export async function PATCH(request: Request) {

@@ -1,5 +1,6 @@
-import { conexaDay14Read } from "@/lib/conexa/anthropic";
+import { callAnthropic, conexaDay14Read } from "@/lib/conexa/anthropic";
 import { executionDayNumber, executionRate, startOfUtcDay, utcTodayISO } from "@/lib/dates";
+import { sha256Hex } from "@/lib/crypto";
 import {
   sendDay7Email,
   sendDay14Email,
@@ -38,9 +39,206 @@ export async function runCronHeartbeat(overrideNow?: Date) {
       await admin.rpc("increment_all_days_on_record");
     }
   }
+  if (utcH === 0 && utcM === 1) {
+    const ok = await acquireLock("directive_generation_and_signal", dateKey);
+    if (ok) {
+      // 1. Calculate platform miss rate for yesterday's directives (to support maintenance mode)
+      const yesterdayStart = new Date(now.getTime() - 26 * 3600 * 1000);
+      const yesterdayEnd = new Date(now.getTime() - 1 * 60 * 1000);
+      const { data: yesterdayDirectives } = await admin
+        .from("directives")
+        .select("status")
+        .gte("created_at", yesterdayStart.toISOString())
+        .lte("created_at", yesterdayEnd.toISOString());
 
+      let platformMaintenance = false;
+      if (yesterdayDirectives && yesterdayDirectives.length > 0) {
+        const totalYesterday = yesterdayDirectives.length;
+        const missedYesterday = yesterdayDirectives.filter((d) => d.status === "missed").length;
+        const platformMissRate = missedYesterday / totalYesterday;
+        if (platformMissRate > 0.25) {
+          platformMaintenance = true;
+        }
+      }
+
+      // Check last 3 days for platform miss rate > 25% (stateless maintenance window)
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 3600 * 1000);
+      const { data: recentDirectives } = await admin
+        .from("directives")
+        .select("created_at, status")
+        .gte("created_at", threeDaysAgo.toISOString());
+
+      if (recentDirectives && recentDirectives.length > 0) {
+        const groups: Record<string, { total: number; missed: number }> = {};
+        for (const d of recentDirectives) {
+          const dayKey = new Date(d.created_at).toISOString().split("T")[0];
+          if (!groups[dayKey]) groups[dayKey] = { total: 0, missed: 0 };
+          groups[dayKey].total++;
+          if (d.status === "missed") groups[dayKey].missed++;
+        }
+        for (const key of Object.keys(groups)) {
+          const rate = groups[key].missed / groups[key].total;
+          if (rate > 0.25) {
+            platformMaintenance = true;
+            break;
+          }
+        }
+      }
+
+      // Fetch all users
+      const { data: users } = await admin.from("users").select("*");
+      for (const u of users ?? []) {
+        // --- A. Compute nightly Signal Score ---
+        try {
+          const thirtyDaysAgoDate = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().split("T")[0];
+          const { data: recentBreaks } = await admin
+            .from("break_marks")
+            .select("id")
+            .eq("user_id", u.id)
+            .gte("break_date", thirtyDaysAgoDate);
+          
+          const { data: dirs } = await admin
+            .from("directives")
+            .select("status")
+            .eq("user_id", u.id);
+
+          const { data: userEntries } = await admin
+            .from("entries")
+            .select("category")
+            .eq("user_id", u.id);
+
+          const breaksInLast30 = recentBreaks?.length ?? 0;
+          const directivesIssued = dirs?.length ?? 0;
+          const directivesCompleted = dirs?.filter((d) => d.status === "completed").length ?? 0;
+          
+          const categories = new Set(userEntries?.map((e) => e.category) ?? []);
+          const distinctCategories = categories.size;
+
+          const executionCount = u.execution_count ?? 0;
+          const daysOnRecord = u.days_on_record ?? 0;
+          
+          const rawStreak = daysOnRecord > 0 ? (executionCount / daysOnRecord) * 100 : 0;
+          const streakDepth = Math.max(0, rawStreak - breaksInLast30 * 4);
+          const directiveCompletion = directivesIssued > 0 ? (directivesCompleted / directivesIssued) * 100 : 0;
+          const artifactDiversity = (distinctCategories / 3) * 100;
+
+          const rawScore = streakDepth * 0.40 + directiveCompletion * 0.35 + artifactDiversity * 0.25;
+          const finalRawScore = Math.min(100, Math.max(0, Math.round(rawScore)));
+
+          // Retrieve past score history to compute 7-day moving average
+          const { data: scoreHistory } = await admin
+            .from("signal_score_history")
+            .select("raw_score")
+            .eq("user_id", u.id)
+            .order("score_date", { ascending: false })
+            .limit(6);
+
+          const prevScores = scoreHistory?.map((s) => Number(s.raw_score)) ?? [];
+          const allScores = [finalRawScore, ...prevScores];
+          const smoothedScore = Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length);
+
+          await admin.from("signal_score_history").upsert({
+            user_id: u.id,
+            score_date: today,
+            raw_score: finalRawScore,
+            smoothed_score: smoothedScore,
+          }, { onConflict: "user_id,score_date" });
+
+        } catch (err) {
+          console.error(`[Signal Score calculation] Error for user ${u.id}:`, err);
+        }
+
+        // --- B. Generate daily Directive (Day 21+ founders only) ---
+        if (u.day21_reached) {
+          const { data: userDirectives } = await admin
+            .from("directives")
+            .select("status")
+            .eq("user_id", u.id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          let consecutiveMisses = 0;
+          if (userDirectives) {
+            for (const d of userDirectives) {
+              if (d.status === "missed") {
+                consecutiveMisses++;
+              } else if (d.status === "completed") {
+                break;
+              }
+            }
+          }
+
+          const individualMaintenance = consecutiveMisses >= 4;
+          const isMaintenance = platformMaintenance || individualMaintenance;
+
+          // Call Conexa (Claude) to generate directive
+          const systemPrompt = `You are Conexa, the execution intelligence layer of Oxecute.
+You generate daily directives for founders based on their execution record and baselines.
+Rules:
+1. Return a JSON object with exactly two keys: "text" (string, the directive, max 150 characters) and "tag" (one of "product", "distribution", "ops"). Do not wrap in markdown or backticks, or write any other text.
+2. The directive MUST be exactly one action sentence with a specific proof requirement. E.g. "Draft your landing page copy in a Google Doc and submit the link." or "Send 5 cold emails to ICP prospects and submit the sent messages link."
+3. ${isMaintenance ? 'Maintenance mode is ACTIVE. The directive should be simple, operational, and focused on maintenance (e.g. "Check your server error logs and submit a screenshot link" or "Write a team daily standup note and submit the link").' : `The directive must target the founder's avoidance pattern: ${u.avoidance_tags?.join(", ") || "product"}.`}
+4. No cheerleading, no prefix or suffix. Just the direct action.`;
+
+          const userPrompt = `FOUNDER PROFILE:
+Startup Name: ${u.startup_name}
+Startup Description: ${u.startup_description}
+Stage: ${u.stage}
+MRR: ${u.mrr}
+Avoidance Pattern: ${u.avoidance_tags?.join(", ") || "product"}
+Biggest Blocker: ${u.blocker_text || "None"}`;
+
+          let directiveText = isMaintenance 
+            ? "Check database connection latency and document findings in a document."
+            : "Reach out to 5 prospective customers via LinkedIn and submit proof of sent messages.";
+          let behavioralTag = isMaintenance ? "ops" : (u.avoidance_tags?.[0] || "product");
+
+          try {
+            const response = await callAnthropic({
+              system: systemPrompt,
+              messages: [{ role: "user", content: userPrompt }],
+              max_tokens: 300,
+            });
+
+            const cleanJsonStr = response.text
+              .replace(/```json/i, "")
+              .replace(/```/g, "")
+              .trim();
+
+            const parsed = JSON.parse(cleanJsonStr);
+            if (parsed.text) directiveText = parsed.text;
+            if (parsed.tag && ["product", "distribution", "ops"].includes(parsed.tag)) {
+              behavioralTag = parsed.tag;
+            }
+          } catch (err) {
+            console.error(`[Directive Generation] Failed to generate AI directive for user ${u.id}:`, err);
+          }
+
+          const dayNum = executionDayNumber(u.created_at as string, now);
+
+          await admin.from("directives").insert({
+            user_id: u.id,
+            day_number: dayNum,
+            directive_text: directiveText,
+            behavioral_tag: behavioralTag,
+            status: "open",
+            is_maintenance: isMaintenance,
+            prompt_version: "v1.0",
+          });
+
+          await admin.from("notifications").insert({
+            user_id: u.id,
+            type: "system",
+            title: "New Conexa directive generated",
+            body: `Day ${dayNum} Directive is open: "${directiveText}"`,
+            action_url: "/directive",
+          });
+        }
+      }
+    }
+  }
   if (utcH === 23 && utcM === 59) {
-    const ok = await acquireLock("break_marks", dateKey);
+    const ok = await acquireLock("nightly_evaluation", dateKey);
     if (ok) {
       const { data: users } = await admin.from("users").select("*");
       for (const u of users ?? []) {
@@ -48,43 +246,182 @@ export async function runCronHeartbeat(overrideNow?: Date) {
         const created = new Date(u.created_at);
         if (startOfUtcDay(created).getTime() > startOfUtcDay(now).getTime()) continue;
         const dayNum = executionDayNumber(u.created_at as string, now);
-        if (u.last_submission_date === today) continue;
-        const { data: ent } = await admin
+
+        // 1. Check if user already has an entry for today (manual/immediate submission)
+        const { data: existingEntry } = await admin
           .from("entries")
           .select("id")
           .eq("user_id", u.id)
           .eq("day_number", dayNum)
           .maybeSingle();
-        if (ent) continue;
-        const { data: br } = await admin
-          .from("break_marks")
-          .select("id")
-          .eq("user_id", u.id)
-          .eq("break_date", today)
-          .maybeSingle();
-        if (br) continue;
-        await admin.from("break_marks").insert({
-          user_id: u.id,
-          break_date: today,
-          day_number: dayNum,
-          execution_count_before: u.execution_count ?? 0,
-        });
+
+        interface IntegrationEventRecord {
+          id: string;
+          source: string;
+          payload: Record<string, unknown> | null;
+          url?: string;
+        }
+
+        let executionRecorded = !!existingEntry;
+        let winningSource = existingEntry ? "manual" : null;
+        let winningEvent: IntegrationEventRecord | null = null;
+
+        if (!executionRecorded) {
+          // 2. Fetch eligible integration events created today
+          const startOfDay = new Date(now);
+          startOfDay.setUTCHours(0, 0, 0, 0);
+
+          const { data: events } = await admin
+            .from("integration_events")
+            .select("*")
+            .eq("user_id", u.id)
+            .eq("is_eligible", true)
+            .gte("created_at", startOfDay.toISOString());
+
+          if (events && events.length > 0) {
+            // Priority: github -> stripe -> calendly
+            const githubEvent = events.find((e) => e.source === "github");
+            const stripeEvent = events.find((e) => e.source === "stripe");
+            const calendlyEvent = events.find((e) => e.source === "calendly");
+
+            const foundEvent = githubEvent || stripeEvent || calendlyEvent;
+            if (foundEvent) {
+              winningEvent = {
+                id: foundEvent.id,
+                source: foundEvent.source,
+                payload: foundEvent.payload as Record<string, unknown> | null,
+              };
+              winningSource = winningEvent.source;
+              executionRecorded = true;
+            }
+          }
+        }
+
+        if (executionRecorded && winningSource !== "manual" && winningEvent) {
+          // Auto-record in entries table
+          const { data: last } = await admin
+            .from("entries")
+            .select("entry_number")
+            .eq("user_id", u.id)
+            .order("entry_number", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const nextEntry = (last?.entry_number ?? 0) + 1;
+          const payload = (winningEvent.payload || {}) as Record<string, unknown>;
+          let url = winningEvent.url || "";
+          let category = "product";
+          let desc = `Auto-captured via ${winningEvent.source}`;
+
+          if (winningEvent.source === "github") {
+            const commits = (payload.commits || []) as Record<string, unknown>[];
+            const firstCommit = commits[0];
+            const repoObj = (payload.repository || {}) as Record<string, unknown>;
+            if (firstCommit) {
+              url = (firstCommit.url as string) || `https://github.com/${repoObj.full_name || ""}/commit/${firstCommit.id || ""}`;
+              desc = (firstCommit.message as string)?.slice(0, 140) || `GitHub activity`;
+            }
+            category = "product";
+          } else if (winningEvent.source === "stripe") {
+            const dataObj = (payload.data || {}) as Record<string, unknown>;
+            const obj = (dataObj.object || {}) as Record<string, unknown>;
+            url = (obj.receipt_url as string) || `https://stripe.com/payment`;
+            category = "ops";
+            desc = `Stripe payment verified`;
+          } else if (winningEvent.source === "calendly") {
+            url = (payload.event as string) || `https://calendly.com`;
+            category = "distribution";
+            desc = `Calendly meeting completed`;
+          }
+
+          const hash = await sha256Hex(url + new Date().toISOString());
+
+          const { error: insertErr } = await admin.from("entries").insert({
+            user_id: u.id,
+            entry_number: nextEntry,
+            day_number: dayNum,
+            category,
+            source_type: `${winningEvent.source}_auto`,
+            tier: "verified_proof",
+            url,
+            declaration_text: desc,
+            validation_hash: hash,
+            execution_day: true,
+          });
+
+          if (!insertErr) {
+            // Update user execution count
+            await admin
+              .from("users")
+              .update({
+                execution_count: (u.execution_count ?? 0) + 1,
+                last_submission_date: today,
+              })
+              .eq("id", u.id);
+
+            // Log execution audit
+            await admin.from("execution_evaluation_audit").insert({
+              user_id: u.id,
+              evaluation_date: today,
+              winning_source: winningSource,
+              audit_details: { event_id: winningEvent.id, payload },
+            });
+
+            await admin.from("notifications").insert({
+              user_id: u.id,
+              type: "system",
+              title: `Execution Verified via ${winningSource}`,
+              body: `Conexa verified today's work. Entry #${String(nextEntry).padStart(3, "0")} is locked.`,
+              action_url: "/dashboard",
+            });
+          }
+        } else if (!executionRecorded) {
+          // Write break mark
+          const { data: br } = await admin
+            .from("break_marks")
+            .select("id")
+            .eq("user_id", u.id)
+            .eq("break_date", today)
+            .maybeSingle();
+
+          if (!br) {
+            await admin.from("break_marks").insert({
+              user_id: u.id,
+              break_date: today,
+              day_number: dayNum,
+              execution_count_before: u.execution_count ?? 0,
+            });
+
+            await admin
+              .from("users")
+              .update({ break_count: (u.break_count ?? 0) + 1 })
+              .eq("id", u.id);
+
+            await admin.from("notifications").insert({
+              user_id: u.id,
+              type: "record",
+              title: `Break mark written - Day ${dayNum}`,
+              body: `No submission on ${today}. This gap is part of your record.`,
+            });
+
+            await logEvent(
+              "break_mark_written",
+              { day_number: dayNum, execution_count_before: u.execution_count ?? 0 },
+              u.id,
+              "cron",
+            );
+          }
+        }
+
+        // 3. Close open directives as missed
         await admin
-          .from("users")
-          .update({ break_count: (u.break_count ?? 0) + 1 })
-          .eq("id", u.id);
-        await admin.from("notifications").insert({
-          user_id: u.id,
-          type: "record",
-          title: `Break mark written - Day ${dayNum}`,
-          body: `No submission on ${today}. This gap is part of your record.`,
-        });
-        await logEvent(
-          "break_mark_written",
-          { day_number: dayNum, execution_count_before: u.execution_count ?? 0 },
-          u.id,
-          "cron",
-        );
+          .from("directives")
+          .update({
+            status: "missed",
+            closed_at: new Date().toISOString(),
+          })
+          .eq("user_id", u.id)
+          .eq("status", "open");
       }
     }
   }

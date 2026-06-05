@@ -54,6 +54,14 @@ function LogoTypeform() {
   );
 }
 
+function LogoGoogleCalendar() {
+  return (
+    <svg className="w-8 h-8 text-[#EA4335]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z" />
+    </svg>
+  );
+}
+
 const SECTIONS: { num: string; title: string; tools: ToolDef[] }[] = [
   {
     num: "01",
@@ -77,6 +85,13 @@ const SECTIONS: { num: string; title: string; tools: ToolDef[] }[] = [
     tools: [
       { name: "Calendly", Logo: LogoCalendly },
       { name: "Typeform", Logo: LogoTypeform },
+    ],
+  },
+  {
+    num: "04",
+    title: "Communication & Ops",
+    tools: [
+      { name: "Google Calendar", Logo: LogoGoogleCalendar },
     ],
   },
 ];
@@ -230,16 +245,32 @@ export default function ToolsPage() {
       });
     });
 
-    // Sync database GitHub repo configuration
+    // Sync database GitHub repo and Google Calendar configuration
     fetch("/api/me")
       .then((res) => res.json())
       .then((data) => {
         if (data?.user) {
+          let updated = false;
           const repo = data.user.github_repo;
           const branch = data.user.github_branch || "main";
           if (repo) {
             saved["GitHub"] = { repo, branch };
             localStorage.setItem("oxe_connected_tool_GitHub", JSON.stringify({ repo, branch }));
+            updated = true;
+          }
+          if (data.user.google_calendar_connected) {
+            saved["Google Calendar"] = { connected: "true" };
+            localStorage.setItem("oxe_connected_tool_Google Calendar", JSON.stringify({ connected: "true" }));
+            updated = true;
+          } else {
+            // If database says false but local storage had it, remove it
+            if (saved["Google Calendar"]) {
+              delete saved["Google Calendar"];
+              localStorage.removeItem("oxe_connected_tool_Google Calendar");
+              updated = true;
+            }
+          }
+          if (updated) {
             setConnections({ ...saved });
           }
         }
@@ -250,6 +281,12 @@ export default function ToolsPage() {
   }, []);
 
   const handleConnect = (name: string) => {
+    if (name === "Google Calendar") {
+      if (!connections[name]) {
+        window.location.href = "/api/integrations/google-calendar/connect";
+        return;
+      }
+    }
     setActiveModal(name);
     // Pre-fill fields if already connected
     if (connections[name]) {
@@ -331,6 +368,19 @@ export default function ToolsPage() {
         });
       } catch (err) {
         console.error("Failed to disconnect GitHub on database:", err);
+      }
+    } else if (name === "Google Calendar") {
+      try {
+        await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            google_calendar_connected: false,
+            google_calendar_tokens: null,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to disconnect Google Calendar on database:", err);
       }
     }
 
@@ -599,49 +649,58 @@ export default function ToolsPage() {
                   />
                 </div>
               )}
+
+              {activeModal === "Google Calendar" && (
+                <div className="space-y-1 text-zinc-300 text-xs leading-relaxed">
+                  <p>Google Calendar is successfully connected to your Oxecute profile.</p>
+                  <p className="mt-1.5 text-zinc-400">Conexa will monitor your completed calendar events automatically to identify execution signals.</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2.5 pt-3 border-t border-white/[0.06]">
-              <button
-                type="button"
-                disabled={connecting}
-                onClick={() => {
-                  let data: Record<string, string> = { connected: "true" };
-                  if (activeModal === "GitHub") {
-                    if (!githubRepo.trim()) return;
-                    data = { repo: githubRepo.trim(), branch: githubBranch.trim() };
-                  } else if (activeModal === "Notion") {
-                    if (!notionWorkspace.trim()) return;
-                    data = { workspace: notionWorkspace.trim(), database: notionDatabase.trim() };
-                  } else if (activeModal === "Stripe") {
-                    if (!stripeAccount.trim()) return;
-                    data = { accountId: stripeAccount.trim(), mode: stripeMode };
-                  } else if (activeModal === "Lemon Squeezy") {
-                    if (!lemonStore.trim()) return;
-                    data = { storeId: lemonStore.trim() };
-                  } else if (activeModal === "Calendly") {
-                    if (!calendlyLink.trim()) return;
-                    data = { username: calendlyLink.trim() };
-                  } else if (activeModal === "Typeform") {
-                    if (!typeformId.trim()) return;
-                    data = { formId: typeformId.trim() };
-                  }
-                  handleSaveConnection(activeModal!, data);
-                }}
-                className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold py-3 text-sm flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(16,185,129,0.2)]"
-              >
-                {connecting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Establishing Sync...
-                  </>
-                ) : (
-                  connections[activeModal!] ? "Update Connection" : "Authorize & Connect"
-                )}
-              </button>
+              {activeModal !== "Google Calendar" && (
+                <button
+                  type="button"
+                  disabled={connecting}
+                  onClick={() => {
+                    let data: Record<string, string> = { connected: "true" };
+                    if (activeModal === "GitHub") {
+                      if (!githubRepo.trim()) return;
+                      data = { repo: githubRepo.trim(), branch: githubBranch.trim() };
+                    } else if (activeModal === "Notion") {
+                      if (!notionWorkspace.trim()) return;
+                      data = { workspace: notionWorkspace.trim(), database: notionDatabase.trim() };
+                    } else if (activeModal === "Stripe") {
+                      if (!stripeAccount.trim()) return;
+                      data = { accountId: stripeAccount.trim(), mode: stripeMode };
+                    } else if (activeModal === "Lemon Squeezy") {
+                      if (!lemonStore.trim()) return;
+                      data = { storeId: lemonStore.trim() };
+                    } else if (activeModal === "Calendly") {
+                      if (!calendlyLink.trim()) return;
+                      data = { username: calendlyLink.trim() };
+                    } else if (activeModal === "Typeform") {
+                      if (!typeformId.trim()) return;
+                      data = { formId: typeformId.trim() };
+                    }
+                    handleSaveConnection(activeModal!, data);
+                  }}
+                  className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold py-3 text-sm flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(16,185,129,0.2)]"
+                >
+                  {connecting ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Establishing Sync...
+                    </>
+                  ) : (
+                    connections[activeModal!] ? "Update Connection" : "Authorize & Connect"
+                  )}
+                </button>
+              )}
 
               {connections[activeModal!] && !connecting && (
                 <button

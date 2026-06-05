@@ -206,6 +206,8 @@ export default function StartPage() {
   /** While saving calibration + fetching synthesis, ignore hydrateFromUser so stale /api/me cannot force step back to 4 (loads forever on "reading your pattern"). */
   const calibrationSubmitInFlightRef = useRef(false);
   const [step, setStep] = useState(2);
+  const [serverOffset, setServerOffset] = useState<number>(0);
+  const [windowLeft, setWindowLeft] = useState("");
   /** False until we finish first auth + /api/me (or pending bootstrap) resolution */
   const [booting, setBooting] = useState(true);
 
@@ -272,6 +274,33 @@ export default function StartPage() {
       body: JSON.stringify({ event_type: "first_entry_path_b", properties: {} }),
     });
   };
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date(Date.now() + serverOffset);
+      const end = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          23,
+          59,
+          59,
+          999,
+        ),
+      );
+      let sec = Math.max(0, Math.floor((end.getTime() - now.getTime()) / 1000));
+      const hours = Math.floor(sec / 3600);
+      sec -= hours * 3600;
+      const minutes = Math.floor(sec / 60);
+      const seconds = sec - minutes * 60;
+      const z = (n: number) => String(n).padStart(2, "0");
+      setWindowLeft(`${z(hours)}:${z(minutes)}:${z(seconds)}`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [serverOffset]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -511,7 +540,12 @@ export default function StartPage() {
       }
 
       if (meRes.ok) {
-        const { user: row } = await meRes.json();
+        const resBody = await meRes.json();
+        const row = resBody.user;
+        const serverTime = resBody.server_time;
+        if (serverTime) {
+          setServerOffset(new Date(serverTime).getTime() - Date.now());
+        }
         setErr(null);
         setHasAuthSession(false);
         await hydrateFromUser(row as Record<string, unknown>);
@@ -1927,31 +1961,58 @@ export default function StartPage() {
             {step === 8 && isSubmitted && (
               <div className="flex min-h-full w-full flex-col md:items-center py-4 md:py-8 px-4 md:px-6 pb-10">
                 <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.11] bg-[#0d0f1a] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden">
-                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] flex flex-col items-center text-center space-y-4">
+                  <div className="px-6 md:px-8 pt-7 pb-5 border-b border-white/[0.06] flex flex-col items-center text-center space-y-3.5">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs font-bold text-emerald-400 tracking-wide uppercase">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       RECORD STARTED
                     </span>
                     <h1
-                      className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em]"
+                      className="text-[26px] font-extrabold text-[#EAEFF8] tracking-[-0.02em] leading-tight"
                       style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}
                     >
                       Record started.
                     </h1>
-                    <p className="text-[13px] font-light text-ox-t2 leading-relaxed">
-                      Entry #001 is locked permanently to your record.
+                    <p className="text-xs font-mono text-[#DEF408] bg-[#DEF408]/10 px-3 py-1 rounded-full">
+                      Live at oxecute.com/{username}
+                    </p>
+                    <p className="text-sm font-semibold text-white tracking-wide uppercase">
+                      1 DAY EXECUTED &middot; 0 BREAKS
                     </p>
                   </div>
-                  <div className="px-6 md:px-8 py-7 space-y-5 flex flex-col items-center text-center">
-                    <p className="text-sm text-[var(--ca)] leading-relaxed">
-                      Your verified execution record is officially active. This gap-less record is permanent, public, and append-only.
-                    </p>
+                  <div className="px-6 md:px-8 py-7 space-y-6 flex flex-col items-center text-center">
+                    <div className="w-full space-y-2">
+                      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">
+                        30-Day Grid Preview
+                      </p>
+                      <div className="grid grid-cols-10 gap-1.5 py-2 w-full justify-center max-w-[280px] mx-auto">
+                        {Array.from({ length: 30 }).map((_, i) => {
+                          let bg = "bg-white/[0.03] border border-white/[0.06]";
+                          if (i === 0) {
+                            const category = firstPath === "signup_execution" ? "product" : workCat;
+                            if (category === "product") bg = "bg-[#0EA472] border-[#0EA472]";
+                            else if (category === "distribution") bg = "bg-[#7C64DC] border-[#7C64DC]";
+                            else if (category === "ops") bg = "bg-[#C2A478] border-[#C2A478]";
+                          }
+                          return <div key={i} className={`w-[22px] h-[22px] rounded-[5px] ${bg}`} />;
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[13px] font-medium text-red-400">
+                        Entry #001 LOCKED &middot; Immutable
+                      </p>
+                      <p className="text-xs text-ox-t2 leading-relaxed max-w-sm">
+                        This verified execution record is officially active. This gap-less record is permanent, public, and append-only.
+                      </p>
+                    </div>
+
                     <div className="w-full space-y-3 pt-2">
                       <button
                         type="button"
                         onClick={async () => {
                           try {
-                            const link = `${window.location.origin}/u/${username}`;
+                            const link = `${window.location.origin}/${username}`;
                             await navigator.clipboard.writeText(link);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
@@ -1973,17 +2034,23 @@ export default function StartPage() {
                     </div>
                   </div>
                 </div>
+
                 {/* Milestone track */}
-                <div className="mt-8 flex flex-col items-center w-full max-w-[560px]">
+                <div className="mt-8 flex flex-col items-center w-full max-w-[560px] space-y-4">
                   <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-medium flex-wrap justify-center">
-                    <span className="text-emerald-400 font-bold">● 1 day executed</span>
+                    <span className="text-emerald-400 font-bold">● Day 1 NOW</span>
                     <span className="text-zinc-700">——</span>
-                    <span>○ 21 days executed</span>
+                    <span>○ Day 21</span>
                     <span className="text-zinc-700">——</span>
-                    <span>○ 60 days executed</span>
+                    <span>○ Day 60</span>
                     <span className="text-zinc-700">——</span>
-                    <span>○ 90 days executed</span>
+                    <span>○ Day 90</span>
                   </div>
+                  {windowLeft && (
+                    <p className="text-xs text-zinc-400 font-mono">
+                      Your next window closes in <span className="text-white font-bold">{windowLeft}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             )}

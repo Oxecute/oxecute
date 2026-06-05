@@ -300,6 +300,12 @@ function DashboardMainInner() {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Record<string, unknown>[]>([]);
+  const [activeDirective, setActiveDirective] = useState<Record<string, unknown> | null>(null);
+  const [directiveStats, setDirectiveStats] = useState<{ completion_rate: number } | null>(null);
+  const [dashProofUrl, setDashProofUrl] = useState("");
+  const [dashSubmitting, setDashSubmitting] = useState(false);
+  const [dashError, setDashError] = useState<string | null>(null);
+  const [dashSuccess, setDashSuccess] = useState<string | null>(null);
   const [breakDays, setBreakDays] = useState<number[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -335,6 +341,55 @@ function DashboardMainInner() {
     return Array.from(map.values());
   }, [entries]);
 
+  const logItems = useMemo(() => {
+    const items: {
+      type: "entry" | "break";
+      day_number: number;
+      entry_number?: number;
+      category?: string;
+      tier?: string;
+      url?: string | null;
+      declaration_text?: string | null;
+      upload_paths?: string[] | null;
+      context_sentence?: string | null;
+      created_at: string;
+      raw: Record<string, unknown>;
+    }[] = [];
+
+    for (const e of entries) {
+      items.push({
+        type: "entry",
+        day_number: Number(e.day_number),
+        entry_number: Number(e.entry_number),
+        category: String(e.category || "product"),
+        tier: String(e.tier || ""),
+        url: e.url as string | null,
+        declaration_text: e.declaration_text as string | null,
+        upload_paths: e.upload_paths as string[] | null,
+        context_sentence: e.context_sentence as string | null,
+        created_at: String(e.created_at || ""),
+        raw: e as Record<string, unknown>,
+      });
+    }
+
+    for (const b of breakDays) {
+      const start = new Date(String(user.created_at));
+      const targetDate = new Date(start.getTime() + (b - 1) * 24 * 60 * 60 * 1000);
+      items.push({
+        type: "break",
+        day_number: b,
+        created_at: targetDate.toISOString(),
+        raw: {
+          day_number: b,
+          tier: "break",
+          message: "This gap is part of your record. Break marks are permanent.",
+        },
+      });
+    }
+
+    return items.sort((a, b) => b.day_number - a.day_number);
+  }, [entries, breakDays, user.created_at]);
+
   const [relatesToPrevious, setRelatesToPrevious] = useState(false);
   const [selectedUpgradeId, setSelectedUpgradeId] = useState("");
 
@@ -352,6 +407,41 @@ function DashboardMainInner() {
       return isUpgradableTier && isWithin30Days && isNotUpgradedYet;
     });
   }, [entries]);
+
+  const submitDashProof = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeDirective || !dashProofUrl.trim()) return;
+
+    setDashSubmitting(true);
+    setDashError(null);
+    setDashSuccess(null);
+
+    try {
+      const res = await fetch("/api/directives/submit-proof", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          directive_id: activeDirective.id,
+          proof_url: dashProofUrl.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit proof");
+      }
+
+      setDashSuccess(data.acknowledgment || "Proof successfully verified.");
+      setDashProofUrl("");
+      void loadEntries();
+      router.refresh();
+    } catch (err) {
+      const eMsg = err instanceof Error ? err.message : "Validation failed.";
+      setDashError(eMsg);
+    } finally {
+      setDashSubmitting(false);
+    }
+  };
 
   // Referral states
   const [onboardedCount, setOnboardedCount] = useState(0);
@@ -380,13 +470,22 @@ function DashboardMainInner() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-      const eRes = await fetch("/api/entries");
+      const [eRes, dRes] = await Promise.all([
+        fetch("/api/entries"),
+        fetch("/api/directives")
+      ]);
       if (!eRes.ok) {
         throw new Error(`Failed to load entries: ${eRes.status}`);
       }
       const eJ = await eRes.json();
       setEntries(eJ.entries ?? []);
       setBreakDays(eJ.break_days ?? []);
+
+      if (dRes.ok) {
+        const dJ = await dRes.json();
+        setActiveDirective(dJ.active);
+        setDirectiveStats(dJ.stats);
+      }
       void loadReferrals();
     } catch (e) {
       console.error(e);
@@ -643,12 +742,17 @@ function DashboardMainInner() {
               Directive completion
             </p>
             {day21Reached ? (
-              <Link
-                href="/directive"
-                className="text-[12.5px] font-medium text-[#0EA472] hover:underline"
-              >
-                Open Daily Directive
-              </Link>
+              <div className="space-y-1">
+                <p className="text-[30px] font-bold leading-none" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+                  {directiveStats ? `${directiveStats.completion_rate}%` : "—"}
+                </p>
+                <Link
+                  href="/directive"
+                  className="block text-[11.5px] font-medium text-[#0EA472] hover:underline pt-0.5"
+                >
+                  Open Daily Directive ➜
+                </Link>
+              </div>
             ) : (
               <p className="flex items-center gap-2 text-[12.5px] text-ox-t2">
                 <svg
@@ -792,6 +896,174 @@ function DashboardMainInner() {
               })}
             </div>
             {gridLegend}
+          </div>
+        </div>
+
+        {/* Daily Directive Panel */}
+        {day21Reached && (
+          <div className="rounded-[20px] border border-[rgba(124,100,220,0.35)] bg-[rgba(124,100,220,0.06)] shadow-[0_0_28px_rgba(124,100,220,0.12)] p-5 sm:p-[22px] space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-3 py-0.5 text-[9px] font-bold text-indigo-400 uppercase tracking-widest">
+                AI DIRECTIVE &middot; BASED ON BEHAVIORAL RECORD
+              </span>
+              <span className="text-[11px] font-mono text-zinc-400">
+                Daily window closes 23:59:50 UTC
+              </span>
+            </div>
+
+            {activeDirective ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-base font-bold text-white leading-relaxed">
+                    &ldquo;{String(activeDirective.directive_text)}&rdquo;
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#DEF408] bg-[#DEF408]/10 px-2 rounded">
+                      {String(activeDirective.behavioral_tag)} gap
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 bg-white/5 px-2 rounded">
+                      Day {String(activeDirective.day_number)}
+                    </span>
+                    {Boolean(activeDirective.is_maintenance) && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 rounded animate-pulse">
+                        🛠 Maintenance Mode
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <form onSubmit={submitDashProof} className="space-y-3 pt-2 border-t border-white/[0.06]">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Submit Proof URL
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://..."
+                        value={dashProofUrl}
+                        onChange={(e) => setDashProofUrl(e.target.value)}
+                        disabled={dashSubmitting}
+                        className="flex-1 rounded-xl bg-white/[0.04] border border-white/[0.1] px-3.5 py-2.5 text-xs text-white outline-none focus:border-white/20 disabled:opacity-50"
+                      />
+                      <button
+                        type="submit"
+                        disabled={dashSubmitting || !dashProofUrl.trim()}
+                        className="rounded-xl bg-[#0EA472] hover:opacity-95 disabled:opacity-50 text-white font-semibold px-5 text-xs flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(14,164,114,0.2)] transition-all shrink-0"
+                      >
+                        {dashSubmitting ? (
+                          <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        ) : (
+                          "Submit Proof"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {dashError && (
+                    <p className="text-[11px] font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-2.5 py-1.5 rounded-lg">
+                      ✕ {dashError}
+                    </p>
+                  )}
+                </form>
+              </div>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-xs text-emerald-400 font-semibold">✓ Daily Directive completed and locked to record.</p>
+                {dashSuccess && (
+                  <p className="text-[11px] text-zinc-400 italic mt-2">
+                    &ldquo;{dashSuccess}&rdquo;
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Chronological Entry Log */}
+        <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] p-5 sm:p-[22px] space-y-4">
+          <div>
+            <h3 className="text-[14.5px] font-semibold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
+              Execution Ledger
+            </h3>
+            <p className="text-[11.5px] text-ox-t3 mt-0.5">Chronological record of submissions and system-recorded gaps</p>
+          </div>
+          <div className="divide-y divide-white/[0.06] overflow-hidden">
+            {logItems.length === 0 ? (
+              <p className="text-sm text-ox-t3 py-4 text-center">No logs recorded yet.</p>
+            ) : (
+              logItems.map((item, index) => {
+                const isBreak = item.type === "break";
+                let desc = "";
+                if (isBreak) {
+                  desc = "No submission logged for this day. System-recorded break mark.";
+                } else {
+                  if (item.tier === "verified_proof" || item.tier === "declaration_validated" || item.tier === "submission_validated") {
+                    desc = item.url || "Verified Proof URL submitted.";
+                  } else if (item.tier === "declaration_pending") {
+                    desc = item.declaration_text || "Declaration committed.";
+                  } else if (item.tier === "upload_unverified") {
+                    desc = `${item.context_sentence || "File uploaded."} (${item.upload_paths?.length || 1} file(s))`;
+                  } else if (item.tier === "signup_execution") {
+                    desc = item.declaration_text || "Signed up and activated Conexa.";
+                  }
+                }
+
+                const dateStr = new Date(item.created_at).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                });
+
+                return (
+                  <button
+                    type="button"
+                    key={index}
+                    onClick={() => setDayDetail(item.raw)}
+                    className="w-full text-left py-3 px-2.5 -mx-2.5 rounded-lg hover:bg-white/[0.02] flex items-center justify-between gap-4 transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-bold text-white font-mono">
+                          {isBreak ? `Day ${item.day_number}` : `Entry #${String(item.entry_number).padStart(3, '0')}`}
+                        </span>
+                        {!isBreak && (
+                          <span className="text-[11px] text-zinc-400 font-medium font-mono">
+                            Day {item.day_number}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
+                          isBreak ? "bg-red-500/10 text-red-400" :
+                          item.category === "product" ? "bg-blue-500/10 text-blue-400" :
+                          item.category === "distribution" ? "bg-violet-500/10 text-violet-400" :
+                          "bg-amber-500/10 text-amber-400"
+                        }`}>
+                          {isBreak ? "BREAK" : item.category}
+                        </span>
+                      </div>
+                      <p className="text-xs text-ox-t2 truncate pr-4">
+                        {desc}
+                      </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-3">
+                      <div className="text-right space-y-0.5">
+                        <p className="text-[11px] text-zinc-500">{dateStr}</p>
+                        <span className={`inline-block text-[10px] font-bold uppercase tracking-wider ${
+                          isBreak ? "text-red-400" : "text-emerald-400"
+                        }`}>
+                          {isBreak ? "Break Mark" : String(item.tier).replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <span className="text-red-400 text-xs font-semibold flex items-center gap-1 bg-red-400/5 border border-red-400/20 px-2 py-0.5 rounded">
+                        🔒 LOCKED
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
