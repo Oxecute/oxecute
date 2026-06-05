@@ -3,7 +3,7 @@
 import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
 import type { AppShellUser } from "@/components/app/AppShell";
 import { utcTodayISO } from "@/lib/dates";
-import { submissionBrief } from "@/lib/entry-preview";
+
 import {
   ENTRY_UPLOAD_ACCEPT,
   FIRST_PROOF_ACCEPT,
@@ -624,12 +624,6 @@ function DashboardMainInner() {
     </div>
   );
 
-  const ledgerRows = [...resolvedEntries]
-    .sort(
-      (a, b) =>
-        new Date(String(b.created_at ?? 0)).getTime() - new Date(String(a.created_at ?? 0)).getTime(),
-    )
-    .slice(0, 6);
 
   const sendConexa = useCallback(async () => {
     const t = chatText.trim();
@@ -1206,67 +1200,7 @@ function DashboardMainInner() {
           </div>
         )}
 
-        <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-[22px] py-4 border-b border-white/[0.055]">
-            <div>
-              <p className="text-[14.5px] font-semibold" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
-                Execution Ledger
-              </p>
-              <p className="text-[11.5px] text-ox-t3 mt-0.5">Auto-captured · tamper-proof · append-only</p>
-            </div>
-          </div>
-          <div className="p-5 space-y-2">
-            {ledgerRows.length === 0 ? (
-              <p className="text-[12.5px] text-ox-t2">No ledger rows yet.</p>
-            ) : (
-              ledgerRows.map((e) => {
-                const tier = String(e.tier ?? "");
-                const ts = new Date(String(e.created_at ?? 0)).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                let rowCls = "border-[rgba(79,70,229,0.28)] bg-[rgba(79,70,229,0.12)]";
-                let badge = "Verified";
-                let badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
-                if (tier === "declaration_pending") {
-                  rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
-                  badge = "○ DECLARATION · PENDING VALIDATION";
-                  badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
-                } else if (tier === "upload_unverified") {
-                  rowCls = "border-[rgba(194,164,120,0.25)] bg-[rgba(194,164,120,0.1)]";
-                  badge = "Declared";
-                  badgeCls = "bg-[rgba(194,164,120,0.15)] text-[#C2A478] border-[rgba(194,164,120,0.25)]";
-                } else if (tier === "verified_proof" || tier === "signup_execution" || tier === "declaration_validated" || tier === "submission_validated") {
-                  rowCls = "border-[rgba(14,164,114,0.25)] bg-[rgba(14,164,114,0.1)]";
-                  badge = "Verified";
-                  badgeCls = "bg-[rgba(14,164,114,0.15)] text-[#0EA472] border-[rgba(14,164,114,0.25)]";
-                }
-                const title = submissionBrief(
-                  e as { tier?: string | null; url?: string | null; declaration_text?: string | null },
-                );
-                return (
-                  <div
-                    key={String(e.id)}
-                    className={`flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] border ${rowCls}`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium text-[#EAEFF8]">
-                        Day {String(e.day_number)} · {title}
-                      </p>
-                      <p className="text-[11px] text-ox-t2 mt-0.5">{ts} UTC</p>
-                    </div>
-                    <span className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border shrink-0 ${badgeCls}`}>
-                      {badge}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+
 
         <div className="grid md:grid-cols-2 gap-3.5">
           <div className="rounded-[20px] border border-white/[0.055] bg-[#1C1F2A] overflow-hidden">
