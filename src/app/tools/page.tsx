@@ -191,7 +191,12 @@ export default function ToolsPage() {
         const respId = Math.random().toString(36).substring(2, 8);
         url = `https://admin.typeform.com/form/${formId}/results/response/${respId}?sandbox_simulated=true`;
         category = "distribution";
+      } else if (toolName === "Google Calendar") {
+        const eventId = Math.random().toString(36).substring(2, 12);
+        url = `https://calendar.google.com/calendar/event?eid=${eventId}&sandbox_simulated=true`;
+        category = "ops";
       }
+
 
       const res = await fetch("/api/entries", {
         method: "POST",
