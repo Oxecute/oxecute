@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 import { useShellUser } from "./AuthenticatedShell";
 
@@ -89,27 +89,70 @@ export function DashboardRightRail() {
   const nextDay = Math.max(1, exec + 1);
   const tight = false;
 
+  const [activeDirective, setActiveDirective] = useState<{ directive_text: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!day21) return;
+    const fetchDirective = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/directives");
+        if (res.ok) {
+          const data = await res.json();
+          setActiveDirective(data.active || null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active directive in right rail:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchDirective();
+  }, [day21]);
+
   return (
     <nav aria-label="Dashboard summary" className="divide-y divide-white/[0.04] text-[13px] text-zinc-500 max-w-full">
       <Section title="Daily directive" tight={tight}>
         <div className="rounded-md border border-white/[0.045] bg-white/[0.025] p-2.5">
           <div className="flex gap-2.5">
-            <svg
-              className="shrink-0 text-zinc-500 mt-0.5 w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden
-            >
-              <rect x="5" y="11" width="14" height="10" rx="2" />
-              <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
-            </svg>
-            <div className="min-w-0">
+            {day21 && !activeDirective && !loading ? (
+              <svg
+                className="shrink-0 text-emerald-400 mt-0.5 w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                aria-hidden
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg
+                className="shrink-0 text-zinc-500 mt-0.5 w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden
+              >
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M12 15v2M8 11V7a4 4 0 018 0v4" />
+              </svg>
+            )}
+            <div className="min-w-0 w-full">
               {day21 ? (
-                <p className="text-[11px] text-zinc-500/90 leading-relaxed">
-                  Directives on. Close each UTC window; the next directive follows midnight.
-                </p>
+                loading ? (
+                  <p className="text-[11px] text-zinc-600 animate-pulse">Loading directive...</p>
+                ) : activeDirective ? (
+                  <p className="text-[11.5px] text-zinc-200 font-medium leading-relaxed italic">
+                    &ldquo;{activeDirective.directive_text}&rdquo;
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-emerald-400 font-semibold leading-relaxed">
+                    ✓ Completed for today. Next directive follows midnight UTC.
+                  </p>
+                )
               ) : (
                 <>
                   <p className="text-[10px] text-zinc-500 leading-snug">Unlocks at 21 days executed</p>
