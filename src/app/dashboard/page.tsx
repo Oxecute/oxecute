@@ -22,7 +22,10 @@ function Day21Gate({ user, onUnlock }: { user: AppShellUser; onUnlock: () => voi
   const [loading, setLoading] = useState(false);
 
   const refCode = user.referral_code || "";
-  const referralLink = `oxecute.com/signup?ref=${refCode}`;
+  const [referralLink, setReferralLink] = useState(`oxecute.com/signup?ref=${refCode}`);
+  useEffect(() => {
+    setReferralLink(`${window.location.host}/signup?ref=${refCode}`);
+  }, [refCode]);
   const prewrittenCaption = `21 days executed on Oxecute. No streak required. Just 21 days of verified proof. If you're building and leaving no trace, start here: ${referralLink}`;
 
   const copyToClipboard = async (text: string, type: "link" | "caption") => {
@@ -578,7 +581,10 @@ function DashboardMainInner() {
   const day21Reached = Boolean(user.day21_reached);
 
   const refCode = user.referral_code || "";
-  const referralLink = `oxecute.com/signup?ref=${refCode}`;
+  const [referralLink, setReferralLink] = useState(`oxecute.com/signup?ref=${refCode}`);
+  useEffect(() => {
+    setReferralLink(`${window.location.host}/signup?ref=${refCode}`);
+  }, [refCode]);
   const prewrittenCaption = `21 days executed on Oxecute. No streak required. Just 21 days of verified proof. If you're building and leaving no trace, start here: ${referralLink}`;
 
   const copyToClipboard = useCallback(async (text: string, type: "link" | "caption") => {
