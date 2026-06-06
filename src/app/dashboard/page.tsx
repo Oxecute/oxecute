@@ -1040,7 +1040,7 @@ function DashboardMainInner() {
             </h3>
             <p className="text-[11.5px] text-ox-t3 mt-0.5">Chronological record of submissions and system-recorded gaps</p>
           </div>
-          <div className="divide-y divide-white/[0.06] overflow-hidden">
+          <div className="divide-y divide-white/[0.06] max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {logItems.length === 0 ? (
               <p className="text-sm text-ox-t3 py-4 text-center">No logs recorded yet.</p>
             ) : (
