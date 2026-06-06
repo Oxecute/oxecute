@@ -4,6 +4,7 @@ import { logEvent } from "@/lib/analytics";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
+import { assertValidUploadPathsForUser } from "@/lib/entry-uploads";
 import { callAnthropic } from "@/lib/conexa/anthropic";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 const submitProofSchema = z.object({
   directive_id: z.string().uuid(),
   proof_url: z.string().min(1),
+  upload_paths: z.array(z.string()).optional(),
 });
 
 export async function POST(request: Request) {
@@ -29,8 +31,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request payload. Submission cannot be empty." }, { status: 400 });
     }
 
-    const { directive_id, proof_url } = parsed.data;
+    const { directive_id, proof_url, upload_paths } = parsed.data;
     const admin = createServiceRoleClient();
+
+    // Validate upload paths if present
+    let checkedUploadPaths: string[] | null = null;
+    if (upload_paths && upload_paths.length > 0) {
+      try {
+        checkedUploadPaths = assertValidUploadPathsForUser(upload_paths, user.id);
+      } catch (e) {
+        return NextResponse.json({ error: (e as Error).message || "Invalid upload paths" }, { status: 400 });
+      }
+    }
 
     // Fetch the active directive
     const { data: directive, error: fetchErr } = await admin
@@ -173,6 +185,7 @@ FOUNDER SUBMISSION:
       url_resolved_status: isUrl ? check.httpStatus : 200,
       url_content_type: isUrl ? (check.contentType ?? null) : null,
       execution_day: true,
+      upload_paths: checkedUploadPaths,
     });
 
     if (insertErr) {

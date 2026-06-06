@@ -3,6 +3,8 @@
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
 import { RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
 import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { ENTRY_UPLOAD_ACCEPT, uploadEntryDeclarationFiles } from "@/lib/entry-uploads";
 
 type DirectiveItem = {
   id: string;
@@ -25,12 +27,14 @@ type DirectiveStats = {
 function DirectiveContent() {
   const user = useShellUser();
   const day21 = Boolean(user.day21_reached);
+  const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<DirectiveItem | null>(null);
   const [history, setHistory] = useState<DirectiveItem[]>([]);
   const [stats, setStats] = useState<DirectiveStats | null>(null);
   const [proofUrl, setProofUrl] = useState("");
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successAck, setSuccessAck] = useState<string | null>(null);
@@ -69,12 +73,38 @@ function DirectiveContent() {
     setSuccessAck(null);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("Your session expired. Sign in again.");
+      }
+
+      let upload_paths: string[] | undefined;
+      if (proofFiles.length > 0) {
+        try {
+          upload_paths = await uploadEntryDeclarationFiles(
+            supabase,
+            session.user.id,
+            proofFiles,
+            "directive",
+          );
+        } catch (e) {
+          throw new Error(
+            e instanceof Error
+              ? e.message
+              : "Upload failed. Ensure the entry-uploads bucket exists in Supabase.",
+          );
+        }
+      }
+
       const res = await fetch("/api/directives/submit-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           directive_id: active.id,
           proof_url: proofUrl.trim(),
+          upload_paths,
         }),
       });
 
@@ -85,6 +115,7 @@ function DirectiveContent() {
 
       setSuccessAck(data.acknowledgment || "Proof successfully verified and committed to ledger.");
       setProofUrl("");
+      setProofFiles([]);
       void loadDirectives();
     } catch (err) {
       const eMsg = err instanceof Error ? err.message : "Validation failed.";
@@ -173,6 +204,35 @@ function DirectiveContent() {
                     )}
                   </button>
                 </div>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Attach Proof Files (Optional — up to 3 files, 5MB each)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept={ENTRY_UPLOAD_ACCEPT}
+                  disabled={submitting}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-xs text-[#EAEFF8] file:mr-3 file:rounded-lg file:border-0 file:bg-white/[0.08] file:hover:bg-white/[0.12] file:px-3 file:py-1.5 file:text-white file:text-[11px] file:font-semibold file:cursor-pointer disabled:opacity-50"
+                  onChange={(e) => {
+                    const files = e.target.files
+                      ? Array.from(e.target.files).slice(0, 3)
+                      : [];
+                    setProofFiles(files);
+                    setError(null);
+                  }}
+                />
+                {proofFiles.length > 0 && (
+                  <ul className="text-xs text-zinc-400 space-y-1 pl-1 list-none">
+                    {proofFiles.map((f, i) => (
+                      <li key={`${f.name}-${i}`} className="flex items-center gap-1.5">
+                        <span className="text-emerald-400 font-bold">✓</span> {f.name} <span className="text-[10px] text-zinc-500">({Math.round(f.size / 1024)} KB)</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {error && (

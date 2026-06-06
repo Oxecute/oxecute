@@ -303,6 +303,7 @@ function DashboardMainInner() {
   const [activeDirective, setActiveDirective] = useState<Record<string, unknown> | null>(null);
   const [directiveStats, setDirectiveStats] = useState<{ completion_rate: number } | null>(null);
   const [dashProofUrl, setDashProofUrl] = useState("");
+  const [dashProofFiles, setDashProofFiles] = useState<File[]>([]);
   const [dashSubmitting, setDashSubmitting] = useState(false);
   const [dashError, setDashError] = useState<string | null>(null);
   const [dashSuccess, setDashSuccess] = useState<string | null>(null);
@@ -417,12 +418,38 @@ function DashboardMainInner() {
     setDashSuccess(null);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("Your session expired. Sign in again.");
+      }
+
+      let upload_paths: string[] | undefined;
+      if (dashProofFiles.length > 0) {
+        try {
+          upload_paths = await uploadEntryDeclarationFiles(
+            supabase,
+            session.user.id,
+            dashProofFiles,
+            "directive",
+          );
+        } catch (e) {
+          throw new Error(
+            e instanceof Error
+              ? e.message
+              : "Upload failed. Ensure the entry-uploads bucket exists in Supabase.",
+          );
+        }
+      }
+
       const res = await fetch("/api/directives/submit-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           directive_id: activeDirective.id,
           proof_url: dashProofUrl.trim(),
+          upload_paths,
         }),
       });
 
@@ -433,6 +460,7 @@ function DashboardMainInner() {
 
       setDashSuccess(data.acknowledgment || "Proof successfully verified.");
       setDashProofUrl("");
+      setDashProofFiles([]);
       void loadEntries();
       router.refresh();
     } catch (err) {
@@ -954,6 +982,36 @@ function DashboardMainInner() {
                       </button>
                     </div>
                   </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Attach Proof Files (Optional — up to 3 files, 5MB each)
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      accept={ENTRY_UPLOAD_ACCEPT}
+                      disabled={dashSubmitting}
+                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-xs text-[#EAEFF8] file:mr-3 file:rounded-lg file:border-0 file:bg-white/[0.08] file:hover:bg-white/[0.12] file:px-3 file:py-1.5 file:text-white file:text-[11px] file:font-semibold file:cursor-pointer disabled:opacity-50"
+                      onChange={(e) => {
+                        const files = e.target.files
+                          ? Array.from(e.target.files).slice(0, 3)
+                          : [];
+                        setDashProofFiles(files);
+                        setDashError(null);
+                      }}
+                    />
+                    {dashProofFiles.length > 0 && (
+                      <ul className="text-[11px] text-zinc-400 space-y-1 pl-1 list-none">
+                        {dashProofFiles.map((f, i) => (
+                          <li key={`${f.name}-${i}`} className="flex items-center gap-1.5">
+                            <span className="text-emerald-400 font-bold">✓</span> {f.name} <span className="text-[10px] text-zinc-500">({Math.round(f.size / 1024)} KB)</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
                   {dashError && (
                     <p className="text-[11px] font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-2.5 py-1.5 rounded-lg">
                       ✕ {dashError}
