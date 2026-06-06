@@ -149,13 +149,13 @@ function DirectiveContent() {
             <form onSubmit={handleSubmitProof} className="space-y-4 pt-3 border-t border-white/[0.06]">
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Submit Proof URL
+                  Submit Proof (Link or Description)
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     required
-                    placeholder="https://..."
+                    placeholder="Enter proof link or write a brief description of what you did..."
                     value={proofUrl}
                     onChange={(e) => setProofUrl(e.target.value)}
                     disabled={submitting}

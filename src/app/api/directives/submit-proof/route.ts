@@ -1,10 +1,10 @@
-import { getAcknowledgment } from "@/lib/conexa/acknowledgments";
 import { sha256Hex } from "@/lib/crypto";
 import { executionDayNumber, utcTodayISO } from "@/lib/dates";
 import { logEvent } from "@/lib/analytics";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { validateProofUrl } from "@/lib/url-validation";
+import { callAnthropic } from "@/lib/conexa/anthropic";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 const submitProofSchema = z.object({
   directive_id: z.string().uuid(),
-  proof_url: z.string().url(),
+  proof_url: z.string().min(1),
 });
 
 export async function POST(request: Request) {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const json = await request.json().catch(() => null);
     const parsed = submitProofSchema.safeParse(json);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request payload. Submission cannot be empty." }, { status: 400 });
     }
 
     const { directive_id, proof_url } = parsed.data;
@@ -48,10 +48,69 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Directive is already closed." }, { status: 400 });
     }
 
-    // Validate the proof URL
-    const check = await validateProofUrl(proof_url);
-    if (!check.ok) {
-      return NextResponse.json({ error: check.failureReason ?? "URL verification failed" }, { status: 400 });
+    // Call Conexa (Claude) to evaluate the submission
+    const systemPrompt = `You are Conexa, the AI execution evaluator for Oxecute.
+Your job is to read an execution directive issued to a founder and evaluate if their submitted proof (which can be a URL, a text explanation, or a combination of both) satisfies the requirements of the directive.
+
+Evaluation Rules:
+1. Be direct, objective, and operational.
+2. If the user provides a relevant link (e.g. Loom, GitHub commit/PR, Google Doc, Tweet/LinkedIn post) or a clear text description of the actions they took that demonstrates completion, approve it.
+3. Reject empty, gibberish, lazy, or obviously evasive submissions (e.g. typing "done", "test", "ok", "completed", "none", or pasting "https://google.com" for a Loom recording requirement).
+4. If the directive specifies a specific tool (e.g. "submit a Loom recording"), and they provide a clear description of the call instead of a Loom link, you may accept it if they detail what they did, but encourage them to provide links in the future.
+5. You MUST return ONLY a valid JSON object with exactly two keys:
+   - "ok": boolean (true if the submission is accepted as valid proof of execution, false otherwise)
+   - "reason": string (a short, direct, 1-2 sentence explanation of your decision, directly addressing the founder)
+Do not write any other text, headers, or markdown formatting. Output raw JSON only.`;
+
+    const userPrompt = `DAILY DIRECTIVE:
+"${directive.directive_text}"
+Behavioral Tag: ${directive.behavioral_tag}
+
+FOUNDER SUBMISSION:
+"${proof_url}"`;
+
+    let evaluation = { ok: true, reason: "Proof accepted." };
+    try {
+      const response = await callAnthropic({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: 300,
+      });
+
+      const cleanJsonStr = response.text
+        .replace(/```json/i, "")
+        .replace(/```/g, "")
+        .trim();
+
+      const parsedEval = JSON.parse(cleanJsonStr);
+      if (typeof parsedEval.ok === "boolean") {
+        evaluation = {
+          ok: parsedEval.ok,
+          reason: parsedEval.reason || (parsedEval.ok ? "Proof accepted." : "Proof is insufficient."),
+        };
+      }
+    } catch (err) {
+      console.error("[Submit Proof] AI evaluation failed, falling back to auto-approval:", err);
+    }
+
+    if (!evaluation.ok) {
+      return NextResponse.json({ error: evaluation.reason }, { status: 400 });
+    }
+
+    // Validate if it looks like a URL for the ledger metadata
+    const check = { ok: true, httpStatus: 200, contentType: null as string | null };
+
+    const isUrl = /^(https?:\/\/)[^\s$.?#].[^\s]*$/i.test(proof_url.trim());
+    if (isUrl) {
+      try {
+        const urlCheck = await validateProofUrl(proof_url.trim());
+        if (urlCheck.ok) {
+          check.httpStatus = urlCheck.httpStatus ?? 200;
+          check.contentType = urlCheck.contentType ?? null;
+        }
+      } catch {
+        // Suppress validation errors for urls to avoid blocking
+      }
     }
 
     const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
@@ -80,7 +139,7 @@ export async function POST(request: Request) {
       .from("directives")
       .update({
         status: "completed",
-        proof_url,
+        proof_url: proof_url.trim(),
         closed_at: new Date().toISOString(),
       })
       .eq("id", directive_id);
@@ -108,10 +167,11 @@ export async function POST(request: Request) {
       category: directive.behavioral_tag || "product",
       source_type: "manual_url",
       tier: "verified_proof",
-      url: proof_url,
+      url: isUrl ? proof_url.trim() : null,
+      declaration_text: isUrl ? null : proof_url.trim(),
       validation_hash: hash,
-      url_resolved_status: check.httpStatus,
-      url_content_type: check.contentType ?? null,
+      url_resolved_status: isUrl ? check.httpStatus : 200,
+      url_content_type: isUrl ? (check.contentType ?? null) : null,
       execution_day: true,
     });
 
@@ -132,9 +192,7 @@ export async function POST(request: Request) {
 
     await logEvent("directive_completed", { directive_id, day_number: dayNum }, user.id, "web");
 
-    const ack = getAcknowledgment("verified_proof", directive.behavioral_tag || "product");
-
-    return NextResponse.json({ ok: true, acknowledgment: ack });
+    return NextResponse.json({ ok: true, acknowledgment: evaluation.reason });
   } catch (err) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

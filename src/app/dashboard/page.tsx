@@ -929,13 +929,13 @@ function DashboardMainInner() {
                 <form onSubmit={submitDashProof} className="space-y-3 pt-2 border-t border-white/[0.06]">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                      Submit Proof URL
+                      Submit Proof (Link or Description)
                     </label>
                     <div className="flex gap-2">
                       <input
-                        type="url"
+                        type="text"
                         required
-                        placeholder="https://..."
+                        placeholder="Enter proof link or write a brief description of what you did..."
                         value={dashProofUrl}
                         onChange={(e) => setDashProofUrl(e.target.value)}
                         disabled={dashSubmitting}
