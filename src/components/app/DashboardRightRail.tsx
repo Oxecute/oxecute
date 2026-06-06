@@ -27,16 +27,20 @@ function Section({
   );
 }
 
-function journeyMilestones(exec: number) {
+function journeyMilestones(exec: number, day21: boolean, day45: boolean) {
   const milestones = [
-    { n: 1, label: "Day 1", done: exec >= 1 },
-    { n: 21, label: "Day 21", done: exec >= 21 },
-    { n: 45, label: "Day 45", done: exec >= 45 },
+    { n: 1, label: "Day 1", done: exec >= 1 || day21 || day45 },
+    { n: 21, label: "Day 21", done: exec >= 21 || day21 || day45 },
+    { n: 45, label: "Day 45", done: exec >= 45 || day45 },
     { n: 60, label: "Day 60", done: exec >= 60 },
     { n: 90, label: "Day 90", done: exec >= 90 },
   ];
   const currentIdx =
-    exec >= 90 ? 4 : exec >= 60 ? 3 : exec >= 45 ? 2 : exec >= 21 ? 1 : exec >= 1 ? 0 : 0;
+    exec >= 90 ? 4 :
+    exec >= 60 ? 3 :
+    (exec >= 45 || day45) ? 2 :
+    (exec >= 21 || day21) ? 1 :
+    exec >= 1 ? 0 : 0;
   return { milestones, currentIdx };
 }
 
@@ -81,13 +85,13 @@ export function DashboardRightRail() {
   const exec = Number(user.execution_count ?? 0);
   const day21 = Boolean(user.day21_reached);
   const day45 = Boolean(user.day45_reached);
-  const { milestones, currentIdx } = journeyMilestones(exec);
+  const { milestones, currentIdx } = journeyMilestones(exec, day21, day45);
   const nextDay = Math.max(1, exec + 1);
   const tight = false;
 
   return (
     <nav aria-label="Dashboard summary" className="divide-y divide-white/[0.04] text-[13px] text-zinc-500 max-w-full">
-      <Section title="Conexa directive" tight={tight}>
+      <Section title="Daily directive" tight={tight}>
         <div className="rounded-md border border-white/[0.045] bg-white/[0.025] p-2.5">
           <div className="flex gap-2.5">
             <svg

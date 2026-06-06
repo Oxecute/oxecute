@@ -35,14 +35,18 @@ export function RightRail({
   const day45 = Boolean(user.day45_reached);
 
   const milestones = [
-    { n: 1, label: "Day 1", done: exec >= 1 },
-    { n: 21, label: "Day 21", done: exec >= 21 },
-    { n: 45, label: "Day 45", done: exec >= 45 },
+    { n: 1, label: "Day 1", done: exec >= 1 || day21 || day45 },
+    { n: 21, label: "Day 21", done: exec >= 21 || day21 || day45 },
+    { n: 45, label: "Day 45", done: exec >= 45 || day45 },
     { n: 60, label: "Day 60", done: exec >= 60 },
     { n: 90, label: "Day 90", done: exec >= 90 },
   ];
   const currentIdx =
-    exec >= 90 ? 4 : exec >= 60 ? 3 : exec >= 45 ? 2 : exec >= 21 ? 1 : exec >= 1 ? 0 : 0;
+    exec >= 90 ? 4 :
+    exec >= 60 ? 3 :
+    (exec >= 45 || day45) ? 2 :
+    (exec >= 21 || day21) ? 1 :
+    exec >= 1 ? 0 : 0;
 
   const labelMuted = flyout ? "text-zinc-400" : "text-[var(--t3)]";
   const textBody = flyout ? "text-zinc-300" : "text-[var(--t2)]";
@@ -83,7 +87,7 @@ export function RightRail({
           </p>
         ) : (
           <p className={`text-sm ${textBody}`}>
-            Conexa directive flow unlocks at 21 days executed. Your execution window closes at 23:59:59
+            Daily directive flow unlocks at 21 days executed. Your execution window closes at 23:59:59
             UTC.
           </p>
         )}
