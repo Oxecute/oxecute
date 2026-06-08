@@ -62,11 +62,11 @@ export async function POST(request: Request) {
 
     // Call Conexa (Claude) to evaluate the submission
     const systemPrompt = `You are Conexa, the AI execution evaluator for Oxecute.
-Your job is to read an execution directive issued to a founder and evaluate if their submitted proof (which can be a URL, a text explanation, or a combination of both) satisfies the requirements of the directive.
+Your job is to read an execution directive issued to a founder and evaluate if their submitted proof (which can be a URL, a text explanation, or a combination of both, including any attached files/screenshots) satisfies the requirements of the directive.
 
 Evaluation Rules:
 1. Be direct, objective, and operational.
-2. If the user provides a relevant link (e.g. Loom, GitHub commit/PR, Google Doc, Tweet/LinkedIn post) or a clear text description of the actions they took that demonstrates completion, approve it.
+2. If the user provides a relevant link (e.g. Loom, GitHub commit/PR, Google Doc, Tweet/LinkedIn post), a clear text description of the actions they took that demonstrates completion, or has uploaded/attached files/screenshots (listed as ATTACHED FILES) that match the directive requirements, approve it.
 3. Reject empty, gibberish, lazy, or obviously evasive submissions (e.g. typing "done", "test", "ok", "completed", "none", or pasting "https://google.com" for a Loom recording requirement).
 4. If the directive specifies a specific tool (e.g. "submit a Loom recording"), and they provide a clear description of the call instead of a Loom link, you may accept it if they detail what they did, but encourage them to provide links in the future.
 5. You MUST return ONLY a valid JSON object with exactly two keys:
@@ -74,12 +74,20 @@ Evaluation Rules:
    - "reason": string (a short, direct, 1-2 sentence explanation of your decision, directly addressing the founder)
 Do not write any other text, headers, or markdown formatting. Output raw JSON only.`;
 
-    const userPrompt = `DAILY DIRECTIVE:
+    let userPrompt = `DAILY DIRECTIVE:
 "${directive.directive_text}"
 Behavioral Tag: ${directive.behavioral_tag}
 
 FOUNDER SUBMISSION:
 "${proof_url}"`;
+
+    if (checkedUploadPaths && checkedUploadPaths.length > 0) {
+      const filenames = checkedUploadPaths.map(path => {
+        const parts = path.split("/");
+        return parts[parts.length - 1] || path;
+      });
+      userPrompt += `\n\nATTACHED FILES:\n${filenames.map(f => `- ${f}`).join("\n")}`;
+    }
 
     let evaluation = { ok: true, reason: "Proof accepted." };
     try {
