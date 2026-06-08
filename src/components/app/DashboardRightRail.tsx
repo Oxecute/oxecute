@@ -150,7 +150,7 @@ export function DashboardRightRail() {
                   </p>
                 ) : (
                   <p className="text-[11px] text-emerald-400 font-semibold leading-relaxed">
-                    ✓ Completed for today. Next directive follows midnight UTC.
+                    Completed for today. Next directive follows midnight UTC.
                   </p>
                 )
               ) : (
