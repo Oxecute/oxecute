@@ -51,6 +51,9 @@ export async function GET() {
     return true;
   });
   notifications.sort((a, b) => {
+    if (a.read !== b.read) {
+      return a.read ? 1 : -1;
+    }
     const ma = inboxSortMeta(a);
     const mb = inboxSortMeta(b);
     if (ma.tier !== mb.tier) return ma.tier - mb.tier;
