@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { oauthRedirectUrl } from "@/lib/auth/oauth";
+import { FaCheck } from "react-icons/fa";
 import {
   FIRST_PROOF_ACCEPT,
   uploadFirstProofFiles,
@@ -2022,7 +2023,13 @@ export default function StartPage() {
                         }}
                         className="w-full min-h-[48px] rounded-[10px] text-[14px] font-semibold text-white bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center"
                       >
-                        {copiedLink ? "✓ Copied public link!" : "Share my record"}
+                        {copiedLink ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <FaCheck className="w-3.5 h-3.5 text-emerald-400" /> Copied public link!
+                          </span>
+                        ) : (
+                          "Share my record"
+                        )}
                       </button>
                       <button
                         type="button"

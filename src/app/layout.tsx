@@ -25,11 +25,33 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Oxecute",
-  description: "Execution is the credential.",
+  title: "Oxecute - The verified execution record for founders",
+  description: "Oxecute turns what you actually do into a verified execution record, automatically capturing your daily progress from GitHub, Stripe, and other tools.",
   icons: {
     icon: [{ url: "/brand/logo-icon.svg", type: "image/svg+xml" }],
     apple: "/brand/logo-icon.svg",
+  },
+  openGraph: {
+    title: "Oxecute - The verified execution record for founders",
+    description: "Oxecute turns what you actually do into a verified execution record, automatically capturing your daily progress from GitHub, Stripe, and other tools.",
+    url: "https://oxecute.com",
+    siteName: "Oxecute",
+    images: [
+      {
+        url: "https://oxecute.com/brand/daily-directive-lock-preview.png",
+        width: 1200,
+        height: 630,
+        alt: "Oxecute - The verified execution record for founders",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Oxecute - The verified execution record for founders",
+    description: "Oxecute turns what you actually do into a verified execution record, automatically capturing your daily progress from GitHub, Stripe, and other tools.",
+    images: ["https://oxecute.com/brand/daily-directive-lock-preview.png"],
   },
 };
 

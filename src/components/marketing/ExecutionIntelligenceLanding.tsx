@@ -58,6 +58,7 @@ const IRC_COLORS: Record<string, string> = {
 const FAQ_ITEMS: {
   q: string;
   a: React.ReactNode;
+  plainTextAnswer: string;
 }[] = [
   {
     q: "1. What does Conexa tell me?",
@@ -71,6 +72,7 @@ const FAQ_ITEMS: {
         building.
       </p>
     ),
+    plainTextAnswer: "Conexa is your execution intelligence layer. Six tabs of signal: Reality Check, The Blindspot, Shipping vs Noise, The Next Move, Integrity Forecast, and Executive Synthesis. It doesn't tell you what to build. It tells you what the data says about how you're building.",
   },
   {
     q: "2. How is this different from a Notion log?",
@@ -81,6 +83,7 @@ const FAQ_ITEMS: {
         into a tamper-proof ledger. You can&apos;t fake a Stripe revenue event.
       </p>
     ),
+    plainTextAnswer: "A Notion doc is what you say you did. Oxecute is what your tools confirm. No manual entry required. GitHub, Stripe, Calendar, and Notion auto-push into a tamper-proof ledger. You can't fake a Stripe revenue event.",
   },
   {
     q: "3. What happens at Day 21?",
@@ -91,6 +94,7 @@ const FAQ_ITEMS: {
         earned it — the record proves it.
       </p>
     ),
+    plainTextAnswer: "21 days doesn't mean 21 consecutive days. Life happens. It means 21 days executed on record. Conexa's full intelligence suite activates. You've earned it — the record proves it.",
   },
   {
     q: "4. What happens at Day 60?",
@@ -101,6 +105,7 @@ const FAQ_ITEMS: {
         when the record starts working for you.
       </p>
     ),
+    plainTextAnswer: "The Signal tier unlocks. You can browse investor profiles, your founder profile can go public on your terms, and you receive the VERIFIED SIGNAL badge. This is when the record starts working for you.",
   },
   {
     q: "5. Can investors see my data without my permission?",
@@ -110,6 +115,7 @@ const FAQ_ITEMS: {
         visible to anyone until you explicitly choose to share.
       </p>
     ),
+    plainTextAnswer: "No. Private by default, always. Investor visibility is opt-in. Nothing is visible to anyone until you explicitly choose to share.",
   },
 ];
 
@@ -203,8 +209,25 @@ export function ExecutionIntelligenceLanding() {
     });
   }
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      "name": item.q.replace(/^\d+\.\s*/, ""),
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": item.plainTextAnswer,
+      },
+    })),
+  };
+
   return (
     <div className="ei-root">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <AmbientParticles />
       <MarketingSiteNav page="landing" />
 

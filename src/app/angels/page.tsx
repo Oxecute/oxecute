@@ -2,6 +2,7 @@
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
 import { useState } from "react";
+import { FaCheck, FaLock } from "react-icons/fa";
 
 function AngelsContent() {
   const user = useShellUser();
@@ -35,7 +36,15 @@ function AngelsContent() {
       {/* Header */}
       <div className="space-y-4 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs font-bold text-emerald-400 tracking-wide uppercase">
-          {isQualified ? "✓ Ready to Unlock" : "🔒 Investor Visibility"}
+          {isQualified ? (
+            <>
+              <FaCheck className="w-3 h-3 text-emerald-400" /> Ready to Unlock
+            </>
+          ) : (
+            <>
+              <FaLock className="w-3 h-3 text-emerald-400" /> Investor Visibility
+            </>
+          )}
         </span>
         <h1 
           className="text-3xl font-extrabold text-white tracking-tight leading-tight"
@@ -138,7 +147,9 @@ function AngelsContent() {
       {/* Conditional UI */}
       {isQualified ? (
         <div className="bg-[#0e1610] border border-emerald-500/20 rounded-2xl p-6 text-center space-y-4">
-          <p className="text-sm font-semibold text-emerald-400">✓ You are qualified for Investor Visibility!</p>
+          <p className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-400">
+            <FaCheck className="w-3.5 h-3.5" /> You are qualified for Investor Visibility!
+          </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Visibility Status:</span>
             <button

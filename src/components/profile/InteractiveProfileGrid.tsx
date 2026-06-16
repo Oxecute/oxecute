@@ -15,10 +15,12 @@ export default function InteractiveProfileGrid({
   entries,
   breakDays,
   userCreatedAt,
+  maxDays = 30,
 }: {
   entries: EntryTile[];
   breakDays: number[];
   userCreatedAt: string;
+  maxDays?: number;
 }) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
@@ -156,6 +158,7 @@ export default function InteractiveProfileGrid({
       <ExecutionGrid
         entries={entries}
         breakDays={breakDays}
+        maxDays={maxDays}
         onDayClick={handleDayClick}
       />
       {modalContent}

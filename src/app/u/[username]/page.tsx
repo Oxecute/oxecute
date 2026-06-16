@@ -6,6 +6,7 @@ import {
 import InteractiveProfileGrid from "@/components/profile/InteractiveProfileGrid";
 import { mergeBreakDayNumbers } from "@/lib/break-days";
 import { createServiceRoleClient } from "@/lib/supabase/service";
+import { executionDayNumber } from "@/lib/dates";
 import type { Metadata } from "next";
 import React from "react";
 
@@ -72,6 +73,9 @@ export default async function PublicProfilePage(props: {
   const breakCount = Number(user.break_count ?? 0);
   const totalDays = exec + breakCount;
   const executionRate = totalDays > 0 ? Math.round((exec / totalDays) * 100) : 0;
+  
+  const currentDay = executionDayNumber(String(user.created_at));
+  const maxDays = Math.max(30, currentDay);
 
   const badges = [
     { label: "VERIFIED OPERATOR", reached: exec >= 21 },
@@ -191,6 +195,7 @@ export default async function PublicProfilePage(props: {
             }))}
             breakDays={breakDaysPublic}
             userCreatedAt={String(user.created_at)}
+            maxDays={maxDays}
           />
 
           <ShareCardLocked daysExecuted={exec} unlocked={exec >= 21} />

@@ -2,6 +2,7 @@
 
 import { AuthenticatedShell } from "@/components/app/AuthenticatedShell";
 import { useEffect, useState } from "react";
+import { FaCheck, FaTimes } from "react-icons/fa";
 
 type ToolDef = { name: string; Logo: () => JSX.Element };
 
@@ -751,8 +752,8 @@ export default function ToolsPage() {
                 </>
               ) : simulationState.success ? (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl">
-                    ✓
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                    <FaCheck className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-emerald-400">
@@ -768,8 +769,8 @@ export default function ToolsPage() {
                 </>
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 text-xl">
-                    ✕
+                  <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+                    <FaTimes className="w-5 h-5 text-red-400" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-red-400">

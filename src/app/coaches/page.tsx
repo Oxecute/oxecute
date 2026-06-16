@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell } from "@/components/app/AuthenticatedShell";
+import { FaLock } from "react-icons/fa";
 
 export default function CoachesPage() {
   return (
@@ -8,7 +9,7 @@ export default function CoachesPage() {
       <main className="max-w-xl mx-auto px-6 py-12 space-y-8 text-center">
         <div className="space-y-4">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-3.5 py-1 text-xs font-bold text-indigo-400 tracking-wide uppercase">
-            🔒 Coaches coming soon
+            <FaLock className="w-3 h-3 text-indigo-400" /> Coaches coming soon
           </span>
           <h1 
             className="text-3xl font-extrabold text-white tracking-tight leading-tight"

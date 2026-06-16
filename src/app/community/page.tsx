@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthenticatedShell, useShellUser } from "@/components/app/AuthenticatedShell";
+import { FaLock } from "react-icons/fa";
 
 const MOCK_FOUNDERS = [
   {
@@ -42,7 +43,7 @@ function CommunityContent() {
       <main className="max-w-xl mx-auto px-6 py-12 space-y-8 text-center">
         <div className="space-y-4">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 px-3.5 py-1 text-xs font-bold text-violet-400 tracking-wide uppercase">
-            🔒 Community unlocks at Day 45
+            <FaLock className="w-3 h-3 text-violet-400" /> Community unlocks at Day 45
           </span>
           <h1 
             className="text-3xl font-extrabold text-white tracking-tight leading-tight"

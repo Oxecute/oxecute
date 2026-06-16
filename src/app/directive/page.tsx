@@ -5,6 +5,7 @@ import { RECORD_PAGE_SUBTITLE_CLASS } from "@/components/app/RecordPageHeader";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ENTRY_UPLOAD_ACCEPT, uploadEntryDeclarationFiles } from "@/lib/entry-uploads";
+import { FaTools, FaCheck, FaTimes, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 
 type DirectiveItem = {
   id: string;
@@ -189,8 +190,8 @@ function DirectiveContent() {
                   Day {active.day_number}
                 </span>
                 {active.is_maintenance && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-0.5 rounded animate-pulse">
-                    🛠 Maintenance Mode
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-0.5 rounded animate-pulse">
+                    <FaTools className="w-3 h-3" /> Maintenance Mode
                   </span>
                 )}
               </div>
@@ -290,7 +291,7 @@ function DirectiveContent() {
                     {proofFiles.map((f, i) => (
                       <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 bg-white/[0.02] border border-white/[0.05] rounded-lg px-3 py-1.5 transition-all hover:bg-white/[0.04]">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                          <FaCheck className="text-emerald-400 shrink-0 w-3.5 h-3.5" />
                           <span className="truncate font-medium text-zinc-300 text-[11.5px]">{f.name}</span>
                           <span className="text-[9.5px] text-zinc-500 shrink-0 font-mono">({Math.round(f.size / 1024)} KB)</span>
                         </div>
@@ -314,15 +315,15 @@ function DirectiveContent() {
               </div>
 
               {error && (
-                <p className="text-xs font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-3 py-2 rounded-lg">
-                  ✕ {error}
+                <p className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-3 py-2 rounded-lg">
+                  <FaTimes className="w-3.5 h-3.5" /> {error}
                 </p>
               )}
             </form>
           </div>
         ) : (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex flex-col items-center text-center space-y-3">
-            <span className="text-2xl">✓</span>
+            <FaCheckCircle className="text-2xl text-emerald-400" />
             <div>
               <h3 className="text-base font-bold text-emerald-400">Directive Complete</h3>
               <p className="text-xs text-ox-t2 mt-1 max-w-sm">
@@ -366,7 +367,7 @@ function DirectiveContent() {
         {/* Warning Indicator */}
         {stats && stats.completion_rate < 60 && stats.issued > 0 && (
           <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">
-            <span className="text-red-400 shrink-0 font-bold">⚠</span>
+            <FaExclamationTriangle className="text-red-400 shrink-0 w-4 h-4" />
             <p>
               Your directive completion rate is currently <span className="font-bold text-white">{stats.completion_rate}%</span>. Sustained rates below 60% will affect your Signal Score and risk visibility suspension at Day 21/60.
             </p>
@@ -393,8 +394,8 @@ function DirectiveContent() {
                         {dir.behavioral_tag}
                       </span>
                       {dir.is_maintenance && (
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                          🛠 maintenance
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                          <FaTools className="w-2.5 h-2.5" /> maintenance
                         </span>
                       )}
                     </div>
@@ -408,12 +409,20 @@ function DirectiveContent() {
                     )}
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                       dir.status === "completed" 
                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                         : "bg-red-500/10 text-red-400 border border-red-500/20"
                     }`}>
-                      {dir.status === "completed" ? "✓ Done" : "✗ Missed"}
+                      {dir.status === "completed" ? (
+                        <>
+                          <FaCheck className="w-2.5 h-2.5" /> Done
+                        </>
+                      ) : (
+                        <>
+                          <FaTimes className="w-2.5 h-2.5" /> Missed
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>

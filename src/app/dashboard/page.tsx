@@ -2,7 +2,8 @@
 
 import { AuthenticatedShell, useShellUser, useShellUserRefresh } from "@/components/app/AuthenticatedShell";
 import type { AppShellUser } from "@/components/app/AppShell";
-import { utcTodayISO } from "@/lib/dates";
+import { executionDayNumber, utcTodayISO } from "@/lib/dates";
+import { FaLock, FaCheck, FaTimes, FaTools, FaInfoCircle } from "react-icons/fa";
 
 import {
   ENTRY_UPLOAD_ACCEPT,
@@ -190,8 +191,8 @@ function Day21Gate({ user, onUnlock }: { user: AppShellUser; onUnlock: () => voi
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 space-y-3.5">
           {referralRewardText ? (
             <div className="space-y-1">
-              <span className="text-[10px] font-semibold text-[#0EA472] uppercase tracking-wider block">
-                ✓ Referral Reward Unlocked
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#0EA472] uppercase tracking-wider">
+                <FaCheck className="w-3 h-3 text-[#0EA472]" /> Referral Reward Unlocked
               </span>
               <p className="text-xs text-zinc-200 leading-relaxed">
                 {referralRewardText}
@@ -285,7 +286,7 @@ function Day21Gate({ user, onUnlock }: { user: AppShellUser; onUnlock: () => voi
               to { transform: translate(-50%, 0); opacity: 1; }
             }
           `}</style>
-          <span className="text-emerald-400 text-sm mt-0.5 font-bold">✓</span>
+          <FaCheck className="text-emerald-400 text-sm mt-0.5 shrink-0" />
           <p className="leading-relaxed">{toastMessage}</p>
         </div>
       )}
@@ -298,6 +299,8 @@ const ENTRY_LOCK_BUTTON =
 
 function DashboardMainInner() {
   const user = useShellUser();
+  const currentDay = user?.created_at ? executionDayNumber(String(user.created_at)) : 30;
+  const gridDays = Math.max(30, currentDay);
   const refreshShellUser = useShellUserRefresh();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -747,9 +750,7 @@ function DashboardMainInner() {
       <section id="oxe-dashboard-today" className="min-w-0 max-w-full text-[#EAEFF8] p-5 sm:p-7 space-y-4 pb-20 md:pb-20">
         {gapWarn ? (
           <div className="flex min-w-0 max-w-full items-start gap-2.5 rounded-[20px] border border-[#C2A478]/25 bg-[#C2A478]/10 px-[18px] py-3 text-[12.5px] text-ox-t2">
-            <span className="mt-0.5 shrink-0 text-[#C2A478]" aria-hidden>
-              ⓘ
-            </span>
+            <FaInfoCircle className="mt-0.5 shrink-0 text-[#C2A478] w-4 h-4" />
             <span className="min-w-0 flex-1 break-words">{gapWarn}</span>
           </div>
         ) : null}
@@ -871,7 +872,7 @@ function DashboardMainInner() {
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-[14.5px] font-semibold tracking-tight" style={{ fontFamily: "var(--font-urbanist), Urbanist, sans-serif" }}>
-                  30-Day Execution Grid
+                  {gridDays}-Day Execution Grid
                 </p>
                 {beganDate ? <p className="text-[11.5px] text-zinc-300 mt-0.5">Began {beganDate}</p> : null}
               </div>
@@ -883,7 +884,7 @@ function DashboardMainInner() {
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {Array.from({ length: 30 }).map((_, i) => {
+              {Array.from({ length: gridDays }).map((_, i) => {
                 const day = i + 1;
                 const ent = resolvedEntries.find((e) => Number(e.day_number) === day) as Record<string, string> | undefined;
                 const isBreakDay = breakDaySet.has(day);
@@ -973,8 +974,8 @@ function DashboardMainInner() {
                       Day {String(activeDirective.day_number)}
                     </span>
                     {Boolean(activeDirective.is_maintenance) && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 rounded animate-pulse">
-                        🛠 Maintenance Mode
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 rounded animate-pulse">
+                        <FaTools className="w-3 h-3" /> Maintenance Mode
                       </span>
                     )}
                   </div>
@@ -1073,7 +1074,7 @@ function DashboardMainInner() {
                         {dashProofFiles.map((f, i) => (
                           <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 bg-white/[0.02] border border-white/[0.05] rounded-lg px-3 py-1.5 transition-all hover:bg-white/[0.04]">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                              <FaCheck className="text-emerald-400 shrink-0 w-3.5 h-3.5" />
                               <span className="truncate font-medium text-zinc-300 text-[11.5px]">{f.name}</span>
                               <span className="text-[9.5px] text-zinc-500 shrink-0 font-mono">({Math.round(f.size / 1024)} KB)</span>
                             </div>
@@ -1097,15 +1098,17 @@ function DashboardMainInner() {
                   </div>
 
                   {dashError && (
-                    <p className="text-[11px] font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-2.5 py-1.5 rounded-lg">
-                      ✕ {dashError}
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-red-400 bg-red-400/5 border border-red-400/20 px-2.5 py-1.5 rounded-lg">
+                      <FaTimes className="w-3.5 h-3.5" /> {dashError}
                     </p>
                   )}
                 </form>
               </div>
             ) : (
               <div className="text-center py-2">
-                <p className="text-xs text-emerald-400 font-semibold">✓ Daily Directive completed and locked to record.</p>
+                      <p className="inline-flex items-center justify-center gap-1.5 text-xs text-emerald-400 font-semibold w-full">
+                        <FaCheck className="w-3.5 h-3.5" /> Daily Directive completed and locked to record.
+                      </p>
                 {dashSuccess && (
                   <p className="text-[11px] text-zinc-400 italic mt-2">
                     &ldquo;{dashSuccess}&rdquo;
@@ -1193,7 +1196,7 @@ function DashboardMainInner() {
                         </span>
                       </div>
                       <span className="text-red-400 text-xs font-semibold flex items-center gap-1 bg-red-400/5 border border-red-400/20 px-2 py-0.5 rounded">
-                        🔒 LOCKED
+                        <FaLock className="w-3 h-3" /> LOCKED
                       </span>
                     </div>
                   </button>
@@ -1364,8 +1367,8 @@ function DashboardMainInner() {
                           {String(e.category)}
                         </span>
                         {idx === 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[#E24B4A] font-semibold">
-                            <span aria-hidden>🔒</span> Locked · Immutable
+                          <span className="inline-flex items-center gap-1.5 text-[#E24B4A] font-semibold">
+                            <FaLock className="w-3 h-3" /> Locked · Immutable
                           </span>
                         ) : null}
                         <span className="text-ox-t3 tabular-nums ml-auto">

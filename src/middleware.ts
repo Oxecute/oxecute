@@ -10,6 +10,7 @@ const ROOT_APP_SEGMENTS = new Set([
   "auth",
   "dashboard",
   "login",
+  "signup",
   "start",
   "board",
   "inbox",
@@ -60,8 +61,18 @@ export async function middleware(request: NextRequest) {
   const pathname =
     rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
 
+  if (pathname.toLowerCase() === "/signup") {
+    const startUrl = new URL("/start", request.url);
+    startUrl.search = request.nextUrl.search;
+    return NextResponse.redirect(startUrl, 307);
+  }
+
   if (pathname.startsWith("/api") || pathname.startsWith("/auth")) {
-    return NextResponse.next({ request: { headers: request.headers } });
+    const res = NextResponse.next({ request: { headers: request.headers } });
+    if (request.nextUrl.hostname === "individual-amber-wsbkearolg.edgeone.app") {
+      res.headers.set("X-Robots-Tag", "noindex, nofollow");
+    }
+    return res;
   }
 
   const segments = pathname.split("/").filter(Boolean);
@@ -106,6 +117,10 @@ export async function middleware(request: NextRequest) {
   );
 
   await supabase.auth.getUser();
+
+  if (request.nextUrl.hostname === "individual-amber-wsbkearolg.edgeone.app") {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
 
   return response;
 }
