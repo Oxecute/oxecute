@@ -10,6 +10,8 @@ import { executionDayNumber } from "@/lib/dates";
 import type { Metadata } from "next";
 import React from "react";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(props: {
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
